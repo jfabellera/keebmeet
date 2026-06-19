@@ -50,12 +50,12 @@ export const editMeetupSchema = z.object({
   display_idle_image_urls: z.string().array().optional(),
   display_raffle_background_url: z
     .string()
-    .optional()
-    .transform((string) => (string === '' ? null : string)),
+    .transform((string) => (string === '' ? null : string))
+    .optional(),
   display_batch_raffle_background_url: z
     .string()
-    .optional()
-    .transform((string) => (string === '' ? null : string)),
+    .transform((string) => (string === '' ? null : string))
+    .optional(),
 });
 
 export type EditMeetupPayload = z.infer<typeof editMeetupSchema>;
