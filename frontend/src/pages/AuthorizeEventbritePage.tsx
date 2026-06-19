@@ -1,10 +1,10 @@
 import { Flex, Spinner, Text, useToast } from '@chakra-ui/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Page from '../components/Page/Page';
 import { useAuthorizeEventbriteMutation } from '../store/userSlice';
 
-const AuthorizeEventbritePage = (): JSX.Element => {
+const AuthorizeEventbritePage = (): ReactNode => {
   const [params] = useSearchParams();
   const [authorizeEventbrite, { isLoading }] = useAuthorizeEventbriteMutation();
   const navigate = useNavigate();

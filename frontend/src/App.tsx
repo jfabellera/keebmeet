@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Outlet,
   Route,
@@ -25,7 +26,7 @@ import MeetupDisplayPage from './pages/MeetupDisplayPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
 import { store } from './store/store';
 
-const App = (): JSX.Element => {
+const App = (): ReactNode => {
   return (
     <Provider store={store}>
       <Router>

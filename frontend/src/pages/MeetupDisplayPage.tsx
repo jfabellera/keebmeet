@@ -13,7 +13,7 @@ import {
   motion,
   useMotionValue,
 } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import useMeasure from 'react-use-measure';
 import { socket } from '../socket';
@@ -28,7 +28,7 @@ const shuffleArray = (array: any[]): any[] => {
   return array;
 };
 
-const MeetupDisplayPage = (): JSX.Element => {
+const MeetupDisplayPage = (): ReactNode => {
   const { meetupId } = useParams();
   const [displayState, setDisplayState] = useState<'idle' | 'raffle winner'>(
     'idle'

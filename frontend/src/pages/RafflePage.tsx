@@ -22,7 +22,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { useFormik } from 'formik';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FiSettings } from 'react-icons/fi';
 import { MdHistory } from 'react-icons/md';
 import { useParams } from 'react-router-dom';
@@ -37,7 +37,7 @@ import {
   useUnClaimRaffleWinnerMutation,
 } from '../store/organizerSlice';
 
-const RafflePage = (): JSX.Element => {
+const RafflePage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
   const meetupId = parseInt(meetupIdParam ?? '');
   const [

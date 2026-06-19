@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Box,
   FormControl,
@@ -27,7 +28,7 @@ const EditableFormField = ({
   errorMessage,
   editable,
   ...rest
-}: FieldDisplayProps): JSX.Element => {
+}: FieldDisplayProps): ReactNode => {
   return (
     <Box paddingY={'0.5rem'} maxWidth={'sm'} {...rest}>
       <FormControl id={id} isInvalid={isInvalid} minWidth={0}>

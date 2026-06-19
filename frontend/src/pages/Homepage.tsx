@@ -7,7 +7,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
 import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
@@ -22,7 +22,7 @@ import {
   isMeetupHappeningNow,
 } from '../util/timeUtil';
 
-const Homepage = (): JSX.Element => {
+const Homepage = (): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
   const [meetupId, setMeetupId] = useState<number>(0);
   const { data: meetups, isLoading } = useGetMeetupsQuery({});
@@ -82,7 +82,7 @@ const Homepage = (): JSX.Element => {
     }
   };
 
-  const meetupSection = (title: string, meetups: MeetupInfo[]): JSX.Element => {
+  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
     return (
       <Box>
         <Heading fontSize="3xl" mb={'0.5em'}>

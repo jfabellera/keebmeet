@@ -2,7 +2,7 @@ import { useBoolean, useToast } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { type EditMeetupPayload } from '../../../../backend/src/util/validator';
 import {
   useEditMeetupMutation,
@@ -17,7 +17,7 @@ interface Props {
   meetupId: number;
 }
 
-const MeetupDetailsSettingsCard = ({ meetupId }: Props): JSX.Element => {
+const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup] = useEditMeetupMutation();
@@ -53,7 +53,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): JSX.Element => {
 
       const result = await editMeetup({ meetupId, payload });
 
-      if ('error' in result && 'data' in result.error) {
+      if ('error' in result && result.error != null && 'data' in result.error) {
         // is this allowed
         const data: any = result.error.data;
         toast({

@@ -8,7 +8,7 @@ import {
   Stack,
 } from '@chakra-ui/react';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
@@ -21,7 +21,7 @@ import {
   isMeetupHappeningNow,
 } from '../util/timeUtil';
 
-const OrganizerDashboard = (): JSX.Element => {
+const OrganizerDashboard = (): ReactNode => {
   const { user } = useAppSelector((state) => state.user);
   const { data: meetups } = useGetMeetupsQuery({
     by_organizer_id: user != null ? [user.id] : [],
@@ -51,7 +51,7 @@ const OrganizerDashboard = (): JSX.Element => {
     [meetups]
   );
 
-  const mapMeetupToCard = (meetup: MeetupInfo): JSX.Element => {
+  const mapMeetupToCard = (meetup: MeetupInfo): ReactNode => {
     return (
       <MeetupOrganizerCard
         key={meetup.id}
@@ -67,7 +67,7 @@ const OrganizerDashboard = (): JSX.Element => {
     );
   };
 
-  const meetupSection = (title: string, meetups: MeetupInfo[]): JSX.Element => {
+  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
     return (
       <Box>
         <Heading size={'lg'} fontWeight={'medium'} marginBottom={'0.5rem'}>

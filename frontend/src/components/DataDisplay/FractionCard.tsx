@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Box,
   Heading,
@@ -18,7 +19,7 @@ const FractionCard = ({
   denominator,
   label,
   ...rest
-}: FractionCardProps): JSX.Element => {
+}: FractionCardProps): ReactNode => {
   return (
     <Box
       background={'white'}

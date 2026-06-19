@@ -1,8 +1,9 @@
+import { type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import MeetupDetailsSettingsCard from '../components/Meetups/MeetupDetailsSettingsCard';
 import MeetupDisplaySettingsCard from '../components/Meetups/MeetupDisplaySettingsCard';
 
-const ManageMeetupSettingsPage = (): JSX.Element => {
+const ManageMeetupSettingsPage = (): ReactNode => {
   const { meetupId } = useParams();
 
   return (
