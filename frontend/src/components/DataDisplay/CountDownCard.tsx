@@ -8,7 +8,7 @@ import {
 } from '@chakra-ui/react';
 import dayjs, { type Dayjs } from 'dayjs';
 import duration from 'dayjs/plugin/duration';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 dayjs.extend(duration);
 
 const convertToSmallestUnitOfTime = (
@@ -40,7 +40,7 @@ const CountDown = ({
   pastText,
   simple,
   ...rest
-}: CountDownProps): JSX.Element => {
+}: CountDownProps): ReactNode => {
   const [durationMs, setDurationMs] = useState<number>(dayjs(date).diff());
 
   const { amount, unit } = useMemo(

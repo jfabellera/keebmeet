@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   AspectRatio,
   Card,
@@ -32,7 +33,7 @@ export const MeetupOrganizerCard = ({
   ticketsAvailable,
   ticketsTotal,
   onClick,
-}: MeetupOrganizerCardProps): JSX.Element => {
+}: MeetupOrganizerCardProps): ReactNode => {
   return (
     <Card
       background={'white'}

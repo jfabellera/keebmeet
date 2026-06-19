@@ -61,7 +61,7 @@ interface NavbarProps {
   onOpen?: () => void;
 }
 
-const Nav = ({ sidebar, onOpen }: NavbarProps): JSX.Element => {
+const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
   const navigate = useNavigate();
 
@@ -114,7 +114,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): JSX.Element => {
 /**
  * Sign in and sign up buttons for when a user is not logged in.
  */
-const GuestButtons = (): JSX.Element => {
+const GuestButtons = (): ReactNode => {
   const navigate = useNavigate();
   return (
     <Stack
@@ -159,7 +159,7 @@ interface NavbarDropdownProps extends BoxProps {
   isOrganizer: boolean;
 }
 
-const NavbarDropdown = (props: NavbarDropdownProps): JSX.Element => {
+const NavbarDropdown = (props: NavbarDropdownProps): ReactNode => {
   const { nickname, isOrganizer } = props;
   const dispatch = useAppDispatch();
 
@@ -229,7 +229,7 @@ const NavItem = ({
   url,
   children,
   ...rest
-}: NavItemProps): JSX.Element => {
+}: NavItemProps): ReactNode => {
   const navigate = useNavigate();
   return (
     <Link

@@ -106,7 +106,7 @@ export const authChecker =
       // If accessing a user, check that the requestor is the user
       if (req.params.user_id != null) {
         // For some reason requires Number() to work with !== even though it's already a number
-        if (Number(user.id) !== parseInt(req.params.user_id)) {
+        if (Number(user.id) !== parseInt(req.params.user_id as string)) {
           return reject(res);
         }
 
@@ -120,7 +120,7 @@ export const authChecker =
         const ticket = await Ticket.findOne({
           relations: { user: true, meetup: true },
           where: {
-            id: parseInt(req.params.ticket_id),
+            id: parseInt(req.params.ticket_id as string),
           },
         });
 
@@ -147,7 +147,7 @@ export const authChecker =
       // If accessing a raffle record, check that the requestor is an organizer of the raffle's meetup
       if (req.params.raffle_id != null) {
         const raffleRecord = await RaffleRecord.findOne({
-          relations: ['meetup'],
+          relations: { meetup: true },
           where: { id: Number(req.params.raffle_id) },
         });
 
@@ -169,7 +169,7 @@ export const authChecker =
             eventbriteRecord: true,
           },
           where: {
-            id: parseInt(req.params.meetup_id),
+            id: parseInt(req.params.meetup_id as string),
           },
         });
 

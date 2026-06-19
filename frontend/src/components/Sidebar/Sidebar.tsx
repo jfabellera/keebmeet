@@ -38,7 +38,7 @@ const Sidebar = ({
   onClose,
   value,
   setValue,
-}: SidebarProps): JSX.Element => {
+}: SidebarProps): ReactNode => {
   return (
     <Box height="100%" bg={useColorModeValue('gray.100', 'gray.900')}>
       <SidebarContent
@@ -82,7 +82,7 @@ const SidebarContent = ({
   value,
   setValue,
   ...rest
-}: SidebarContentProps): JSX.Element => {
+}: SidebarContentProps): ReactNode => {
   const navigate = useNavigate();
 
   return (
@@ -126,7 +126,7 @@ const NavItem = ({
   children,
   selected,
   ...rest
-}: NavItemProps): JSX.Element => {
+}: NavItemProps): ReactNode => {
   return (
     <Box style={{ textDecoration: 'none' }} _focus={{ boxShadow: 'none' }}>
       <Flex

@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { HStack, Icon, Text } from '@chakra-ui/react';
 import { FaCircle } from 'react-icons/fa';
 
@@ -9,7 +10,7 @@ export interface MeetupCapacityStatusProps {
 export const MeetupCapacityStatus = ({
   available,
   total,
-}: MeetupCapacityStatusProps): JSX.Element => {
+}: MeetupCapacityStatusProps): ReactNode => {
   let statusColor: string;
   const capacityRatio = available / total;
 

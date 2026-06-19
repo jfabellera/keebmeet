@@ -27,7 +27,7 @@ export const getUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { user_id } = req.params;
+  const { user_id } = req.params as Record<string, string>;
 
   const user = await User.findOneBy({
     id: parseInt(user_id),

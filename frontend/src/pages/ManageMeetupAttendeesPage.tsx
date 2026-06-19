@@ -11,12 +11,12 @@ import {
   Tr,
 } from '@chakra-ui/react';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { type TicketInfo } from '../../../backend/src/controllers/meetups';
 import { useGetMeetupAttendeesQuery } from '../store/organizerSlice';
 
-const ManageMeetupAttendeesPage = (): JSX.Element => {
+const ManageMeetupAttendeesPage = (): ReactNode => {
   const { meetupId } = useParams();
   const { data: attendees } = useGetMeetupAttendeesQuery({
     meetup_id: parseInt(meetupId ?? '0'),

@@ -10,7 +10,7 @@ import {
   useBoolean,
 } from '@chakra-ui/react';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
 import {
   useEditMeetupMutation,
@@ -22,7 +22,7 @@ interface Props {
   meetupId: number;
 }
 
-const MeetupDisplaySettingsCard = ({ meetupId }: Props): JSX.Element => {
+const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup] = useEditMeetupMutation();
   const [isEditable, setIsEditable] = useBoolean(false);

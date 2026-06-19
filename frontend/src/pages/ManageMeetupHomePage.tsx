@@ -1,7 +1,7 @@
 import { Box, Button, Flex, Grid, GridItem, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import CountDownCard from '../components/DataDisplay/CountDownCard';
 import FractionCard from '../components/DataDisplay/FractionCard';
@@ -18,7 +18,7 @@ import {
 
 dayjs.extend(isBetween);
 
-const ManageMeetupHomePage = (): JSX.Element => {
+const ManageMeetupHomePage = (): ReactNode => {
   const { meetupId } = useParams();
   const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
   const { data: attendees } = useGetMeetupAttendeesQuery({

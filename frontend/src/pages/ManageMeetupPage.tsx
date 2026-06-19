@@ -17,7 +17,7 @@ interface ManageMeetupPageProps extends BoxProps {
 const ManageMeetupPage = ({
   children,
   ...rest
-}: ManageMeetupPageProps): JSX.Element => {
+}: ManageMeetupPageProps): ReactNode => {
   const { meetupId } = useParams();
   const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
   const location = useLocation();

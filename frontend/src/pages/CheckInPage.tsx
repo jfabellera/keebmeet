@@ -22,7 +22,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import type React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { useParams } from 'react-router-dom';
 import { type TicketInfo } from '../../../backend/src/controllers/meetups';
@@ -31,7 +31,7 @@ import {
   useGetMeetupAttendeesQuery,
 } from '../store/organizerSlice';
 
-const CheckInPage = (): JSX.Element => {
+const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
   const meetupId = parseInt(meetupIdParam ?? '');
   const { data: attendees } = useGetMeetupAttendeesQuery({

@@ -1,5 +1,6 @@
 'use client';
 
+import { type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -45,7 +46,7 @@ const RegisterSchema = Yup.object().shape({
     .required('Required'),
 });
 
-const RegisterPage = (): JSX.Element => {
+const RegisterPage = (): ReactNode => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.user);
   const navigate = useNavigate();
@@ -76,7 +77,7 @@ const RegisterPage = (): JSX.Element => {
     validateOnMount: true,
   });
 
-  const ErrorMessage = ({ children }: BoxProps): JSX.Element => {
+  const ErrorMessage = ({ children }: BoxProps): ReactNode => {
     return (
       <FormErrorMessage justifyContent={'right'}>{children}</FormErrorMessage>
     );

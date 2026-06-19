@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Flex, Text, VStack, type FlexProps } from '@chakra-ui/react';
 import { useGetRaffleHistoryQuery } from '../../store/organizerSlice';
 import RaffleHistoryCard from './RaffleHistoryCard';
@@ -11,7 +12,7 @@ const RaffleHistoryList = ({
   meetupId,
   onCardClick,
   ...rest
-}: Props): JSX.Element => {
+}: Props): ReactNode => {
   const { data: raffleRecords } = useGetRaffleHistoryQuery(meetupId);
 
   return (

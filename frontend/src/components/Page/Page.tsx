@@ -15,7 +15,7 @@ const Page = ({
   children,
   sidebarValue,
   setSidebarValue,
-}: PageProps): JSX.Element => {
+}: PageProps): ReactNode => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (

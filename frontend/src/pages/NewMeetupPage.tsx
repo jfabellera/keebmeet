@@ -18,13 +18,13 @@ import {
   type BoxProps,
 } from '@chakra-ui/react';
 import { useFormik } from 'formik';
-import { type ChangeEvent } from 'react';
+import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Page from '../components/Page/Page';
 import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
-const NewMeetupPage = (): JSX.Element => {
+const NewMeetupPage = (): ReactNode => {
   const [createMeetup] = useCreateMeetupMutation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -58,7 +58,7 @@ const NewMeetupPage = (): JSX.Element => {
           : formik.initialValues.defaultRaffleEntries,
       });
 
-      if ('error' in result && 'data' in result.error) {
+      if ('error' in result && result.error != null && 'data' in result.error) {
         // is this allowed
         const data: any = result.error.data;
         toast({
@@ -83,7 +83,7 @@ const NewMeetupPage = (): JSX.Element => {
     formik.handleChange(event);
   };
 
-  const ErrorMessage = ({ children }: BoxProps): JSX.Element => {
+  const ErrorMessage = ({ children }: BoxProps): ReactNode => {
     return (
       <FormErrorMessage justifyContent={'right'}>{children}</FormErrorMessage>
     );

@@ -17,7 +17,7 @@ import {
 } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiClock,
@@ -55,7 +55,7 @@ export const MeetupModal = ({
   isOpen,
   onClose,
   onOpen,
-}: MeetupModalProps): JSX.Element => {
+}: MeetupModalProps): ReactNode => {
   const { data: meetup, refetch: refetchMeetup } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
   });

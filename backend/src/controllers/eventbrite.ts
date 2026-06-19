@@ -36,7 +36,7 @@ export const getEventbriteEventsEndpoint = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { organization_id } = req.params;
+  const { organization_id } = req.params as Record<string, string>;
   const user = res.locals.requestor as User;
 
   if (user.encrypted_eventbrite_token == null) return rejectNoToken(res);
@@ -58,7 +58,7 @@ export const getEventbriteTicketsEndpoint = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { event_id } = req.params;
+  const { event_id } = req.params as Record<string, string>;
   const user = res.locals.requestor as User;
 
   if (user.encrypted_eventbrite_token == null) return rejectNoToken(res);
@@ -77,7 +77,7 @@ export const getEventbriteQuestionsEndpoint = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { event_id } = req.params;
+  const { event_id } = req.params as Record<string, string>;
   const user = res.locals.requestor as User;
 
   if (user.encrypted_eventbrite_token == null) return rejectNoToken(res);

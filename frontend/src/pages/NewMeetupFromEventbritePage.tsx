@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -34,7 +35,7 @@ import {
 import { useCreateMeetupFromEventbriteMutation } from '../store/meetupSlice';
 import MeetupFromEventbriteFormSchema from '../util/schemas/MeetupFromEventbriteFormSchema';
 
-const NewMeetupFromEventbritePage = (): JSX.Element => {
+const NewMeetupFromEventbritePage = (): ReactNode => {
   const toast = useToast();
   const navigate = useNavigate();
   const formik = useFormik({
@@ -125,7 +126,7 @@ const NewMeetupFromEventbritePage = (): JSX.Element => {
     onChange,
     value,
     isDisabled,
-  }: FormSelectProps): JSX.Element => {
+  }: FormSelectProps): ReactNode => {
     return (
       <FormControl id={id}>
         <FormLabel>{name}</FormLabel>

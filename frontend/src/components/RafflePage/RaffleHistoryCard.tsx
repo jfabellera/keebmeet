@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Box,
   Flex,
@@ -22,7 +23,7 @@ const RaffleHistoryCard = ({
   raffleRecord,
   onCardClick,
   ...rest
-}: Props): JSX.Element => {
+}: Props): ReactNode => {
   const handleClick = (): void => {
     onCardClick(Number(raffleRecord.id)); // TODO(jan): id is actually a string
   };

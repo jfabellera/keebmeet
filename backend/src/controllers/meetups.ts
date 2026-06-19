@@ -204,7 +204,7 @@ export const getMeetup = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
   const { detail_level } = req.query;
 
   const detailLevel =
@@ -423,7 +423,7 @@ export const updateMeetup = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
 
   const result = editMeetupSchema.safeParse(req.body);
 
@@ -551,7 +551,7 @@ export const deleteMeetup = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
 
   const meetup = await Meetup.findOneBy({
     id: parseInt(meetup_id),
@@ -576,7 +576,7 @@ export const getMeetupAttendees = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
 
   const meetup = await Meetup.findOne({
     select: {
@@ -664,7 +664,7 @@ export const getMeetupDisplayAssets = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
 
   const meetup = await Meetup.findOne({
     relations: { displayRecord: true },

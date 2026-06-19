@@ -1,10 +1,11 @@
+import { type ReactNode } from 'react';
 import { Button, Container, Heading, Link, VStack } from '@chakra-ui/react';
 import Page from '../components/Page/Page';
 import config from '../config';
 import { useAppSelector } from '../store/hooks';
 import { useGetUserQuery } from '../store/userSlice';
 
-const AccountPage = (): JSX.Element => {
+const AccountPage = (): ReactNode => {
   const { user: localUser } = useAppSelector((state) => state.user);
   const { data: user } = useGetUserQuery(localUser?.id ?? NaN, {
     skip: localUser == null,

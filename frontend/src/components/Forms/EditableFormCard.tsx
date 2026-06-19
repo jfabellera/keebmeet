@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   Box,
   Button,
@@ -28,7 +29,7 @@ const EditableFormCard = ({
   onEditCancel,
   children,
   ...rest
-}: MeetupDisplaySettingsProps): JSX.Element => {
+}: MeetupDisplaySettingsProps): ReactNode => {
   return (
     <Box
       background={'white'}

@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   AspectRatio,
   Badge,
@@ -27,7 +28,7 @@ export interface MeetupCardProps {
 export const MeetupCard = ({
   meetup,
   attending,
-}: MeetupCardProps): JSX.Element => {
+}: MeetupCardProps): ReactNode => {
   return (
     <Card
       background={'white'}

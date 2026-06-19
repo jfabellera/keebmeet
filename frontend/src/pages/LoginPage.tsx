@@ -10,13 +10,13 @@ import {
   Text,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Page from '../components/Page/Page';
 import { login, type LoginPayload } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
-const LoginPage = (): JSX.Element => {
+const LoginPage = (): ReactNode => {
   const [loginPayload, setLoginPayload] = useState<LoginPayload>({
     email: '',
     password: '',
