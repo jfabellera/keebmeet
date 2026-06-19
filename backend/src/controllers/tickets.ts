@@ -25,7 +25,7 @@ export const getTicket = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { ticket_id } = req.params;
+  const { ticket_id } = req.params as Record<string, string>;
 
   const ticket = await Ticket.findOneBy({
     id: parseInt(ticket_id),
@@ -83,7 +83,7 @@ export const updateTicket = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { ticket_id } = req.params;
+  const { ticket_id } = req.params as Record<string, string>;
 
   const result = editTicketSchema.safeParse(req.body);
 
@@ -132,7 +132,7 @@ export const getUserTickets = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { user_id } = req.params;
+  const { user_id } = req.params as Record<string, string>;
 
   // TODO(jan): make this better
 
@@ -256,7 +256,7 @@ export const updateTicketViaWebhook = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params;
+  const { meetup_id } = req.params as Record<string, string>;
   const { token } = req.query;
   const { api_url } = req.body;
 

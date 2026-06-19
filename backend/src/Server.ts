@@ -46,7 +46,7 @@ class Server {
     this.express.use('/eventbrite', eventbriteRoutes);
     this.express.use('/raffles', raffleRoutes);
 
-    this.express.use('*', (req, res, next) => {
+    this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');
     });
   }
