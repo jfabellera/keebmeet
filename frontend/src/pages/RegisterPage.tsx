@@ -229,7 +229,6 @@ const RegisterPage = (): ReactNode => {
                     type="submit"
                     disabled={loading || !formik.isValid}
                     size="lg"
-                    className="bg-blue-500 text-white hover:bg-blue-600"
                   >
                     {loading ? <Loader2 className="animate-spin" /> : null}
                     Sign up

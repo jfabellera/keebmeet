@@ -109,7 +109,7 @@ const GuestButtons = (): ReactNode => {
         Sign In
       </Button>
       <Button
-        className="hidden bg-pink-400 font-semibold text-white hover:bg-pink-300 md:inline-flex"
+        className="hidden font-semibold md:inline-flex"
         onClick={() => {
           void navigate('/register');
         }}

@@ -302,12 +302,7 @@ const NewMeetupPage = (): ReactNode => {
                   </FieldError>
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={!formik.isValid}
-                  size="lg"
-                  className="bg-blue-500 text-white hover:bg-blue-600"
-                >
+                <Button type="submit" disabled={!formik.isValid} size="lg">
                   Create
                 </Button>
               </div>

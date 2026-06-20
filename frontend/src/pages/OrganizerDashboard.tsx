@@ -75,10 +75,7 @@ const OrganizerDashboard = (): ReactNode => {
       <div className="mx-auto max-w-3xl p-4">
         <div className="mb-4 flex items-center">
           <h1 className="text-2xl font-semibold">Your Meetups</h1>
-          <Button
-            className="ml-auto bg-green-600 text-white hover:bg-green-700"
-            onClick={newMeetupOnClick}
-          >
+          <Button className="ml-auto" onClick={newMeetupOnClick}>
             New meetup
           </Button>
         </div>

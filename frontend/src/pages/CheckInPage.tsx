@@ -179,10 +179,10 @@ const CheckInPage = (): ReactNode => {
                   <TableRow
                     key={attendee.id}
                     className={cn(
-                      'cursor-pointer transition-colors hover:bg-blue-400 hover:text-white',
+                      'cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground',
                       focusedIndex != null &&
                         attendee.id === filteredAttendees[focusedIndex].id
-                        ? 'bg-blue-400 text-white'
+                        ? 'bg-accent text-accent-foreground'
                         : ''
                     )}
                     onClick={() => {
@@ -220,11 +220,7 @@ const CheckInPage = (): ReactNode => {
               {ticket?.ticket_holder_display_name ?? 'user'} in?
             </p>
             <DialogFooter>
-              <Button
-                autoFocus
-                className="bg-blue-500 text-white hover:bg-blue-600"
-                onClick={handleConfirm}
-              >
+              <Button autoFocus onClick={handleConfirm}>
                 Confirm
               </Button>
             </DialogFooter>

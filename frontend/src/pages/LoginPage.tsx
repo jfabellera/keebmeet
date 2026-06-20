@@ -86,11 +86,7 @@ const LoginPage = (): ReactNode => {
                     Invalid email or password
                   </p>
                 ) : null}
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-blue-500 text-white hover:bg-blue-600"
-                >
+                <Button type="submit" disabled={loading}>
                   {loading ? <Loader2 className="animate-spin" /> : null}
                   Sign in
                 </Button>

@@ -232,11 +232,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
                   {formik.errors.defaultRaffleEntries}
                 </FieldError>
               </div>
-              <Button
-                type={'submit'}
-                disabled={!formik.isValid || isLoading}
-                className="bg-green-600 text-white hover:bg-green-700"
-              >
+              <Button type={'submit'} disabled={!formik.isValid || isLoading}>
                 Submit
               </Button>
             </div>
