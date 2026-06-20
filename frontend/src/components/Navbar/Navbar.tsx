@@ -131,7 +131,7 @@ const NavbarDropdown = ({
 }: NavbarDropdownProps): ReactNode => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const avatarSrc = 'https://avatars.dicebear.com/api/male/username.svg';
+  const avatarSrc = ''; // TODO: add user avatar url when available
 
   return (
     <DropdownMenu>
