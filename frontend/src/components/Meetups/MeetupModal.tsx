@@ -210,11 +210,7 @@ export const MeetupModal = ({
           )}
           <div className="flex items-center gap-3">
             {meetup.eventbrite_url != null ? (
-              <a
-                href={meetup.eventbrite_url}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={meetup.eventbrite_url} target="_blank" rel="noreferrer">
                 <Button>
                   <FiExternalLink />
                   RSVP

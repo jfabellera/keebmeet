@@ -83,7 +83,7 @@ const ManageMeetupHomePage = (): ReactNode => {
                     (meetup.tickets?.available ?? 0)
               }
               denominator={
-                isHappeningNow ? attendees.length : meetup.tickets?.total ?? 0
+                isHappeningNow ? attendees.length : (meetup.tickets?.total ?? 0)
               }
               label={isHappeningNow ? 'checked in' : 'signed up'}
               onClick={() => {

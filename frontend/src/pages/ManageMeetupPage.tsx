@@ -13,9 +13,7 @@ interface ManageMeetupPageProps {
   children: ReactNode;
 }
 
-const ManageMeetupPage = ({
-  children,
-}: ManageMeetupPageProps): ReactNode => {
+const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
   const { meetupId } = useParams();
   const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
   const location = useLocation();

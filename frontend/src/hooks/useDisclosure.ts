@@ -10,9 +10,7 @@ interface UseDisclosureReturn {
 /**
  * Drop-in replacement for Chakra's useDisclosure.
  */
-export const useDisclosure = (
-  defaultIsOpen = false
-): UseDisclosureReturn => {
+export const useDisclosure = (defaultIsOpen = false): UseDisclosureReturn => {
   const [isOpen, setIsOpen] = useState(defaultIsOpen);
 
   const onOpen = useCallback(() => {

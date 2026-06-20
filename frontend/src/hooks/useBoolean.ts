@@ -10,9 +10,7 @@ interface BooleanActions {
  * Drop-in replacement for Chakra's useBoolean. Returns a tuple of the current
  * value and an actions object exposing `.on()`, `.off()`, and `.toggle()`.
  */
-export const useBoolean = (
-  initialValue = false
-): [boolean, BooleanActions] => {
+export const useBoolean = (initialValue = false): [boolean, BooleanActions] => {
   const [value, setValue] = useState(initialValue);
 
   const actions = useMemo<BooleanActions>(

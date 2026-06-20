@@ -20,7 +20,7 @@ const AccountPage = (): ReactNode => {
             href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
           >
             <Button disabled={user?.is_eventbrite_linked}>
-              {user?.is_eventbrite_linked ?? false
+              {(user?.is_eventbrite_linked ?? false)
                 ? 'Eventbrite linked!'
                 : 'Link Eventbrite'}
             </Button>

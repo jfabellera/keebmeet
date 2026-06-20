@@ -19,9 +19,7 @@ interface Props {
 const gridClass =
   'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
 
-const imageFallback = (
-  <div className="size-full bg-muted" />
-);
+const imageFallback = <div className="size-full bg-muted" />;
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
