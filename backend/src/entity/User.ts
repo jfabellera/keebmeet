@@ -30,8 +30,11 @@ export class User extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   is_admin: boolean;
 
-  @Column({ type: 'varchar', length: 60 })
-  password_hash: string;
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  password_hash?: string;
+
+  @Column({ type: 'varchar', length: 30, nullable: true, unique: true })
+  discord_id?: string;
 
   @OneToMany(() => Ticket, (ticket) => ticket.user)
   tickets: Ticket[];

@@ -1,6 +1,12 @@
 import express, { type RequestHandler } from 'express';
 import config from './config';
-import { createUser, deleteUser, login, updateUser } from './controllers/auth';
+import {
+  createUser,
+  deleteUser,
+  discordLogin,
+  login,
+  updateUser,
+} from './controllers/auth';
 import { AppDataSource } from './datasource';
 import { Rule, authChecker } from './middleware/authChecker';
 
@@ -46,6 +52,7 @@ class AuthServer {
     );
 
     this.express.post('/login', login as RequestHandler);
+    this.express.post('/oauth2/discord', discordLogin as RequestHandler);
 
     this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');

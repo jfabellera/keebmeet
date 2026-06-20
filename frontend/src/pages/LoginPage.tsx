@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -90,6 +91,7 @@ const LoginPage = (): ReactNode => {
                   {loading ? <Loader2 className="animate-spin" /> : null}
                   Sign in
                 </Button>
+                <DiscordLoginButton />
               </div>
             </form>
           </div>

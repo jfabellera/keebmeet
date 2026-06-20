@@ -63,6 +63,34 @@ export const login = createAsyncThunk(
 );
 
 /**
+ * Thunk for logging in via Discord SSO.
+ *
+ * Exchanges the Discord authorization code (from the OAuth2 redirect) for an MMS
+ * token. This will set the authentication token in local storage on success.
+ */
+export const discordLogin = createAsyncThunk(
+  'auth/discordLogin',
+  async (code: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${config.authUrl}/oauth2/discord`, {
+        code,
+      });
+      const { data } = response;
+
+      localStorage.setItem('token', data.token);
+
+      return getUserFromToken(data.token);
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
  * Thunk for registering.
  */
 export const register = createAsyncThunk(
@@ -153,6 +181,21 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.rejected, (state, action: PayloadAction<any>) => {
+        state.loading = false;
+        state.user = null;
+        state.isLoggedIn = false;
+        state.error = action.payload;
+      })
+      .addCase(discordLogin.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(discordLogin.fulfilled, (state, action: PayloadAction<any>) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.isLoggedIn = true;
+        state.error = null;
+      })
+      .addCase(discordLogin.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.user = null;
         state.isLoggedIn = false;
