@@ -14,18 +14,19 @@
     "build:backend": "cd ./backend && npm run build",
     "build:frontend": "cd ./frontend && npm run build",
     "build:all": "npm run build:backend && npm run build:frontend",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "style:all": "npx prettier --write ."
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-config-standard-with-typescript": "^39.1.1",
-    "eslint-plugin-import": "^2.29.0",
-    "eslint-plugin-n": "^16.2.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "eslint-plugin-react": "^7.33.2",
-    "prettier": "^3.2.5",
-    "typescript": "^5.4.2"
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   }
 }

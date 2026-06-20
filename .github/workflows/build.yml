@@ -21,7 +21,12 @@ jobs:
         node-version: 20
 
     - name: Install dependencies
-      run: npm run install:all
+      run: |
+        npm install
+        npm run install:all
+
+    - name: Lint
+      run: npm run lint
 
     - name: Build backend
       run: npm run build:backend
