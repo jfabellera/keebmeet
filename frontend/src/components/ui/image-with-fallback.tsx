@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { FiImage } from 'react-icons/fi';
 
 interface ImageWithFallbackProps extends React.ComponentProps<'img'> {
   fallback?: ReactNode;
@@ -16,8 +17,16 @@ export function ImageWithFallback({
 }: ImageWithFallbackProps): ReactNode {
   const [errored, setErrored] = useState(false);
 
-  if ((src == null || src === '' || errored) && fallback != null) {
-    return <>{fallback}</>;
+  if (src == null || src === '' || errored) {
+    return (
+      <>
+        {fallback ?? (
+          <div className="bg-primary-foreground flex size-full items-center justify-center">
+            <FiImage className="size-8" />
+          </div>
+        )}
+      </>
+    );
   }
 
   return (

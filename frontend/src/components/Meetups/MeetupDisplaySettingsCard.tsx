@@ -1,3 +1,8 @@
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Input } from '@/components/ui/input';
+import { useBoolean } from '@/hooks/useBoolean';
 import type React from 'react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
@@ -6,11 +11,6 @@ import {
   useGetMeetupDisplayAssetsQuery,
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ImageWithFallback } from '@/components/ui/image-with-fallback';
-import { useBoolean } from '@/hooks/useBoolean';
 
 interface Props {
   meetupId: number;
@@ -18,8 +18,6 @@ interface Props {
 
 const gridClass =
   'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
-
-const imageFallback = <div className="bg-muted size-full" />;
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
@@ -134,7 +132,6 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   <ImageWithFallback
                     src={imageUrl}
                     className="size-full object-cover"
-                    fallback={imageFallback}
                   />
                   {isEditable ? (
                     <div className="absolute inset-0 flex items-center justify-between bg-black/50 p-4 opacity-0 transition-opacity duration-300 hover:opacity-100">
@@ -210,7 +207,6 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               <ImageWithFallback
                 src={raffleBackgroundUrl}
                 className="size-full object-cover"
-                fallback={imageFallback}
               />
             </div>
           </AspectRatio>
@@ -234,7 +230,6 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               <ImageWithFallback
                 src={batchRaffleBackgroundUrl}
                 className="size-full object-cover"
-                fallback={imageFallback}
               />
             </div>
           </AspectRatio>

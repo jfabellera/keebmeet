@@ -29,15 +29,7 @@ export const MeetupOrganizerCard = ({
       onClick={onClick}
     >
       <div className="w-1/3 shrink-0 sm:w-2/5">
-        <ImageWithFallback
-          src={imageUrl}
-          className="size-full object-cover"
-          fallback={
-            <div className="bg-muted flex size-full items-center justify-center">
-              <FiImage className="size-8" />
-            </div>
-          }
-        />
+        <ImageWithFallback src={imageUrl} className="size-full object-cover" />
       </div>
       <div className="flex w-2/3 flex-col justify-center overflow-hidden p-4 py-2 sm:w-3/5 sm:py-4">
         <div className="flex flex-1 flex-col justify-center gap-0 sm:gap-1.5">

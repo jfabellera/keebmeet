@@ -24,11 +24,6 @@ export const MeetupCard = ({
         <ImageWithFallback
           src={meetup.image_url}
           className="size-full object-cover"
-          fallback={
-            <div className="bg-muted flex size-full items-center justify-center">
-              <FiImage className="size-8" />
-            </div>
-          }
         />
       </AspectRatio>
       <div className="p-3">
