@@ -55,7 +55,7 @@ const CountDown = ({
   return (
     <div
       className={cn(
-        'rounded-md bg-card p-4 text-card-foreground shadow-sm',
+        'bg-card text-card-foreground rounded-md p-4 shadow-sm',
         className
       )}
       {...rest}

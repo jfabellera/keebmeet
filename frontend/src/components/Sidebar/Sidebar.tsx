@@ -36,7 +36,7 @@ const Sidebar = ({
   setValue,
 }: SidebarProps): ReactNode => {
   return (
-    <div className="h-full bg-muted">
+    <div className="bg-muted h-full">
       <SidebarContent
         sidebarItems={sidebarItems}
         onClose={onClose}
@@ -85,7 +85,7 @@ const SidebarContent = ({
 
   return (
     <div
-      className={cn('h-full w-full border-r bg-background md:w-60', className)}
+      className={cn('bg-background h-full w-full border-r md:w-60', className)}
       {...rest}
     >
       {sidebarItems.map((link) => (

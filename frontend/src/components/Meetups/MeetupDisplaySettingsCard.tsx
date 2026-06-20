@@ -19,7 +19,7 @@ interface Props {
 const gridClass =
   'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
 
-const imageFallback = <div className="size-full bg-muted" />;
+const imageFallback = <div className="bg-muted size-full" />;
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
@@ -137,7 +137,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                     fallback={imageFallback}
                   />
                   {isEditable ? (
-                    <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 transition-opacity duration-300 hover:opacity-100 bg-black/50">
+                    <div className="absolute inset-0 flex items-center justify-between bg-black/50 p-4 opacity-0 transition-opacity duration-300 hover:opacity-100">
                       <Button
                         variant="secondary"
                         size="icon"

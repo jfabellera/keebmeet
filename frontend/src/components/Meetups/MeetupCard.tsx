@@ -19,13 +19,13 @@ export const MeetupCard = ({
   attending,
 }: MeetupCardProps): ReactNode => {
   return (
-    <div className="h-full cursor-pointer overflow-hidden rounded-md border bg-card text-card-foreground shadow-sm">
+    <div className="bg-card text-card-foreground h-full cursor-pointer overflow-hidden rounded-md border shadow-sm">
       <AspectRatio ratio={2 / 1}>
         <ImageWithFallback
           src={meetup.image_url}
           className="size-full object-cover"
           fallback={
-            <div className="flex size-full items-center justify-center bg-muted">
+            <div className="bg-muted flex size-full items-center justify-center">
               <FiImage className="size-8" />
             </div>
           }
@@ -34,7 +34,7 @@ export const MeetupCard = ({
       <div className="p-3">
         <div className="flex flex-col items-start gap-2">
           <div className="flex w-full items-center">
-            <p className="font-semibold text-muted-foreground">
+            <p className="text-muted-foreground font-semibold">
               {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                 'MMMM DD, YYYY'
               )}

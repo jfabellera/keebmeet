@@ -154,7 +154,7 @@ const CheckInPage = (): ReactNode => {
   return (
     <div className="flex h-full flex-col gap-2 p-4 text-center">
       <h2 className="mb-2 text-center text-2xl font-medium">Check-in</h2>
-      <div className="rounded-md bg-card p-2 text-card-foreground shadow-sm">
+      <div className="bg-card text-card-foreground rounded-md p-2 shadow-sm">
         <Input
           ref={searchRef}
           className="border-0 shadow-none focus-visible:ring-0"
@@ -163,7 +163,7 @@ const CheckInPage = (): ReactNode => {
           onChange={handleSearchChange}
         />
       </div>
-      <div className="rounded-md bg-card p-4 text-card-foreground shadow-sm">
+      <div className="bg-card text-card-foreground rounded-md p-4 shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

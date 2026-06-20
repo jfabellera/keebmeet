@@ -30,7 +30,7 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
   );
 
   return (
-    <div className="m-2 rounded-md bg-card p-2 text-card-foreground shadow-sm md:m-4">
+    <div className="bg-card text-card-foreground m-2 rounded-md p-2 shadow-sm md:m-4">
       <h2 className="px-6 py-4 text-2xl font-semibold">Attendees</h2>
       <Table>
         <TableHeader>

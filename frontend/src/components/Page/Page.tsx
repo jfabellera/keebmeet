@@ -19,7 +19,7 @@ const Page = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
-    <div className="flex h-svh flex-col bg-muted">
+    <div className="bg-muted flex h-svh flex-col">
       <Navbar sidebar={sidebarItems != null} onOpen={onOpen} />
       <div className="h-full w-auto overflow-auto">
         {sidebarItems != null &&

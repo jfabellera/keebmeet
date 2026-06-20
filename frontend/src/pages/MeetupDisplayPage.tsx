@@ -121,12 +121,12 @@ const MeetupDisplayPage = (): ReactNode => {
             ) : null}
 
             <div className="absolute top-[15%] flex h-[80%] w-2/3 items-center justify-center overflow-clip p-8">
-              <div className="grid w-full grid-flow-col gap-2 [grid-template-columns:repeat(2,auto)] [grid-template-rows:repeat(10,auto)]">
+              <div className="grid w-full grid-flow-col [grid-template-columns:repeat(2,auto)] [grid-template-rows:repeat(10,auto)] gap-2">
                 {winners.map((winner, index) => {
                   return (
                     <div key={index} className="w-full text-left">
                       <p
-                        className="line-clamp-1 min-w-0 break-all leading-normal"
+                        className="line-clamp-1 min-w-0 leading-normal break-all"
                         style={{
                           fontSize:
                             // Handle font size for different amount of winners
@@ -165,14 +165,14 @@ const MeetupDisplayPage = (): ReactNode => {
                   className="absolute flex w-full flex-col items-center gap-5"
                   ref={ref}
                 >
-                  <p className="line-clamp-1 break-all text-[144px]">
+                  <p className="line-clamp-1 text-[144px] break-all">
                     {winners[0]}
                   </p>
                   {losers != null
                     ? shuffleArray(losers).map((loser, index) => (
                         <p
                           key={index}
-                          className="line-clamp-1 break-all text-[144px]"
+                          className="line-clamp-1 text-[144px] break-all"
                         >
                           {loser}
                         </p>

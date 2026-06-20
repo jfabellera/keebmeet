@@ -45,7 +45,7 @@ const EditableFormField = ({
             defaultValue={value}
           />
           {isInvalid === true && errorMessage != null ? (
-            <p className="mt-1 text-right text-sm text-destructive">
+            <p className="text-destructive mt-1 text-right text-sm">
               {errorMessage}
             </p>
           ) : null}

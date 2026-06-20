@@ -25,7 +25,7 @@ export const MeetupOrganizerCard = ({
 }: MeetupOrganizerCardProps): ReactNode => {
   return (
     <div
-      className="flex cursor-pointer flex-row overflow-hidden rounded-md border bg-card text-card-foreground shadow-sm"
+      className="bg-card text-card-foreground flex cursor-pointer flex-row overflow-hidden rounded-md border shadow-sm"
       onClick={onClick}
     >
       <div className="w-1/3 shrink-0 sm:w-2/5">
@@ -33,7 +33,7 @@ export const MeetupOrganizerCard = ({
           src={imageUrl}
           className="size-full object-cover"
           fallback={
-            <div className="flex size-full items-center justify-center bg-muted">
+            <div className="bg-muted flex size-full items-center justify-center">
               <FiImage className="size-8" />
             </div>
           }

@@ -60,7 +60,7 @@ const LoginPage = (): ReactNode => {
           <div className="flex flex-col items-center">
             <h1 className="text-4xl font-bold">Sign in</h1>
           </div>
-          <div className="rounded-lg bg-card p-8 text-card-foreground shadow-lg">
+          <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-4">
                 <div className="grid gap-1.5">
@@ -82,7 +82,7 @@ const LoginPage = (): ReactNode => {
                   />
                 </div>
                 {loginFailed ? (
-                  <p className="text-center text-sm text-destructive">
+                  <p className="text-destructive text-center text-sm">
                     Invalid email or password
                   </p>
                 ) : null}

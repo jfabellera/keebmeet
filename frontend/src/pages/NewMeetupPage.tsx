@@ -73,7 +73,7 @@ const NewMeetupPage = (): ReactNode => {
       <div className="mx-auto max-w-3xl p-4">
         <div className="mx-auto flex max-w-lg flex-col gap-4">
           <h1 className="text-center text-4xl font-bold">New Meetup</h1>
-          <div className="rounded-lg bg-card p-8 text-card-foreground shadow-lg">
+          <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={formik.handleSubmit} noValidate>
               <div className="flex flex-col gap-4">
                 <span

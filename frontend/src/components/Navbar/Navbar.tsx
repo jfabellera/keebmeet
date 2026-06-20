@@ -55,7 +55,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-16 w-full items-center gap-1 border-b bg-background px-4">
+    <div className="bg-background flex h-16 w-full items-center gap-1 border-b px-4">
       {sidebar === true ? (
         <Button
           variant="outline"

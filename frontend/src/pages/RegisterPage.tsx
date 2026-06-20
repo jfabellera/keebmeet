@@ -41,7 +41,7 @@ const FieldError = ({
   children?: ReactNode;
 }): ReactNode =>
   show === true ? (
-    <p className="text-right text-sm text-destructive">{children}</p>
+    <p className="text-destructive text-right text-sm">{children}</p>
   ) : null;
 
 const RegisterPage = (): ReactNode => {
@@ -82,7 +82,7 @@ const RegisterPage = (): ReactNode => {
           <div className="flex flex-col items-center">
             <h1 className="text-center text-4xl font-bold">Sign up</h1>
           </div>
-          <div className="rounded-lg bg-card p-8 text-card-foreground shadow-lg">
+          <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={formik.handleSubmit} noValidate>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-row gap-2">
@@ -236,7 +236,7 @@ const RegisterPage = (): ReactNode => {
                   </Button>
                 </div>
                 {error != null ? (
-                  <p className="text-center text-sm text-destructive">
+                  <p className="text-destructive text-center text-sm">
                     Registration failed
                   </p>
                 ) : null}

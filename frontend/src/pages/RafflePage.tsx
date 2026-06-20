@@ -242,7 +242,7 @@ const RafflePage = (): ReactNode => {
                         key={index}
                         className="flex w-full flex-row justify-between text-left"
                       >
-                        <p className="line-clamp-1 min-w-0 break-all text-2xl">
+                        <p className="line-clamp-1 min-w-0 text-2xl break-all">
                           {`${index + 1}. ${winner.displayName}`}
                         </p>
                         <Button
@@ -440,7 +440,7 @@ const RafflePage = (): ReactNode => {
 
             <div className="w-full">
               <Button
-                className="h-12 w-full bg-destructive text-white hover:bg-destructive/90"
+                className="bg-destructive hover:bg-destructive/90 h-12 w-full text-white"
                 onClick={handleRollAllIn}
                 disabled={raffleRecordId != null}
               >

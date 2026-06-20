@@ -29,7 +29,7 @@ const EditableFormCard = ({
   return (
     <div
       className={cn(
-        'm-2 rounded-md bg-card p-4 text-card-foreground shadow-sm md:m-4 md:p-6',
+        'bg-card text-card-foreground m-2 rounded-md p-4 shadow-sm md:m-4 md:p-6',
         className
       )}
       {...rest}

@@ -12,5 +12,5 @@ export const FieldError = ({
   children?: ReactNode;
 }): ReactNode =>
   show === true ? (
-    <p className="mt-1 text-right text-sm text-destructive">{children}</p>
+    <p className="text-destructive mt-1 text-right text-sm">{children}</p>
   ) : null;

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useMemo, type ReactNode } from 'react';
@@ -14,7 +15,6 @@ import {
   hasMeetupStarted,
   isMeetupHappeningNow,
 } from '../util/timeUtil';
-import { Button } from '@/components/ui/button';
 
 dayjs.extend(isBetween);
 
@@ -71,7 +71,7 @@ const ManageMeetupHomePage = (): ReactNode => {
   return (
     <div className="m-4 flex flex-col justify-center">
       {meetup != null && attendees != null ? (
-        <div className="grid grid-cols-2 gap-4 py-3 [grid-template-rows:repeat(3,100px)]">
+        <div className="grid grid-cols-2 [grid-template-rows:repeat(3,100px)] gap-4 py-3">
           <div>
             {/* Show how many have checked in if meetup is currently happening, otherwise show how many have signed up */}
             <FractionCard
@@ -114,7 +114,7 @@ const ManageMeetupHomePage = (): ReactNode => {
 
           {/* TODO(jan): Clean this up. This was done last minute before Roundup */}
           <div className="col-span-2">
-            <div className="size-full rounded-md bg-card text-card-foreground shadow-sm">
+            <div className="bg-card text-card-foreground size-full rounded-md shadow-sm">
               <div className="grid h-full grid-cols-2">
                 <div className="flex h-full flex-col items-center justify-center">
                   <p className="text-4xl">{numRaffleRolls}</p>
@@ -131,7 +131,7 @@ const ManageMeetupHomePage = (): ReactNode => {
 
           <div className="col-span-2">
             <Button
-              variant="secondary"
+              disabled
               className="size-full"
               onClick={() => {
                 void navigate(`/meetup/${meetupId}/manage/raffle`);

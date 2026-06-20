@@ -25,7 +25,7 @@ const RaffleHistoryCard = ({
   return (
     <div
       className={cn(
-        'w-full cursor-pointer rounded-md bg-card p-4 text-card-foreground shadow-sm',
+        'bg-card text-card-foreground w-full cursor-pointer rounded-md p-4 shadow-sm',
         className
       )}
       onClick={handleClick}

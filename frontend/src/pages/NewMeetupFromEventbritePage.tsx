@@ -150,7 +150,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
           <h1 className="text-2xl font-bold">New Meetup</h1>
           <p>From Eventbrite Event</p>
         </div>
-        <div className="w-full max-w-md rounded-lg bg-card p-8 text-card-foreground shadow-lg">
+        <div className="bg-card text-card-foreground w-full max-w-md rounded-lg p-8 shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
             <div className="flex flex-col items-center gap-4">
               <span

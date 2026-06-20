@@ -15,7 +15,7 @@ const AccountPage = (): ReactNode => {
     <Page>
       <div className="mx-2 my-4 flex flex-col items-center gap-4">
         <h1 className="text-center text-2xl font-bold">Account</h1>
-        <div className="w-full max-w-2xl rounded-md bg-card p-4 text-card-foreground">
+        <div className="bg-card text-card-foreground w-full max-w-2xl rounded-md p-4">
           <a
             href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
           >
