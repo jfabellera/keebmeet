@@ -1,3 +1,13 @@
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useEffect, type ReactNode } from 'react';
@@ -19,16 +29,6 @@ import {
   useDeleteTicketMutation,
 } from '../../store/ticketSlice';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 
 dayjs.extend(customParseFormat);
 
@@ -127,7 +127,10 @@ export const MeetupModal = ({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0 sm:max-h-[90vh]">
+      <DialogContent
+        className="max-w-3xl gap-0 overflow-hidden p-0 sm:max-h-[90vh]"
+        showCloseButton={false}
+      >
         <div className="overflow-y-auto">
           {meetup.image_url != null && meetup.image_url !== '' ? (
             <AspectRatio ratio={2 / 1}>
@@ -199,7 +202,7 @@ export const MeetupModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row items-center border-t p-4 sm:justify-between">
+        <DialogFooter className="flex-row items-center p-4 sm:justify-between">
           {meetup.tickets != null ? (
             <MeetupCapacityStatus
               available={meetup.tickets.available}
@@ -227,7 +230,7 @@ export const MeetupModal = ({
               </Button>
             ) : (
               <Button
-                className="bg-green-600 text-white hover:bg-green-700"
+                variant="default"
                 disabled={!isLoggedIn}
                 onClick={rsvpOnclick}
               >
@@ -235,10 +238,7 @@ export const MeetupModal = ({
                 RSVP
               </Button>
             )}
-            <Button
-              className="bg-pink-500 text-white hover:bg-pink-600"
-              onClick={onClose}
-            >
+            <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
           </div>
