@@ -1,15 +1,10 @@
 import { type ReactNode } from 'react';
-import {
-  Box,
-  Button,
-  HStack,
-  Heading,
-  Spacer,
-  type BoxProps,
-} from '@chakra-ui/react';
 import { FiEdit } from 'react-icons/fi';
+import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-interface MeetupDisplaySettingsProps extends BoxProps {
+interface MeetupDisplaySettingsProps extends React.ComponentProps<'div'> {
   title: string;
   isEditable: boolean;
   isSubmitLoading?: boolean;
@@ -28,47 +23,44 @@ const EditableFormCard = ({
   onEditSubmit,
   onEditCancel,
   children,
+  className,
   ...rest
 }: MeetupDisplaySettingsProps): ReactNode => {
   return (
-    <Box
-      background={'white'}
-      borderRadius={'md'}
-      boxShadow={'sm'}
-      padding={{ base: '1rem', md: '1.5rem' }}
-      margin={{ base: '0.5rem', md: '1rem' }}
+    <div
+      className={cn(
+        'm-2 rounded-md bg-card p-4 text-card-foreground shadow-sm md:m-4 md:p-6',
+        className
+      )}
       {...rest}
     >
-      <HStack marginBottom={'0.5rem'}>
-        <Heading size={'lg'} marginBottom={'0.5rem'}>
-          {title}
-        </Heading>
-        <Spacer />
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">{title}</h2>
         <Button
-          variant={'ghost'}
-          leftIcon={<FiEdit />}
+          variant="ghost"
           onClick={isEditable ? onEditCancel : onEditEnter}
         >
+          <FiEdit />
           Edit
         </Button>
-      </HStack>
+      </div>
 
       {children}
 
       {isEditable ? (
-        <HStack marginTop={'0.5rem'}>
-          <Spacer />
+        <div className="mt-2 flex justify-end">
           <Button
             onClick={onEditSubmit}
-            isDisabled={isFormInvalid ?? false}
-            isLoading={isSubmitLoading ?? false}
-            colorScheme={'blue'}
+            disabled={(isFormInvalid ?? false) || (isSubmitLoading ?? false)}
           >
+            {isSubmitLoading === true ? (
+              <Loader2 className="animate-spin" />
+            ) : null}
             Save
           </Button>
-        </HStack>
+        </div>
       ) : null}
-    </Box>
+    </div>
   );
 };
 

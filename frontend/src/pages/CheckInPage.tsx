@@ -1,35 +1,32 @@
-import {
-  Box,
-  Button,
-  Heading,
-  Input,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Stack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-  useDisclosure,
-  useToast,
-} from '@chakra-ui/react';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
+import { toast } from 'sonner';
 import { useParams } from 'react-router-dom';
 import { type TicketInfo } from '../../../backend/src/controllers/meetups';
 import {
   useCheckInAttendeeMutation,
   useGetMeetupAttendeesQuery,
 } from '../store/organizerSlice';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useDisclosure } from '@/hooks/useDisclosure';
+import { cn } from '@/lib/utils';
 
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
@@ -43,11 +40,9 @@ const CheckInPage = (): ReactNode => {
   const searchRef = useRef<HTMLInputElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const confirmRef = useRef<HTMLButtonElement>(null);
 
   const [ticket, setTicket] = useState<TicketInfo | null>(null);
   const [checkInAttendee] = useCheckInAttendeeMutation();
-  const toast = useToast();
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -141,18 +136,12 @@ const CheckInPage = (): ReactNode => {
         const result = await checkInAttendee(ticket.id);
 
         if ('error' in result) {
-          toast({
-            title: 'Error',
+          toast.error('Error', {
             description: `Could not check ${ticket.ticket_holder_display_name} in`,
-            status: 'error',
-            isClosable: true,
           });
         } else {
-          toast({
-            title: 'Success',
+          toast.success('Success', {
             description: `${ticket.ticket_holder_display_name} checked in`,
-            status: 'success',
-            isClosable: true,
           });
         }
       }
@@ -163,116 +152,86 @@ const CheckInPage = (): ReactNode => {
   };
 
   return (
-    <Stack
-      height={'100%'}
-      direction={'column'}
-      textAlign={'center'}
-      padding={'1rem'}
-    >
-      <Heading
-        size={'lg'}
-        fontWeight={'medium'}
-        marginBottom={'0.5rem'}
-        textAlign={'center'}
-      >
-        Check-in
-      </Heading>
-      <Box
-        padding={'0.5rem'}
-        background={'white'}
-        borderRadius={'md'}
-        boxShadow={'sm'}
-      >
+    <div className="flex h-full flex-col gap-2 p-4 text-center">
+      <h2 className="mb-2 text-center text-2xl font-medium">Check-in</h2>
+      <div className="rounded-md bg-card p-2 text-card-foreground shadow-sm">
         <Input
           ref={searchRef}
-          variant={'ghost'}
+          className="border-0 shadow-none focus-visible:ring-0"
           placeholder={'Start typing a username, name, or email...'}
           value={searchValue}
           onChange={handleSearchChange}
         />
-      </Box>
-      <Box
-        background={'white'}
-        borderRadius={'md'}
-        boxShadow={'sm'}
-        padding={'1rem'}
-      >
-        <TableContainer>
-          <Table variant={'simple'}>
-            <Thead>
-              <Tr>
-                <Th>Display Name</Th>
-                <Th>First Name</Th>
-                <Th>Last Name</Th>
-                <Th>Checked in?</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {filteredAttendees != null
-                ? filteredAttendees.map((attendee) => (
-                    <Tr
-                      key={attendee.id}
-                      cursor={'pointer'}
-                      background={
-                        focusedIndex != null &&
+      </div>
+      <div className="rounded-md bg-card p-4 text-card-foreground shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Display Name</TableHead>
+              <TableHead>First Name</TableHead>
+              <TableHead>Last Name</TableHead>
+              <TableHead>Checked in?</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAttendees != null
+              ? filteredAttendees.map((attendee) => (
+                  <TableRow
+                    key={attendee.id}
+                    className={cn(
+                      'cursor-pointer transition-colors hover:bg-blue-400 hover:text-white',
+                      focusedIndex != null &&
                         attendee.id === filteredAttendees[focusedIndex].id
-                          ? 'blue.400'
-                          : 'white'
-                      }
-                      color={
-                        focusedIndex != null &&
-                        attendee.id === filteredAttendees[focusedIndex].id
-                          ? 'white'
-                          : 'black'
-                      }
-                      _hover={{ bg: 'blue.400', color: 'white' }}
-                      transition={'background 100ms linear, color 100ms linear'}
-                      onClick={() => {
-                        setTicket(attendee);
-                        onOpen();
-                      }}
-                    >
-                      <Td>{attendee.ticket_holder_display_name}</Td>
-                      <Td>{attendee.ticket_holder_first_name}</Td>
-                      <Td>{attendee.ticket_holder_last_name}</Td>
-                      <Td>{attendee.is_checked_in ? <FiCheck /> : null}</Td>
-                    </Tr>
-                  ))
-                : null}
-            </Tbody>
-          </Table>
-        </TableContainer>
+                        ? 'bg-blue-400 text-white'
+                        : ''
+                    )}
+                    onClick={() => {
+                      setTicket(attendee);
+                      onOpen();
+                    }}
+                  >
+                    <TableCell>{attendee.ticket_holder_display_name}</TableCell>
+                    <TableCell>{attendee.ticket_holder_first_name}</TableCell>
+                    <TableCell>{attendee.ticket_holder_last_name}</TableCell>
+                    <TableCell>
+                      {attendee.is_checked_in ? <FiCheck /> : null}
+                    </TableCell>
+                  </TableRow>
+                ))
+              : null}
+          </TableBody>
+        </Table>
 
-        <Modal
-          initialFocusRef={confirmRef}
-          isOpen={isOpen}
-          onClose={() => {
-            setTicket(null);
-            onClose();
+        <Dialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTicket(null);
+              onClose();
+            }
           }}
         >
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Confirm check-in</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm check-in</DialogTitle>
+            </DialogHeader>
+            <p>
               Do you want to check{' '}
               {ticket?.ticket_holder_display_name ?? 'user'} in?
-            </ModalBody>
-
-            <ModalFooter>
+            </p>
+            <DialogFooter>
               <Button
-                ref={confirmRef}
-                colorScheme="blue"
+                autoFocus
+                className="bg-blue-500 text-white hover:bg-blue-600"
                 onClick={handleConfirm}
               >
                 Confirm
               </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-      </Box>
-    </Stack>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 };
 

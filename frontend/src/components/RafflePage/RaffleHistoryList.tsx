@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react';
-import { Flex, Text, VStack, type FlexProps } from '@chakra-ui/react';
 import { useGetRaffleHistoryQuery } from '../../store/organizerSlice';
 import RaffleHistoryCard from './RaffleHistoryCard';
+import { cn } from '@/lib/utils';
 
-interface Props extends FlexProps {
+interface Props extends React.ComponentProps<'div'> {
   meetupId: number;
   onCardClick: (raffleRecordId: number) => void;
 }
@@ -11,14 +11,15 @@ interface Props extends FlexProps {
 const RaffleHistoryList = ({
   meetupId,
   onCardClick,
+  className,
   ...rest
 }: Props): ReactNode => {
   const { data: raffleRecords } = useGetRaffleHistoryQuery(meetupId);
 
   return (
-    <Flex {...rest}>
+    <div className={cn('flex', className)} {...rest}>
       {raffleRecords != null && raffleRecords.length > 0 ? (
-        <VStack width={'100%'}>
+        <div className="flex w-full flex-col gap-2">
           {raffleRecords.map((record, index) => (
             <RaffleHistoryCard
               key={index}
@@ -26,11 +27,11 @@ const RaffleHistoryList = ({
               onCardClick={onCardClick}
             />
           ))}
-        </VStack>
+        </div>
       ) : (
-        <Text>No previous rolls</Text>
+        <p>No previous rolls</p>
       )}
-    </Flex>
+    </div>
   );
 };
 

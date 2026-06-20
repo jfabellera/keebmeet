@@ -1,30 +1,9 @@
-import {
-  Box,
-  Button,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
-  Flex,
-  FormControl,
-  FormLabel,
-  Grid,
-  GridItem,
-  Heading,
-  Input,
-  Switch,
-  Text,
-  useDisclosure,
-  useToast,
-  VStack,
-} from '@chakra-ui/react';
 import { useFormik } from 'formik';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiSettings } from 'react-icons/fi';
 import { MdHistory } from 'react-icons/md';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useParams } from 'react-router-dom';
 import { type RaffleRecordResponse } from '../../../backend/src/interfaces/rafflesInterfaces';
 import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
@@ -36,6 +15,28 @@ import {
   useRollRaffleWinnerMutation,
   useUnClaimRaffleWinnerMutation,
 } from '../store/organizerSlice';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
+import { useDisclosure } from '@/hooks/useDisclosure';
+import { cn } from '@/lib/utils';
+
+type StateColor = 'green' | 'black' | 'red' | 'yellow';
+
+const colorClass = (color: StateColor): string =>
+  ({
+    green: 'bg-green-600 text-white hover:bg-green-700',
+    black: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    red: 'bg-destructive text-white hover:bg-destructive/90',
+    yellow: 'bg-yellow-400 text-black hover:bg-yellow-500',
+  })[color];
 
 const RafflePage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
@@ -80,7 +81,6 @@ const RafflePage = (): ReactNode => {
   const [isRollable, setIsRollable] = useState<boolean>(true);
   const [losers, setLosers] = useState<string[] | null>(null);
 
-  const toast = useToast({ position: 'top-right', duration: 2500 });
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isHistoryOpen,
@@ -185,11 +185,7 @@ const RafflePage = (): ReactNode => {
   useEffect(() => {
     if (isRollSuccess) {
       if (rollResult == null) {
-        toast({
-          title: 'Roll failed',
-          status: 'warning',
-          description: 'No eligible attendees',
-        });
+        toast.warning('Roll failed', { description: 'No eligible attendees' });
       } else {
         setRaffleRecordId(Number(rollResult.raffleRecord.id)); // TODO(jan): shouldn't have to cast
         setRaffleRecord(rollResult.raffleRecord);
@@ -202,11 +198,7 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isClaimSuccess && raffleRecord != null) {
-      toast({
-        title: 'Success',
-        status: 'success',
-        description: `Raffle claimed`, // TODO(jan): Include claimer's name
-      });
+      toast.success('Success', { description: 'Raffle claimed' }); // TODO(jan): Include claimer's name
 
       if (formik.values.clearOnClaim) {
         handleClear();
@@ -219,301 +211,268 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isUnClaimSuccess) {
-      toast({
-        title: 'Success',
-        status: 'success',
-        description: 'Raffle unclaimed',
-      });
+      toast.success('Success', { description: 'Raffle unclaimed' });
     }
   }, [isUnClaimSuccess]);
 
   useEffect(() => {
     if (isRollError || isClaimError || isUnClaimError) {
-      toast({
-        title: 'Error',
-        status: 'error',
-        description: 'Action failed',
-      });
+      toast.error('Error', { description: 'Action failed' });
     }
   }, [isRollError, isClaimError, isUnClaimError]);
 
+  const isBatch = raffleRecord != null && raffleRecord.winners.length > 1;
+
   return (
-    <Flex justify={'center'} height={'100%'}>
-      <VStack
-        spacing={4}
-        height={'100%'}
-        padding={'1rem'}
-        width={'100%'}
-        maxWidth={'800px'}
-      >
-        <Box
-          textAlign={'center'}
-          flexGrow={1}
-          width={'100%'}
-          overflow={'scroll'}
-        >
+    <div className="flex h-full justify-center">
+      <div className="flex h-full w-full max-w-[800px] flex-col gap-4 p-4">
+        <div className="w-full grow overflow-scroll text-center">
           {raffleRecordId != null &&
           raffleRecord != null &&
           raffleRecordId === Number(raffleRecord.id) && // TODO(jan): id is a string
           raffleRecord.winners.length > 0 ? (
             raffleRecord.winners.length > 1 ? (
-              <Box height={0}>
+              <div>
                 {/* Display for batch roll */}
-                <Text>WINNERS</Text>
-                <VStack>
+                <p>WINNERS</p>
+                <div className="flex flex-col gap-2">
                   {raffleRecord.winners.map((winner, index) => {
                     return (
-                      <Flex
+                      <div
                         key={index}
-                        width={'100%'}
-                        textAlign={'left'}
-                        flexDirection={'row'}
-                        justifyContent={'space-between'}
+                        className="flex w-full flex-row justify-between text-left"
                       >
-                        <Text
-                          fontSize={'2xl'}
-                          noOfLines={1}
-                          minWidth={0}
-                          wordBreak={'break-all'}
-                        >
+                        <p className="line-clamp-1 min-w-0 break-all text-2xl">
                           {`${index + 1}. ${winner.displayName}`}
-                        </Text>
+                        </p>
                         <Button
-                          colorScheme={
+                          className={colorClass(
                             raffleRecord.winners != null && isDisplayed
                               ? 'green'
-                              : 'blackAlpha'
-                          }
+                              : 'black'
+                          )}
                           id={String(index)}
                           onClick={
                             !winner.claimed ? handleClaim : handleUnclaim
                           }
-                          isLoading={isClaimLoading || isUnClaimLoading}
+                          disabled={isClaimLoading || isUnClaimLoading}
                         >
                           {!winner.claimed ? 'Claim' : 'Unclaim'}
                         </Button>
-                      </Flex>
+                      </div>
                     );
                   })}
-                </VStack>
-              </Box>
+                </div>
+              </div>
             ) : (
-              <Box height={0}>
-                {/* DIsplay for single person roll */}
-                <Text>WINNER</Text>
-                <Text
-                  fontSize={'3rem'}
-                  fontWeight={'medium'}
-                  wordBreak={'break-all'}
-                >
+              <div>
+                {/* Display for single person roll */}
+                <p>WINNER</p>
+                <p className="text-5xl font-medium break-all">
                   {raffleRecord.winners[0].displayName ?? ''}
-                </Text>
-                <Text marginTop={'0.3rem'}>
+                </p>
+                <p className="mt-1">
                   {raffleRecord.winners[0].firstName}{' '}
                   {raffleRecord.winners[0].lastName}
-                </Text>
+                </p>
                 {raffleRecord.winners[0].wins > 0 ? (
-                  <Text textColor={'red'}>
+                  <p className="text-destructive">
                     {raffleRecord.winners[0].wins} win
                     {raffleRecord.winners[0].wins > 1 ? 's' : null}
-                  </Text>
+                  </p>
                 ) : null}
-              </Box>
+              </div>
             )
           ) : (
-            <Text lineHeight={'6rem'}>Click roll to select a winner</Text>
+            <p className="leading-[6rem]">Click roll to select a winner</p>
           )}
-        </Box>
-        <Flex width={'100%'} justifyContent={'space-evenly'} align={'center'}>
-          <Button
-            variant={'ghost'}
-            leftIcon={<MdHistory />}
-            onClick={onHistoryOpen}
-          >
+        </div>
+        <div className="flex w-full items-center justify-evenly">
+          <Button variant="ghost" onClick={onHistoryOpen}>
+            <MdHistory />
             Raffle history
           </Button>
-          <Button variant={'ghost'} leftIcon={<FiSettings />} onClick={onOpen}>
+          <Button variant="ghost" onClick={onOpen}>
+            <FiSettings />
             More options
           </Button>
-        </Flex>
-        <Grid
-          width={'100%'}
-          templateRows={
-            raffleRecord != null && raffleRecord.winners.length > 1
-              ? 'repeat(2, 100px)'
-              : 'repeat(3, 100px)'
-          }
-          templateColumns="repeat(2, 1fr)"
-          gap={2}
+        </div>
+        <div
+          className={cn(
+            'grid w-full grid-cols-2 gap-2',
+            isBatch
+              ? '[grid-template-rows:repeat(2,100px)]'
+              : '[grid-template-rows:repeat(3,100px)]'
+          )}
         >
-          <GridItem rowSpan={1} colSpan={2}>
+          <div className="col-span-2">
             <Button
-              width={'100%'}
-              height={'100%'}
-              colorScheme={isRollable ? 'green' : 'blackAlpha'}
+              className={cn(
+                'flex size-full flex-col',
+                colorClass(isRollable ? 'green' : 'black')
+              )}
               onClick={handleRoll}
-              isLoading={isRollLoading}
-              isDisabled={!isRollable}
-              flexDir={'column'}
+              disabled={!isRollable || isRollLoading}
             >
-              <Heading fontWeight={'medium'}>
+              {isRollLoading ? <Loader2 className="animate-spin" /> : null}
+              <span className="text-2xl font-medium">
                 Roll{' '}
                 {formik.values.rollQuantity > 1
                   ? formik.values.rollQuantity
                   : null}
-              </Heading>
+              </span>
               {formik.values.displayOnRoll ? (
-                <Text fontSize={'14px'}>and display</Text>
+                <span className="text-sm">and display</span>
               ) : null}
             </Button>
-          </GridItem>
-          <GridItem
-            rowSpan={1}
-            colSpan={
-              raffleRecord != null && raffleRecord.winners.length > 1 ? 1 : 2
-            }
-          >
+          </div>
+          <div className={isBatch ? 'col-span-1' : 'col-span-2'}>
             <Button
-              width={'100%'}
-              height={'100%'}
-              colorScheme={
-                raffleRecordId != null && !isDisplayed && !isRollable
-                  ? 'green'
-                  : 'blackAlpha'
-              }
+              className={cn(
+                'size-full',
+                colorClass(
+                  raffleRecordId != null && !isDisplayed && !isRollable
+                    ? 'green'
+                    : 'black'
+                )
+              )}
               onClick={handleDisplay}
-              isDisabled={raffleRecordId == null}
+              disabled={raffleRecordId == null}
             >
-              <Heading fontWeight={'medium'}>Display</Heading>
+              <span className="text-2xl font-medium">Display</span>
             </Button>
-          </GridItem>
+          </div>
           {raffleRecord == null || raffleRecord.winners.length === 1 ? (
-            <GridItem colSpan={1}>
+            <div className="col-span-1">
               <Button
-                width={'100%'}
-                height={'100%'}
-                colorScheme={
-                  raffleRecordId != null && isDisplayed ? 'green' : 'blackAlpha'
-                }
+                className={cn(
+                  'size-full',
+                  colorClass(
+                    raffleRecordId != null && isDisplayed ? 'green' : 'black'
+                  )
+                )}
                 id={'0'}
                 onClick={
                   !(raffleRecord?.winners[0].claimed ?? false)
                     ? handleClaim
                     : handleUnclaim
                 }
-                isLoading={isClaimLoading || isUnClaimLoading}
-                isDisabled={raffleRecordId == null}
+                disabled={
+                  raffleRecordId == null || isClaimLoading || isUnClaimLoading
+                }
               >
-                <Heading fontWeight={'medium'}>
+                <span className="text-2xl font-medium">
                   {!(raffleRecord?.winners[0].claimed ?? false)
                     ? 'Claim'
                     : 'Unclaim'}
-                </Heading>
+                </span>
               </Button>
-            </GridItem>
+            </div>
           ) : null}
-          <GridItem colSpan={1}>
+          <div className="col-span-1">
             <Button
-              width={'100%'}
-              height={'100%'}
-              colorScheme={
-                !isRollable && isDisplayed
-                  ? 'red'
-                  : isDisplayed
-                    ? 'yellow'
-                    : 'blackAlpha'
-              }
+              className={cn(
+                'size-full',
+                colorClass(
+                  !isRollable && isDisplayed
+                    ? 'red'
+                    : isDisplayed
+                      ? 'yellow'
+                      : 'black'
+                )
+              )}
               onClick={handleClear}
             >
-              <Heading fontWeight={'medium'}>Clear</Heading>
-            </Button>{' '}
-          </GridItem>
-        </Grid>
-      </VStack>
+              <span className="text-2xl font-medium">Clear</span>
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      <Drawer isOpen={isOpen} placement={'bottom'} onClose={onClose}>
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>Options</DrawerHeader>
-
-          <DrawerBody>
-            <VStack spacing={6}>
-              {/* TODO(jan): Implement logic */}
-              <FormControl id={'rollQuantity'}>
-                <FormLabel>Roll quantity</FormLabel>
-                <Input
-                  type={'number'}
-                  inputMode={'numeric'}
-                  value={formik.values.rollQuantity}
-                  onChange={formik.handleChange}
-                />
-              </FormControl>
-
-              <FormControl
-                id={'displayOnRoll'}
-                display={'flex'}
-                alignItems={'center'}
-              >
-                <FormLabel mb={0}>Display on roll</FormLabel>
-                <Switch
-                  isChecked={formik.values.displayOnRoll}
-                  onChange={formik.handleChange}
-                />
-              </FormControl>
-
-              <FormControl
-                id={'clearOnClaim'}
-                display={'flex'}
-                alignItems={'center'}
-              >
-                <FormLabel mb={0}>Clear on claim</FormLabel>
-                <Switch
-                  isChecked={formik.values.clearOnClaim}
-                  onChange={formik.handleChange}
-                />
-              </FormControl>
-
-              <Box width={'100%'}>
-                <Button
-                  width={'100%'}
-                  height={'3rem'}
-                  colorScheme={'red'}
-                  onClick={handleRollAllIn}
-                  isDisabled={raffleRecordId != null}
-                >
-                  Roll all in
-                </Button>
-                <Text textAlign={'center'} marginTop={'0.25rem'}>
-                  Previous winners are eligible to win
-                </Text>
-              </Box>
-            </VStack>
-          </DrawerBody>
-
-          <DrawerFooter></DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-
-      <Drawer
-        isOpen={isHistoryOpen}
-        placement={'right'}
-        onClose={onHistoryClose}
+      <Sheet
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
       >
-        <DrawerOverlay />
-        <DrawerContent background={'gray.100'}>
-          <DrawerCloseButton />
-          <DrawerHeader>Raffle history</DrawerHeader>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Options</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-6 px-4 pb-4">
+            {/* TODO(jan): Implement logic */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="rollQuantity">Roll quantity</Label>
+              <Input
+                id="rollQuantity"
+                type="number"
+                inputMode="numeric"
+                value={formik.values.rollQuantity}
+                onChange={formik.handleChange}
+              />
+            </div>
 
-          <DrawerBody>
+            <div className="flex items-center gap-3">
+              <Label htmlFor="displayOnRoll" className="mb-0">
+                Display on roll
+              </Label>
+              <Switch
+                id="displayOnRoll"
+                checked={formik.values.displayOnRoll}
+                onCheckedChange={(checked) => {
+                  void formik.setFieldValue('displayOnRoll', checked);
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Label htmlFor="clearOnClaim" className="mb-0">
+                Clear on claim
+              </Label>
+              <Switch
+                id="clearOnClaim"
+                checked={formik.values.clearOnClaim}
+                onCheckedChange={(checked) => {
+                  void formik.setFieldValue('clearOnClaim', checked);
+                }}
+              />
+            </div>
+
+            <div className="w-full">
+              <Button
+                className="h-12 w-full bg-destructive text-white hover:bg-destructive/90"
+                onClick={handleRollAllIn}
+                disabled={raffleRecordId != null}
+              >
+                Roll all in
+              </Button>
+              <p className="mt-1 text-center">
+                Previous winners are eligible to win
+              </p>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={isHistoryOpen}
+        onOpenChange={(open) => {
+          if (!open) onHistoryClose();
+        }}
+      >
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Raffle history</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto px-4 pb-4">
             <RaffleHistoryList
               meetupId={Number(meetupId)}
               onCardClick={handleRaffleRecordSelect}
             />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
-    </Flex>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };
 

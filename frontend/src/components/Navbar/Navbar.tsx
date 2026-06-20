@@ -1,24 +1,13 @@
+import { ModeToggle } from '@/components/mode-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
-  Avatar,
-  Box,
-  Button,
-  Center,
-  Flex,
-  HStack,
-  Icon,
-  IconButton,
-  Link,
-  Menu,
-  MenuButton,
-  MenuDivider,
-  MenuList,
-  Show,
-  Spacer,
-  Stack,
-  useColorModeValue,
-  type BoxProps,
-  type FlexProps,
-} from '@chakra-ui/react';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { type ReactNode } from 'react';
 import { type IconType } from 'react-icons';
 import { FiLogOut, FiMenu, FiUser } from 'react-icons/fi';
@@ -66,48 +55,40 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
   const navigate = useNavigate();
 
   return (
-    <>
-      <Flex
-        px={4}
-        h={16}
-        w="full"
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        bg={useColorModeValue('white', 'gray.900')}
-        borderBottom="1px"
-        borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
+    <div className="flex h-16 w-full items-center gap-1 border-b bg-background px-4">
+      {sidebar === true ? (
+        <Button
+          variant="outline"
+          size="icon"
+          className="mr-2 md:hidden"
+          onClick={onOpen}
+          aria-label="menu"
+        >
+          <FiMenu />
+        </Button>
+      ) : null}
+      <span
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer"
+        onClick={() => {
+          void navigate('/');
+        }}
       >
-        <HStack flexGrow={1} gap={1}>
-          {sidebar != null && sidebar ? (
-            <Show below={'md'}>
-              <IconButton
-                icon={<FiMenu />}
-                variant={'outline'}
-                marginRight={'0.5rem'}
-                onClick={onOpen}
-                aria-label={'menu'}
-              />
-            </Show>
-          ) : null}
-          <Link
-            onClick={() => {
-              navigate('/');
-            }}
-          >
-            <Box>Meetup Management System</Box>
-          </Link>
-          <Spacer />
-          {isLoggedIn && user != null ? (
-            <NavbarDropdown
-              nickname={user.displayName}
-              isOrganizer={user.isOrganizer}
-            />
-          ) : (
-            <GuestButtons />
-          )}
-        </HStack>
-      </Flex>
-    </>
+        Meetup Management System
+      </span>
+      <div className="ml-auto flex items-center gap-2">
+        <ModeToggle />
+        {isLoggedIn && user != null ? (
+          <NavbarDropdown
+            nickname={user.displayName}
+            isOrganizer={user.isOrganizer}
+          />
+        ) : (
+          <GuestButtons />
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -117,152 +98,107 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
 const GuestButtons = (): ReactNode => {
   const navigate = useNavigate();
   return (
-    <Stack
-      flex={{ base: 1, md: 0 }}
-      justify={'flex-end'}
-      direction={'row'}
-      spacing={6}
-    >
+    <div className="flex flex-row items-center justify-end gap-6">
       <Button
-        as={'a'}
-        fontSize={'sm'}
-        fontWeight={400}
-        variant={'link'}
+        variant="link"
+        className="text-sm font-normal"
         onClick={() => {
-          navigate('/login');
+          void navigate('/login');
         }}
       >
         Sign In
       </Button>
       <Button
-        as={'a'}
-        display={{ base: 'none', md: 'inline-flex' }}
-        fontSize={'sm'}
-        fontWeight={600}
-        color={'white'}
-        bg={'pink.400'}
+        className="hidden bg-pink-400 font-semibold text-white hover:bg-pink-300 md:inline-flex"
         onClick={() => {
-          navigate('/register');
-        }}
-        _hover={{
-          bg: 'pink.300',
+          void navigate('/register');
         }}
       >
         Sign Up
       </Button>
-    </Stack>
+    </div>
   );
 };
 
-interface NavbarDropdownProps extends BoxProps {
+interface NavbarDropdownProps {
   nickname: string;
   isOrganizer: boolean;
 }
 
-const NavbarDropdown = (props: NavbarDropdownProps): ReactNode => {
-  const { nickname, isOrganizer } = props;
+const NavbarDropdown = ({
+  nickname,
+  isOrganizer,
+}: NavbarDropdownProps): ReactNode => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const avatarSrc = 'https://avatars.dicebear.com/api/male/username.svg';
 
   return (
-    <Flex alignItems={'center'}>
-      <Stack direction={'row'} spacing={7}>
-        <Menu>
-          <MenuButton
-            as={Button}
-            rounded={'full'}
-            variant={'link'}
-            cursor={'pointer'}
-            minW={0}
-          >
-            <Avatar
-              size={'sm'}
-              src={'https://avatars.dicebear.com/api/male/username.svg'}
-            />
-          </MenuButton>
-          <MenuList alignItems={'center'}>
-            <br />
-            <Center>
-              <Avatar
-                size={'2xl'}
-                src={'https://avatars.dicebear.com/api/male/username.svg'}
-              />
-            </Center>
-            <br />
-            <Center>
-              <p>{nickname}</p>
-            </Center>
-            <br />
-            <MenuDivider />
-            {LinkItems.map((link) =>
-              link.organizerOnly == null ||
-              (link.organizerOnly && isOrganizer) ? (
-                <NavItem key={link.name} icon={link.icon} url={link.url}>
-                  {link.name}
-                </NavItem>
-              ) : null
-            )}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="rounded-full" aria-label="account menu">
+          <Avatar className="size-8">
+            <AvatarImage src={avatarSrc} />
+            <AvatarFallback>
+              <FiUser />
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <div className="flex flex-col items-center gap-2 p-2">
+          <Avatar className="size-24">
+            <AvatarImage src={avatarSrc} />
+            <AvatarFallback>
+              <FiUser className="size-10" />
+            </AvatarFallback>
+          </Avatar>
+          <p>{nickname}</p>
+        </div>
+        <DropdownMenuSeparator />
+        {LinkItems.map((link) =>
+          link.organizerOnly == null || (link.organizerOnly && isOrganizer) ? (
             <NavItem
-              key="logout"
-              icon={FiLogOut}
+              key={link.name}
+              icon={link.icon}
               onClick={() => {
-                dispatch(logout());
+                void navigate(link.url);
               }}
-              url=""
             >
-              Logout
+              {link.name}
             </NavItem>
-          </MenuList>
-        </Menu>
-      </Stack>
-    </Flex>
+          ) : null
+        )}
+        <NavItem
+          key="logout"
+          icon={FiLogOut}
+          onClick={() => {
+            dispatch(logout());
+          }}
+        >
+          Logout
+        </NavItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
-interface NavItemProps extends FlexProps {
+interface NavItemProps {
   icon: IconType;
-  url: string;
   children: ReactNode;
+  onClick: () => void;
 }
 
 const NavItem = ({
-  icon,
-  url,
+  icon: IconComponent,
   children,
-  ...rest
+  onClick,
 }: NavItemProps): ReactNode => {
-  const navigate = useNavigate();
   return (
-    <Link
-      onClick={() => {
-        navigate(url);
-      }}
-      style={{ textDecoration: 'none' }}
-      _focus={{ boxShadow: 'none' }}
-    >
-      <Flex
-        align="center"
-        p="4"
-        mx="4"
-        borderRadius="lg"
-        role="group"
-        cursor="pointer"
-        _hover={{
-          bg: 'cyan.400',
-          color: 'white',
-        }}
-        {...rest}
-      >
-        <Icon
-          mr="4"
-          fontSize="16"
-          _groupHover={{
-            color: 'white',
-          }}
-          as={icon}
-        />
-        {children}
-      </Flex>
-    </Link>
+    <DropdownMenuItem onClick={onClick} className="cursor-pointer">
+      <IconComponent className="mr-2 size-4" />
+      {children}
+    </DropdownMenuItem>
   );
 };
 

@@ -1,7 +1,7 @@
-import { Box, Flex, useColorModeValue, useDisclosure } from '@chakra-ui/react';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import Navbar from '../Navbar/Navbar';
 import Sidebar, { type SidebarItem } from '../Sidebar/Sidebar';
+import { useDisclosure } from '@/hooks/useDisclosure';
 
 export interface PageProps {
   children: ReactNode;
@@ -19,17 +19,13 @@ const Page = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
-    <Flex
-      direction="column"
-      height="100svh"
-      bg={useColorModeValue('gray.100', 'gray.900')}
-    >
+    <div className="flex h-svh flex-col bg-muted">
       <Navbar sidebar={sidebarItems != null} onOpen={onOpen} />
-      <Box height={'full'} w="auto" overflow="auto">
+      <div className="h-full w-auto overflow-auto">
         {sidebarItems != null &&
         sidebarValue != null &&
         setSidebarValue != null ? (
-          <Flex direction={'row'} height={'100%'}>
+          <div className="flex h-full flex-row">
             <Sidebar
               sidebarItems={sidebarItems}
               isOpen={isOpen}
@@ -37,13 +33,13 @@ const Page = ({
               value={sidebarValue}
               setValue={setSidebarValue}
             />
-            <Box flexGrow={1}>{children}</Box>
-          </Flex>
+            <div className="grow">{children}</div>
+          </div>
         ) : (
           children
         )}
-      </Box>
-    </Flex>
+      </div>
+    </div>
   );
 };
 

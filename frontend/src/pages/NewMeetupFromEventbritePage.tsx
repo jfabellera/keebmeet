@@ -1,24 +1,19 @@
-import { type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FieldError } from '@/components/ui/field-error';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  Box,
-  Button,
-  Checkbox,
-  Container,
-  FormControl,
-  FormErrorMessage,
-  FormLabel,
-  Heading,
-  Input,
-  Link,
   Select,
-  Stack,
-  Text,
-  useToast,
-  VStack,
-  type SelectProps,
-} from '@chakra-ui/react';
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFormik } from 'formik';
+import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   type EventbriteEvent,
   type EventbriteOrganization,
@@ -36,7 +31,6 @@ import { useCreateMeetupFromEventbriteMutation } from '../store/meetupSlice';
 import MeetupFromEventbriteFormSchema from '../util/schemas/MeetupFromEventbriteFormSchema';
 
 const NewMeetupFromEventbritePage = (): ReactNode => {
-  const toast = useToast();
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -68,18 +62,12 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
       });
 
       if ('error' in response) {
-        toast({
-          title: 'Error',
-          description: 'Unable to create meetup',
-          status: 'error',
-        });
+        toast.error('Error', { description: 'Unable to create meetup' });
       } else {
-        toast({
-          title: 'Success',
+        toast.success('Success', {
           description: 'Meetup created successfully',
-          status: 'success',
         });
-        navigate('/organizer');
+        void navigate('/organizer');
       }
     },
     validationSchema: MeetupFromEventbriteFormSchema,
@@ -108,7 +96,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
   const [createMeetupFromEventbrite, { isLoading }] =
     useCreateMeetupFromEventbriteMutation();
 
-  interface FormSelectProps extends SelectProps {
+  interface FormSelectProps {
     name: string;
     id: string;
     options:
@@ -117,145 +105,144 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
       | EventbriteTicket[]
       | EventbriteQuestion[]
       | undefined;
+    value: number;
+    disabled?: boolean;
   }
 
   const FormSelect = ({
     name,
     id,
     options,
-    onChange,
     value,
-    isDisabled,
+    disabled,
   }: FormSelectProps): ReactNode => {
     return (
-      <FormControl id={id}>
-        <FormLabel>{name}</FormLabel>
+      <div className="grid w-full gap-1.5">
+        <Label htmlFor={id}>{name}</Label>
         <Select
-          onChange={onChange}
-          placeholder={'Select'}
-          value={Number.isNaN(value) ? '' : value}
-          isDisabled={isDisabled}
+          value={Number.isNaN(value) ? '' : String(value)}
+          onValueChange={(selected) => {
+            void formik.setFieldValue(id, Number(selected));
+          }}
+          disabled={disabled}
         >
-          {options != null
-            ? options.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))
-            : null}
+          <SelectTrigger id={id} className="w-full">
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            {options != null
+              ? options.map((option) => (
+                  <SelectItem key={option.id} value={String(option.id)}>
+                    {option.name}
+                  </SelectItem>
+                ))
+              : null}
+          </SelectContent>
         </Select>
-      </FormControl>
+      </div>
     );
   };
 
   return (
     <Page>
-      <VStack spacing={4} marginX={'0.5rem'} marginTop={'1rem'}>
-        <Box textAlign={'center'}>
-          <Heading>New Meetup</Heading>
-          <Text>From Eventbrite Event</Text>
-        </Box>
-        <Container
-          padding={'2rem'}
-          background={'white'}
-          borderRadius={'lg'}
-          boxShadow={'lg'}
-        >
+      <div className="mx-2 mt-4 flex flex-col items-center gap-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">New Meetup</h1>
+          <p>From Eventbrite Event</p>
+        </div>
+        <div className="w-full max-w-md rounded-lg bg-card p-8 text-card-foreground shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
-            <VStack spacing={4}>
-              <Link
-                alignSelf={'end'}
+            <div className="flex flex-col items-center gap-4">
+              <span
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer self-end underline"
                 onClick={() => {
-                  navigate('/new-meetup');
+                  void navigate('/new-meetup');
                 }}
-                textDecoration={'underline'}
               >
                 Use native
-              </Link>
+              </span>
               <FormSelect
                 name={'Organization'}
                 id={'organizationId'}
                 options={organizations}
                 value={formik.values.organizationId}
-                onChange={formik.handleChange}
               />
               <FormSelect
                 name={'Event'}
                 id={'eventId'}
                 options={events}
                 value={formik.values.eventId}
-                onChange={formik.handleChange}
-                isDisabled={events == null}
+                disabled={events == null}
               />
               <FormSelect
                 name={'Ticket Class'}
                 id={'ticketClassId'}
                 options={ticketClasses}
                 value={formik.values.ticketClassId}
-                onChange={formik.handleChange}
-                isDisabled={ticketClasses == null}
+                disabled={ticketClasses == null}
               />
               <FormSelect
                 name={'Custom Question'}
                 id={'customQuestionId'}
                 options={customQuestions}
                 value={formik.values.customQuestionId}
-                onChange={formik.handleChange}
-                isDisabled={customQuestions == null}
+                disabled={customQuestions == null}
               />
 
-              <FormControl id="hasRaffle">
-                <Stack direction="row">
-                  <FormLabel margin={0} pr="4">
-                    Will this meetup have raffles?
-                  </FormLabel>
-                  <Checkbox
-                    name="hasRaffle"
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    isChecked={formik.values.hasRaffle}
-                  >
-                    Yes
-                  </Checkbox>
-                </Stack>
-              </FormControl>
+              <div className="flex w-full items-center gap-2">
+                <Label htmlFor="hasRaffle" className="pr-4">
+                  Will this meetup have raffles?
+                </Label>
+                <Checkbox
+                  id="hasRaffle"
+                  name="hasRaffle"
+                  checked={formik.values.hasRaffle}
+                  onCheckedChange={(checked) => {
+                    void formik.setFieldValue('hasRaffle', checked === true);
+                  }}
+                />
+                <span>Yes</span>
+              </div>
 
-              <FormControl
-                id="defaultRaffleEntries"
-                isRequired={formik.values.hasRaffle}
-                isDisabled={!formik.values.hasRaffle}
-                isInvalid={
-                  formik.errors.defaultRaffleEntries != null &&
-                  formik.touched.defaultRaffleEntries
-                }
-                minWidth={0}
-              >
-                <FormLabel noOfLines={1}>
+              <div className="grid w-full min-w-0 gap-1.5">
+                <Label htmlFor="defaultRaffleEntries">
                   Default raffle entries per attendee
-                </FormLabel>
+                </Label>
                 <Input
+                  id="defaultRaffleEntries"
                   type="number"
                   name="defaultRaffleEntries"
+                  disabled={!formik.values.hasRaffle}
+                  aria-invalid={
+                    formik.errors.defaultRaffleEntries != null &&
+                    formik.touched.defaultRaffleEntries
+                  }
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   value={formik.values.defaultRaffleEntries}
                 />
-                <FormErrorMessage justifyContent={'right'}>
+                <FieldError
+                  show={
+                    formik.errors.defaultRaffleEntries != null &&
+                    formik.touched.defaultRaffleEntries
+                  }
+                >
                   {formik.errors.defaultRaffleEntries}
-                </FormErrorMessage>
-              </FormControl>
+                </FieldError>
+              </div>
               <Button
                 type={'submit'}
-                isDisabled={!formik.isValid}
-                isLoading={isLoading}
-                colorScheme={'green'}
+                disabled={!formik.isValid || isLoading}
+                className="bg-green-600 text-white hover:bg-green-700"
               >
                 Submit
               </Button>
-            </VStack>
+            </div>
           </form>
-        </Container>
-      </VStack>
+        </div>
+      </div>
     </Page>
   );
 };

@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react';
-import { Button, Container, Heading, Link, VStack } from '@chakra-ui/react';
 import Page from '../components/Page/Page';
 import config from '../config';
 import { useAppSelector } from '../store/hooks';
 import { useGetUserQuery } from '../store/userSlice';
+import { Button } from '@/components/ui/button';
 
 const AccountPage = (): ReactNode => {
   const { user: localUser } = useAppSelector((state) => state.user);
@@ -13,20 +13,20 @@ const AccountPage = (): ReactNode => {
 
   return (
     <Page>
-      <VStack spacing={'4'} marginX={'0.5rem'} marginY={'1rem'}>
-        <Heading textAlign={'center'}>Account</Heading>
-        <Container padding={'1rem'} background={'white'} borderRadius={'md'}>
-          <Link
+      <div className="mx-2 my-4 flex flex-col items-center gap-4">
+        <h1 className="text-center text-2xl font-bold">Account</h1>
+        <div className="w-full max-w-2xl rounded-md bg-card p-4 text-card-foreground">
+          <a
             href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
           >
-            <Button isDisabled={user?.is_eventbrite_linked}>
+            <Button disabled={user?.is_eventbrite_linked}>
               {user?.is_eventbrite_linked ?? false
                 ? 'Eventbrite linked!'
                 : 'Link Eventbrite'}
             </Button>
-          </Link>
-        </Container>
-      </VStack>
+          </a>
+        </div>
+      </div>
     </Page>
   );
 };

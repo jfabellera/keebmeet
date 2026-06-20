@@ -1,12 +1,4 @@
-import {
-  Box,
-  Button,
-  Container,
-  Heading,
-  HStack,
-  Spacer,
-  Stack,
-} from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +22,7 @@ const OrganizerDashboard = (): ReactNode => {
   const navigate = useNavigate();
 
   const newMeetupOnClick = (): void => {
-    navigate('/new-meetup');
+    void navigate('/new-meetup');
   };
 
   const currentMeetups = useMemo(
@@ -61,7 +53,7 @@ const OrganizerDashboard = (): ReactNode => {
         ticketsAvailable={meetup.tickets?.available ?? NaN}
         ticketsTotal={meetup.tickets?.total ?? NaN}
         onClick={() => {
-          navigate(`/meetup/${meetup.id}/manage`);
+          void navigate(`/meetup/${meetup.id}/manage`);
         }}
       />
     );
@@ -69,30 +61,28 @@ const OrganizerDashboard = (): ReactNode => {
 
   const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
     return (
-      <Box>
-        <Heading size={'lg'} fontWeight={'medium'} marginBottom={'0.5rem'}>
-          {title}
-        </Heading>
-        <Stack spacing={4}>
-          {meetups.map((meetup) => {
-            return mapMeetupToCard(meetup);
-          })}
-        </Stack>
-      </Box>
+      <div>
+        <h2 className="mb-2 text-2xl font-medium">{title}</h2>
+        <div className="flex flex-col gap-4">
+          {meetups.map(mapMeetupToCard)}
+        </div>
+      </div>
     );
   };
 
   return (
     <Page>
-      <Container padding={'1rem'} maxWidth={'container.md'}>
-        <HStack marginBottom={'1rem'}>
-          <Heading fontWeight={'semibold'}>Your Meetups</Heading>
-          <Spacer />
-          <Button colorScheme={'green'} onClick={newMeetupOnClick}>
+      <div className="mx-auto max-w-3xl p-4">
+        <div className="mb-4 flex items-center">
+          <h1 className="text-2xl font-semibold">Your Meetups</h1>
+          <Button
+            className="ml-auto bg-green-600 text-white hover:bg-green-700"
+            onClick={newMeetupOnClick}
+          >
             New meetup
           </Button>
-        </HStack>
-        <Stack spacing={4}>
+        </div>
+        <div className="flex flex-col gap-4">
           {currentMeetups != null && currentMeetups.length > 0
             ? meetupSection('Happening now', currentMeetups)
             : null}
@@ -102,8 +92,8 @@ const OrganizerDashboard = (): ReactNode => {
           {pastMeetups != null && pastMeetups.length > 0
             ? meetupSection('Past meetups', pastMeetups)
             : null}
-        </Stack>
-      </Container>
+        </div>
+      </div>
     </Page>
   );
 };

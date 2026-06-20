@@ -1,4 +1,4 @@
-import { useBoolean, useToast } from '@chakra-ui/react';
+import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
@@ -10,6 +10,7 @@ import {
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
+import { useBoolean } from '@/hooks/useBoolean';
 
 dayjs.extend(customParseFormat);
 
@@ -21,7 +22,6 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup] = useEditMeetupMutation();
-  const toast = useToast();
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -56,11 +56,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       if ('error' in result && result.error != null && 'data' in result.error) {
         // is this allowed
         const data: any = result.error.data;
-        toast({
-          title: 'Error updating meetup',
+        toast.error('Error updating meetup', {
           description: data.message,
-          status: 'error',
-          isClosable: true,
         });
       } else {
         setIsEditable.off();

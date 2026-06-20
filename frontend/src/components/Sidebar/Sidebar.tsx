@@ -1,14 +1,10 @@
 import {
-  Box,
-  CloseButton,
-  Drawer,
-  DrawerContent,
-  Flex,
-  Icon,
-  useColorModeValue,
-  type BoxProps,
-  type FlexProps,
-} from '@chakra-ui/react';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { type IconType } from 'react-icons';
 import { useNavigate } from 'react-router-dom';
@@ -40,36 +36,37 @@ const Sidebar = ({
   setValue,
 }: SidebarProps): ReactNode => {
   return (
-    <Box height="100%" bg={useColorModeValue('gray.100', 'gray.900')}>
+    <div className="h-full bg-muted">
       <SidebarContent
         sidebarItems={sidebarItems}
         onClose={onClose}
-        display={{ base: 'none', md: 'block' }}
+        className="hidden md:block"
         value={value}
         setValue={setValue}
       />
-      <Drawer
-        isOpen={isOpen}
-        placement="left"
-        onClose={onClose}
-        returnFocusOnClose={false}
-        onOverlayClick={onClose}
-        // size="full"
+      <Sheet
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
       >
-        <DrawerContent>
+        <SheetContent side="left" className="w-60 p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation</SheetTitle>
+          </SheetHeader>
           <SidebarContent
             sidebarItems={sidebarItems}
             onClose={onClose}
             value={value}
             setValue={setValue}
           />
-        </DrawerContent>
-      </Drawer>
-    </Box>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };
 
-interface SidebarContentProps extends BoxProps {
+interface SidebarContentProps extends React.ComponentProps<'div'> {
   sidebarItems: SidebarItem[];
   onClose: () => void;
   value: string;
@@ -81,22 +78,16 @@ const SidebarContent = ({
   onClose,
   value,
   setValue,
+  className,
   ...rest
 }: SidebarContentProps): ReactNode => {
   const navigate = useNavigate();
 
   return (
-    <Box
-      bg={useColorModeValue('white', 'gray.900')}
-      borderRight="1px"
-      borderRightColor={useColorModeValue('gray.200', 'gray.700')}
-      w={{ base: 'full', md: 60 }}
-      h="full"
+    <div
+      className={cn('h-full w-full border-r bg-background md:w-60', className)}
       {...rest}
     >
-      <Flex justify={'right'}>
-        <CloseButton display={{ base: 'flex', md: 'none' }} onClick={onClose} />
-      </Flex>
       {sidebarItems.map((link) => (
         <NavItem
           key={link.value}
@@ -104,57 +95,43 @@ const SidebarContent = ({
           selected={link.value === value}
           onClick={() => {
             setValue(link.value);
-            navigate(link.url);
+            void navigate(link.url);
             onClose();
           }}
         >
           {link.name}
         </NavItem>
       ))}
-    </Box>
+    </div>
   );
 };
 
-interface NavItemProps extends FlexProps {
+interface NavItemProps {
   icon: IconType;
   children: ReactNode;
   selected: boolean;
+  onClick: () => void;
 }
 
 const NavItem = ({
-  icon,
+  icon: IconComponent,
   children,
   selected,
-  ...rest
+  onClick,
 }: NavItemProps): ReactNode => {
   return (
-    <Box style={{ textDecoration: 'none' }} _focus={{ boxShadow: 'none' }}>
-      <Flex
-        align="center"
-        p="4"
-        role="group"
-        cursor="pointer"
-        background={selected ? 'blue.400' : 'inherit'}
-        color={selected ? 'white' : 'inherit'}
-        _hover={{
-          bg: 'blue.500',
-          color: 'white',
-        }}
-        {...rest}
-      >
-        {icon != null && (
-          <Icon
-            mr="4"
-            fontSize="16"
-            _groupHover={{
-              color: 'white',
-            }}
-            as={icon}
-          />
-        )}
-        {children}
-      </Flex>
-    </Box>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      className={cn(
+        'flex cursor-pointer items-center gap-4 p-4 hover:bg-blue-500 hover:text-white',
+        selected ? 'bg-blue-400 text-white' : ''
+      )}
+    >
+      {IconComponent != null && <IconComponent className="size-4" />}
+      {children}
+    </div>
   );
 };
 

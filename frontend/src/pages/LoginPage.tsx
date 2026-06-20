@@ -1,15 +1,7 @@
-import {
-  Box,
-  Button,
-  Flex,
-  FormControl,
-  FormLabel,
-  Heading,
-  Input,
-  Stack,
-  Text,
-  useColorModeValue,
-} from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Page from '../components/Page/Page';
@@ -52,7 +44,7 @@ const LoginPage = (): ReactNode => {
         // Get status of login
         if (login.fulfilled.match(action)) {
           // Successfully logged in, redirect user to homepage
-          navigate('/');
+          void navigate('/');
         } else if (login.rejected.match(action)) {
           // Failed to login, show an error message
           setLoginFailed(true);
@@ -63,55 +55,50 @@ const LoginPage = (): ReactNode => {
 
   return (
     <Page>
-      <Flex padding={'1rem'} align={'center'} justify={'center'}>
-        <Stack spacing={8} mx={'auto'} maxW={'lg'}>
-          <Stack align={'center'}>
-            <Heading fontSize={'4xl'}>Sign in</Heading>
-          </Stack>
-          <Box
-            rounded={'lg'}
-            bg={useColorModeValue('white', 'gray.700')}
-            boxShadow={'lg'}
-            p={8}
-          >
+      <div className="flex items-center justify-center p-4">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+          <div className="flex flex-col items-center">
+            <h1 className="text-4xl font-bold">Sign in</h1>
+          </div>
+          <div className="rounded-lg bg-card p-8 text-card-foreground shadow-lg">
             <form onSubmit={handleSubmit}>
-              <Stack spacing={4}>
-                <FormControl id="email">
-                  <FormLabel>Email</FormLabel>
-                  <Input type="email" name="email" onChange={handleChange} />
-                </FormControl>
-                <FormControl id="password">
-                  <FormLabel>Password</FormLabel>
+              <div className="flex flex-col gap-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="email">Email</Label>
                   <Input
+                    id="email"
+                    type="email"
+                    name="email"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
                     type="password"
                     name="password"
                     onChange={handleChange}
                   />
-                </FormControl>
-                <Text
-                  fontSize="sm"
-                  align={'center'}
-                  color="red"
-                  hidden={!loginFailed}
-                >
-                  Invalid email or password
-                </Text>
+                </div>
+                {loginFailed ? (
+                  <p className="text-center text-sm text-destructive">
+                    Invalid email or password
+                  </p>
+                ) : null}
                 <Button
                   type="submit"
-                  bg={'blue.400'}
-                  color={'white'}
-                  isLoading={loading}
-                  _hover={{
-                    bg: 'blue.500',
-                  }}
+                  disabled={loading}
+                  className="bg-blue-500 text-white hover:bg-blue-600"
                 >
+                  {loading ? <Loader2 className="animate-spin" /> : null}
                   Sign in
                 </Button>
-              </Stack>
+              </div>
             </form>
-          </Box>
-        </Stack>
-      </Flex>
+          </div>
+        </div>
+      </div>
     </Page>
   );
 };
