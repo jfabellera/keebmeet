@@ -125,8 +125,8 @@ const NavItem = ({
       tabIndex={0}
       onClick={onClick}
       className={cn(
-        'flex cursor-pointer items-center gap-4 p-4 hover:bg-blue-500 hover:text-white',
-        selected ? 'bg-blue-400 text-white' : ''
+        'flex cursor-pointer items-center gap-4 p-4 hover:bg-accent hover:text-accent-foreground',
+        selected ? 'bg-primary text-primary-foreground' : ''
       )}
     >
       {IconComponent != null && <IconComponent className="size-4" />}
