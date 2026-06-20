@@ -131,7 +131,6 @@ const ManageMeetupHomePage = (): ReactNode => {
 
           <div className="col-span-2">
             <Button
-              disabled
               className="size-full"
               onClick={() => {
                 void navigate(`/meetup/${meetupId}/manage/raffle`);

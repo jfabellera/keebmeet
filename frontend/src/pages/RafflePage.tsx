@@ -1,20 +1,3 @@
-import { useFormik } from 'formik';
-import { useEffect, useState, type ReactNode } from 'react';
-import { FiSettings } from 'react-icons/fi';
-import { MdHistory } from 'react-icons/md';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useParams } from 'react-router-dom';
-import { type RaffleRecordResponse } from '../../../backend/src/interfaces/rafflesInterfaces';
-import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
-import { socket } from '../socket';
-import {
-  useClaimRaffleWinnerMutation,
-  useGetRaffleRecordQuery,
-  useMarkRaffleAsDisplayedMutation,
-  useRollRaffleWinnerMutation,
-  useUnClaimRaffleWinnerMutation,
-} from '../store/organizerSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,13 +10,31 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
+import { useFormik } from 'formik';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { FiSettings } from 'react-icons/fi';
+import { MdHistory } from 'react-icons/md';
+import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { type RaffleRecordResponse } from '../../../backend/src/interfaces/rafflesInterfaces';
+import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
+import { socket } from '../socket';
+import {
+  useClaimRaffleWinnerMutation,
+  useGetRaffleRecordQuery,
+  useMarkRaffleAsDisplayedMutation,
+  useRollRaffleWinnerMutation,
+  useUnClaimRaffleWinnerMutation,
+} from '../store/organizerSlice';
 
 type StateColor = 'green' | 'black' | 'red' | 'yellow';
 
 const colorClass = (color: StateColor): string =>
   ({
     green: 'bg-green-600 text-white hover:bg-green-700',
-    black: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    black:
+      'bg-muted-foreground/50 text-background hover:bg-muted-foreground/90',
     red: 'bg-destructive text-white hover:bg-destructive/90',
     yellow: 'bg-yellow-400 text-black hover:bg-yellow-500',
   })[color];
