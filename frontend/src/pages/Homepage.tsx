@@ -1,11 +1,3 @@
-import {
-  Box,
-  Grid,
-  GridItem,
-  Heading,
-  Stack,
-  useDisclosure,
-} from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
@@ -21,6 +13,7 @@ import {
   hasMeetupStarted,
   isMeetupHappeningNow,
 } from '../util/timeUtil';
+import { useDisclosure } from '@/hooks/useDisclosure';
 
 const Homepage = (): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
@@ -84,13 +77,11 @@ const Homepage = (): ReactNode => {
 
   const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
     return (
-      <Box>
-        <Heading fontSize="3xl" mb={'0.5em'}>
-          {title}
-        </Heading>
-        <Grid templateColumns="repeat(auto-fill, minmax(250px, 1fr))" gap={4}>
+      <div>
+        <h2 className="mb-2 text-3xl font-bold">{title}</h2>
+        <div className="grid [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))] gap-4">
           {meetups?.map((meetup) => (
-            <GridItem
+            <div
               key={meetup.id}
               onClick={() => {
                 meetupCardOnClick(meetup.id);
@@ -100,10 +91,10 @@ const Homepage = (): ReactNode => {
                 meetup={meetup}
                 attending={getTicketForMeetup(meetup.id) != null}
               />
-            </GridItem>
+            </div>
           ))}
-        </Grid>
-      </Box>
+        </div>
+      </div>
     );
   };
 
@@ -112,7 +103,7 @@ const Homepage = (): ReactNode => {
       {isLoading ? (
         <></>
       ) : (
-        <Stack padding={'1rem'} spacing={4}>
+        <div className="flex flex-col gap-4 p-4">
           {currentMeetups != null && currentMeetups.length > 0
             ? meetupSection('Happening now', currentMeetups)
             : null}
@@ -132,7 +123,7 @@ const Homepage = (): ReactNode => {
             onClose={onClose}
             onOpen={onOpen}
           />
-        </Stack>
+        </div>
       )}
     </Page>
   );

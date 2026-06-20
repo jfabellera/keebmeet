@@ -1,20 +1,19 @@
 import { type ReactNode } from 'react';
-import {
-  Box,
-  FormControl,
-  FormErrorMessage,
-  FormLabel,
-  Input,
-  Text,
-  type InputProps,
-} from '@chakra-ui/react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
-interface FieldDisplayProps extends InputProps {
+interface FieldDisplayProps {
   name: string;
   value: string | number | undefined;
   id: string;
+  type?: React.HTMLInputTypeAttribute;
+  isInvalid?: boolean;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement>;
   errorMessage: string | undefined;
   editable: boolean;
+  className?: string;
 }
 
 const EditableFormField = ({
@@ -27,33 +26,34 @@ const EditableFormField = ({
   onBlur,
   errorMessage,
   editable,
-  ...rest
+  className,
 }: FieldDisplayProps): ReactNode => {
   return (
-    <Box paddingY={'0.5rem'} maxWidth={'sm'} {...rest}>
-      <FormControl id={id} isInvalid={isInvalid} minWidth={0}>
-        <FormLabel noOfLines={1} marginBottom={'0.2rem'}>
-          {name}
-        </FormLabel>
-        {editable ? (
-          <>
-            <Input
-              type={type}
-              name={id}
-              onChange={onChange}
-              onBlur={onBlur}
-              defaultValue={value}
-            />
-
-            <FormErrorMessage justifyContent={'right'}>
+    <div className={cn('max-w-sm min-w-0 py-2', className)}>
+      <Label htmlFor={id} className="mb-1 line-clamp-1">
+        {name}
+      </Label>
+      {editable ? (
+        <>
+          <Input
+            id={id}
+            type={type}
+            name={id}
+            aria-invalid={isInvalid}
+            onChange={onChange}
+            onBlur={onBlur}
+            defaultValue={value}
+          />
+          {isInvalid === true && errorMessage != null ? (
+            <p className="text-destructive mt-1 text-right text-sm">
               {errorMessage}
-            </FormErrorMessage>
-          </>
-        ) : (
-          <Text textColor={'blackAlpha.700'}>{value ?? 'N/A'}</Text>
-        )}
-      </FormControl>
-    </Box>
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-foreground/70">{value ?? 'N/A'}</p>
+      )}
+    </div>
   );
 };
 

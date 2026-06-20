@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Grid, GridItem, Text } from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useMemo, type ReactNode } from 'react';
@@ -69,16 +69,10 @@ const ManageMeetupHomePage = (): ReactNode => {
   );
 
   return (
-    <Flex margin={'1rem'} justify={'center'} direction={'column'}>
+    <div className="m-4 flex flex-col justify-center">
       {meetup != null && attendees != null ? (
-        <Grid
-          templateColumns={'repeat(2, 1fr)'}
-          templateRows={'repeat(3, 100px)'}
-          gap={4}
-          width={'100%'}
-          paddingY={'0.75rem'}
-        >
-          <GridItem colSpan={1}>
+        <div className="grid grid-cols-2 [grid-template-rows:repeat(3,100px)] gap-4 py-3">
+          <div>
             {/* Show how many have checked in if meetup is currently happening, otherwise show how many have signed up */}
             <FractionCard
               numerator={
@@ -89,24 +83,21 @@ const ManageMeetupHomePage = (): ReactNode => {
                     (meetup.tickets?.available ?? 0)
               }
               denominator={
-                isHappeningNow ? attendees.length : meetup.tickets?.total ?? 0
+                isHappeningNow ? attendees.length : (meetup.tickets?.total ?? 0)
               }
               label={isHappeningNow ? 'checked in' : 'signed up'}
               onClick={() => {
-                navigate(
+                void navigate(
                   `/meetup/${meetupId}/manage/${
                     isHappeningNow ? 'checkin' : 'attendees'
                   }`
                 );
               }}
-              width={'100%'}
-              _hover={{
-                cursor: 'pointer',
-              }}
+              className="w-full cursor-pointer"
             />
-          </GridItem>
+          </div>
 
-          <GridItem colSpan={1}>
+          <div>
             {/* Show detailed countdown until meetup end if meetup is currently happening, otherwise show relative time until start of meetup or end of meetup */}
             <CountDownCard
               date={
@@ -116,63 +107,41 @@ const ManageMeetupHomePage = (): ReactNode => {
               }
               futureText={!hasStarted ? 'left' : 'until end'}
               pastText={'ago'}
-              width={'100%'}
+              className="w-full"
               simple={!isHappeningNow}
             />
-          </GridItem>
+          </div>
 
           {/* TODO(jan): Clean this up. This was done last minute before Roundup */}
-          <GridItem colSpan={2}>
-            <Box
-              width={'100%'}
-              height={'100%'}
-              background={'white'}
-              borderRadius={'md'}
-              boxShadow={'sm'}
-            >
-              <Grid templateColumns={'repeat(2, 1fr)'} height={'100%'}>
-                <GridItem>
-                  <Flex
-                    height={'100%'}
-                    justifyContent={'center'}
-                    align={'center'}
-                    direction={'column'}
-                  >
-                    <Text fontSize={'4xl'}>{numRaffleRolls}</Text>
-                    <Text fontSize={'xs'}>WINNERS</Text>
-                  </Flex>
-                </GridItem>
+          <div className="col-span-2">
+            <div className="bg-card text-card-foreground size-full rounded-md shadow-sm">
+              <div className="grid h-full grid-cols-2">
+                <div className="flex h-full flex-col items-center justify-center">
+                  <p className="text-4xl">{numRaffleRolls}</p>
+                  <p className="text-xs">WINNERS</p>
+                </div>
 
-                <GridItem>
-                  <Flex
-                    height={'100%'}
-                    justifyContent={'center'}
-                    align={'center'}
-                    direction={'column'}
-                  >
-                    <Text fontSize={'4xl'}>{numRaffleClaims}</Text>
-                    <Text fontSize={'xs'}>CLAIMED</Text>
-                  </Flex>
-                </GridItem>
-              </Grid>
-            </Box>
-          </GridItem>
+                <div className="flex h-full flex-col items-center justify-center">
+                  <p className="text-4xl">{numRaffleClaims}</p>
+                  <p className="text-xs">CLAIMED</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <GridItem colSpan={2}>
+          <div className="col-span-2">
             <Button
-              colorScheme={'blackAlpha'}
-              width={'100%'}
-              height={'100%'}
+              className="size-full"
               onClick={() => {
-                navigate(`/meetup/${meetupId}/manage/raffle`);
+                void navigate(`/meetup/${meetupId}/manage/raffle`);
               }}
             >
               Raffles
             </Button>
-          </GridItem>
-        </Grid>
+          </div>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 };
 

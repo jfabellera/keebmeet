@@ -1,14 +1,8 @@
-import {
-  AspectRatio,
-  Box,
-  Grid,
-  GridItem,
-  Heading,
-  IconButton,
-  Image,
-  Input,
-  useBoolean,
-} from '@chakra-ui/react';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Input } from '@/components/ui/input';
+import { useBoolean } from '@/hooks/useBoolean';
 import type React from 'react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
@@ -21,6 +15,9 @@ import EditableFormCard from '../Forms/EditableFormCard';
 interface Props {
   meetupId: number;
 }
+
+const gridClass =
+  'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
@@ -125,133 +122,126 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditSubmit={onSubmit}
       isFormInvalid={false}
     >
-      <Heading size={'md'} fontWeight={'medium'} marginBottom={'0.2rem'}>
-        Idle Images
-      </Heading>
+      <h3 className="mb-1 text-xl font-medium">Idle Images</h3>
       {urls != null ? (
-        <Grid templateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
+        <div className={gridClass}>
           {urls.map((imageUrl, index) => (
-            <GridItem key={index}>
+            <div key={index}>
               <AspectRatio ratio={16 / 9}>
-                <Box border={'1px'}>
-                  <Image src={imageUrl} />
+                <div className="relative size-full border">
+                  <ImageWithFallback
+                    src={imageUrl}
+                    className="size-full object-cover"
+                  />
                   {isEditable ? (
-                    <Box
-                      display={'flex'}
-                      justifyContent={'space-between'}
-                      alignItems={'center'}
-                      position="absolute"
-                      height={'100%'}
-                      width={'100%'}
-                      padding={'1rem'}
-                      bg="rgba(0, 0, 0, 0.5)"
-                      opacity={0}
-                      transition="opacity 0.3s"
-                      _hover={{ opacity: 1 }}
-                    >
-                      <IconButton
-                        icon={<FiArrowLeft />}
-                        aria-label={'Move left'}
-                        colorScheme={'whiteAlpha'}
+                    <div className="absolute inset-0 flex items-center justify-between bg-black/50 p-4 opacity-0 transition-opacity duration-300 hover:opacity-100">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        aria-label="Move left"
                         id={String(index)}
                         onClick={onMoveLeft}
-                        isDisabled={index === 0}
-                      />
-                      <IconButton
-                        icon={<FiTrash2 />}
-                        aria-label={'Delete'}
-                        colorScheme={'red'}
+                        disabled={index === 0}
+                      >
+                        <FiArrowLeft />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        aria-label="Delete"
                         id={String(index)}
                         onClick={onDelete}
-                      />
-                      <IconButton
-                        icon={<FiArrowRight />}
-                        aria-label={'Move right'}
-                        colorScheme={'whiteAlpha'}
+                      >
+                        <FiTrash2 />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        aria-label="Move right"
                         id={String(index)}
                         onClick={onMoveRight}
-                        isDisabled={index === urls.length - 1}
-                      />
-                    </Box>
+                        disabled={index === urls.length - 1}
+                      >
+                        <FiArrowRight />
+                      </Button>
+                    </div>
                   ) : null}
-                </Box>
+                </div>
               </AspectRatio>
               {isEditable ? (
                 <Input
                   id={String(index)}
-                  marginTop={'1rem'}
+                  className="mt-4"
                   value={urls[index]}
                   onChange={onChange}
                 />
               ) : null}
-            </GridItem>
+            </div>
           ))}
           {isEditable ? (
-            <GridItem padding={'1rem'}>
+            <div className="p-4">
               <AspectRatio ratio={16 / 9}>
-                <IconButton
-                  fontSize={'2rem'}
-                  icon={<FiPlus />}
-                  aria-label={'add'}
+                <Button
+                  variant="outline"
+                  aria-label="add"
+                  className="size-full"
                   onClick={onAdd}
-                />
+                >
+                  <FiPlus className="size-8" />
+                </Button>
               </AspectRatio>
-            </GridItem>
+            </div>
           ) : null}
-        </Grid>
+        </div>
       ) : null}
 
       {/* TODO(jan): Find cleaner way to do this. This is just copy and pasted because low on time */}
 
-      <Heading
-        size={'md'}
-        fontWeight={'medium'}
-        marginTop={'1rem'}
-        marginBottom={'0.2rem'}
-      >
+      <h3 className="mt-4 mb-1 text-xl font-medium">
         Raffle Winner Background
-      </Heading>
-      <Grid templateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
-        <GridItem>
+      </h3>
+      <div className={gridClass}>
+        <div>
           <AspectRatio ratio={16 / 9}>
-            <Box border={'1px'}>
-              <Image src={raffleBackgroundUrl} />
-            </Box>
+            <div className="size-full border">
+              <ImageWithFallback
+                src={raffleBackgroundUrl}
+                className="size-full object-cover"
+              />
+            </div>
           </AspectRatio>
           {isEditable ? (
             <Input
-              marginTop={'1rem'}
+              className="mt-4"
               value={raffleBackgroundUrl}
               onChange={onRaffleBackgroundChange}
             />
           ) : null}
-        </GridItem>
-      </Grid>
+        </div>
+      </div>
 
-      <Heading
-        size={'md'}
-        fontWeight={'medium'}
-        marginTop={'1rem'}
-        marginBottom={'0.2rem'}
-      >
+      <h3 className="mt-4 mb-1 text-xl font-medium">
         Raffle Winner Background (Batch)
-      </Heading>
-      <Grid templateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
-        <GridItem>
+      </h3>
+      <div className={gridClass}>
+        <div>
           <AspectRatio ratio={16 / 9}>
-            <Box border={'1px'}>
-              <Image src={batchRaffleBackgroundUrl} />
-            </Box>
+            <div className="size-full border">
+              <ImageWithFallback
+                src={batchRaffleBackgroundUrl}
+                className="size-full object-cover"
+              />
+            </div>
           </AspectRatio>
           {isEditable ? (
             <Input
-              marginTop={'1rem'}
+              className="mt-4"
               value={batchRaffleBackgroundUrl}
               onChange={onBatchRaffleBackgroundChange}
             />
           ) : null}
-        </GridItem>
-      </Grid>
+        </div>
+      </div>
     </EditableFormCard>
   );
 };

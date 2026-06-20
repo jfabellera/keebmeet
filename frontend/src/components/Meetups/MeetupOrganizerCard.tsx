@@ -1,18 +1,7 @@
-import { type ReactNode } from 'react';
-import {
-  AspectRatio,
-  Card,
-  CardBody,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Image,
-  Stack,
-  Text,
-} from '@chakra-ui/react';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { type ReactNode } from 'react';
 import { FiCalendar, FiClock, FiImage, FiUsers } from 'react-icons/fi';
 
 dayjs.extend(customParseFormat);
@@ -35,64 +24,39 @@ export const MeetupOrganizerCard = ({
   onClick,
 }: MeetupOrganizerCardProps): ReactNode => {
   return (
-    <Card
-      background={'white'}
-      direction={'row'}
-      cursor={'pointer'}
+    <div
+      className="bg-card text-card-foreground flex cursor-pointer flex-row overflow-hidden rounded-md border shadow-sm"
       onClick={onClick}
     >
-      <AspectRatio
-        ratio={{ base: 1 / 1, sm: 2 / 1 }}
-        width={{ base: '33%', sm: '40%' }}
-      >
-        <Image
+      <div className="relative w-1/3 shrink-0 sm:w-2/5">
+        <ImageWithFallback
           src={imageUrl}
-          borderLeftRadius={'md'}
-          fallback={
-            <Flex backgroundColor={'gray.200'}>
-              <Icon as={FiImage} boxSize={8} />
-            </Flex>
-          }
+          className="absolute inset-0 size-full object-cover"
         />
-      </AspectRatio>
-      <CardBody
-        width={{ base: '67%', sm: '60%' }}
-        padding={'1rem'}
-        paddingY={{ base: '0.5rem', sm: '1rem' }}
-        textOverflow={'ellipsis'}
-        overflow={'hidden'}
-        display={'flex'}
-        flexDirection={'column'}
-      >
-        <Stack spacing={{ base: 0, sm: 1.5 }} flex={1} justify={'center'}>
-          <Heading size={'md'} fontWeight={'semibold'} noOfLines={1}>
-            {name}
-          </Heading>
-          <HStack>
-            <Icon as={FiCalendar} />
-            <Text noOfLines={1}>
+      </div>
+      <div className="flex w-2/3 flex-col justify-center overflow-hidden p-4 py-2 sm:w-3/5 sm:py-4">
+        <div className="flex flex-1 flex-col justify-center gap-0 sm:gap-1.5">
+          <h3 className="line-clamp-1 text-xl font-semibold">{name}</h3>
+          <div className="flex items-center gap-2">
+            <FiCalendar />
+            <p className="line-clamp-1">
               {dayjs(date, 'YYYY-MM-DDTHH:mm:ss').format('MMMM DD, YYYY')}
-            </Text>
-          </HStack>
-          <HStack>
-            <Icon as={FiClock} />
-            <Text noOfLines={1}>
-              {`${dayjs(date, 'YYYY-MM-DDTHH:mm:ss').diff(
-                dayjs(),
-                'day'
-              )} days`}
-            </Text>
-          </HStack>
-          <HStack>
-            <Icon as={FiUsers} />
-            <Text noOfLines={1}>{`${
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <FiClock />
+            <p className="line-clamp-1">
+              {`${dayjs(date, 'YYYY-MM-DDTHH:mm:ss').diff(dayjs(), 'day')} days`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <FiUsers />
+            <p className="line-clamp-1">{`${
               ticketsTotal - ticketsAvailable
-            } / ${ticketsTotal}`}</Text>
-          </HStack>
-        </Stack>
-      </CardBody>
-      {/* <CardBody padding={0} margin={0}>
-        </CardBody> */}
-    </Card>
+            } / ${ticketsTotal}`}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

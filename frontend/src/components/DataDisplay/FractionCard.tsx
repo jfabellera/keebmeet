@@ -1,14 +1,7 @@
 import { type ReactNode } from 'react';
-import {
-  Box,
-  Heading,
-  HStack,
-  Text,
-  VStack,
-  type BoxProps,
-} from '@chakra-ui/react';
+import { cn } from '@/lib/utils';
 
-interface FractionCardProps extends BoxProps {
+interface FractionCardProps extends React.ComponentProps<'div'> {
   numerator: number;
   denominator: number;
   label?: string;
@@ -18,29 +11,28 @@ const FractionCard = ({
   numerator,
   denominator,
   label,
+  className,
   ...rest
 }: FractionCardProps): ReactNode => {
   return (
-    <Box
-      background={'white'}
-      borderRadius={'md'}
-      boxShadow={'sm'}
-      padding={'1rem'}
+    <div
+      className={cn(
+        'bg-card text-card-foreground rounded-md p-4 shadow-sm',
+        className
+      )}
       {...rest}
     >
-      <VStack spacing={0}>
-        <HStack align={'baseline'} spacing={1}>
-          <Heading size={'2xl'} fontWeight={'medium'}>
-            {numerator}
-          </Heading>
-          <Text fontSize={'xl'}>/</Text>
-          <Text fontSize={'xl'}>{denominator}</Text>
-        </HStack>
+      <div className="flex flex-col items-center">
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-medium">{numerator}</span>
+          <span className="text-xl">/</span>
+          <span className="text-xl">{denominator}</span>
+        </div>
         {label != null ? (
-          <Text fontSize={'xs'}>{label.toUpperCase()}</Text>
+          <p className="text-xs">{label.toUpperCase()}</p>
         ) : null}
-      </VStack>
-    </Box>
+      </div>
+    </div>
   );
 };
 

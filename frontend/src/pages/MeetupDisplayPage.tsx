@@ -1,13 +1,4 @@
 import {
-  Box,
-  Flex,
-  Grid,
-  GridItem,
-  Image,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
-import {
   AnimatePresence,
   animate,
   motion,
@@ -114,88 +105,54 @@ const MeetupDisplayPage = (): ReactNode => {
   }, [yTranslation, height, winners]);
 
   return (
-    <Flex
-      height={'100vh'}
-      justify={'center'}
-      align={'center'}
-      direction={'column'}
-      background={'black'}
-    >
+    <div className="flex h-screen flex-col items-center justify-center bg-black text-white">
       {displayState === 'raffle winner' &&
       winners != null &&
       winners.length > 0 ? (
         raffleType === 'batch' ? (
           <>
             {displayAssets?.batchRaffleWinnerBackgroundImageUrl != null ? (
-              <Image
-                width={'100%'}
-                height={'100%'}
-                objectFit={'contain'}
-                background={'black'}
+              <img
+                className="size-full bg-black object-contain"
                 src={displayAssets.batchRaffleWinnerBackgroundImageUrl}
-                fallback={<></>}
                 loading={'eager'}
+                alt=""
               />
             ) : null}
 
-            <Flex
-              position={'absolute'}
-              top={'15%'}
-              height={'80%'}
-              width={'66%'}
-              overflow={'clip'}
-              justifyContent={'center'}
-              alignItems={'center'}
-              padding={'2rem'}
-            >
-              <Grid
-                width={'100%'}
-                templateColumns={'repeat(2, auto)'}
-                templateRows={'repeat(10, auto)'}
-                gridAutoFlow={'column'}
-                gap={2}
-              >
+            <div className="absolute top-[15%] flex h-[80%] w-2/3 items-center justify-center overflow-clip p-8">
+              <div className="grid w-full grid-flow-col [grid-template-columns:repeat(2,auto)] [grid-template-rows:repeat(10,auto)] gap-2">
                 {winners.map((winner, index) => {
                   return (
-                    <GridItem key={index} textAlign={'left'} width={'100%'}>
-                      <Text
-                        fontSize={
-                          // Handle font size for different amount of winners
-                          (5 / Math.min(Math.max(winners.length, 5), 10)) * 120
-                        }
-                        fontWeight={''}
-                        noOfLines={1}
-                        lineHeight={'normal'}
-                        minWidth={0}
-                        wordBreak={'break-all'}
+                    <div key={index} className="w-full text-left">
+                      <p
+                        className="line-clamp-1 min-w-0 leading-normal break-all"
+                        style={{
+                          fontSize:
+                            // Handle font size for different amount of winners
+                            (5 / Math.min(Math.max(winners.length, 5), 10)) *
+                            120,
+                        }}
                       >
                         {`${index + 1}. ${winner}`}
-                      </Text>
-                    </GridItem>
+                      </p>
+                    </div>
                   );
                 })}
-              </Grid>
-            </Flex>
+              </div>
+            </div>
           </>
         ) : (
           <>
             {displayAssets?.raffleWinnerBackgroundImageUrl != null ? (
-              <Image
-                width={'100%'}
-                height={'100%'}
-                objectFit={'contain'}
-                background={'black'}
+              <img
+                className="size-full bg-black object-contain"
                 src={displayAssets?.raffleWinnerBackgroundImageUrl ?? ''}
-                fallback={<></>}
                 loading={'eager'}
+                alt=""
               />
             ) : null}
-            <Box
-              position={'absolute'}
-              height={'33%'}
-              width={'66%'}
-              overflow={'clip'}
-            >
+            <div className="absolute h-1/3 w-2/3 overflow-clip">
               <motion.div
                 style={{
                   width: '100%',
@@ -204,34 +161,26 @@ const MeetupDisplayPage = (): ReactNode => {
                   opacity: raffleWinnerActive ? 1 : 0,
                 }}
               >
-                <VStack
-                  position={'absolute'}
-                  width={'100%'}
-                  spacing={5}
+                <div
+                  className="absolute flex w-full flex-col items-center gap-5"
                   ref={ref}
                 >
-                  <Text
-                    fontSize={'144px'}
-                    noOfLines={1}
-                    wordBreak={'break-all'}
-                  >
+                  <p className="line-clamp-1 text-[144px] break-all">
                     {winners[0]}
-                  </Text>
+                  </p>
                   {losers != null
                     ? shuffleArray(losers).map((loser, index) => (
-                        <Text
+                        <p
                           key={index}
-                          fontSize={'144px'}
-                          noOfLines={1}
-                          wordBreak={'break-all'}
+                          className="line-clamp-1 text-[144px] break-all"
                         >
                           {loser}
-                        </Text>
+                        </p>
                       ))
                     : null}
-                </VStack>
+                </div>
               </motion.div>
-            </Box>
+            </div>
           </>
         )
       ) : displayAssets?.idleImageUrls != null &&
@@ -253,17 +202,15 @@ const MeetupDisplayPage = (): ReactNode => {
               zIndex: 1,
             }}
           />
-          <Image
-            position={'absolute'}
-            width={'100%'}
-            height={'100%'}
-            objectFit={'contain'}
+          <img
+            className="absolute size-full object-contain"
             src={displayAssets.idleImageUrls[idleImageIndex]}
             loading={'eager'}
+            alt=""
           />
         </AnimatePresence>
       ) : null}
-    </Flex>
+    </div>
   );
 };
 

@@ -1,20 +1,14 @@
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
 import {
-  AspectRatio,
-  Button,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Image,
-  Link,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalOverlay,
-  Spacer,
-  Text,
-} from '@chakra-ui/react';
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useEffect, type ReactNode } from 'react';
@@ -128,126 +122,130 @@ export const MeetupModal = ({
   if (meetup == null) return <></>;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      isCentered
-      motionPreset={'slideInBottom'}
-      size={{ base: 'full', md: '3xl' }}
-      scrollBehavior={'inside'}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <ModalOverlay />
-      <ModalContent>
-        <ModalBody padding={0}>
+      <DialogOverlay className="backdrop-blur-xs" />
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-h-[90vh]"
+        showCloseButton={false}
+      >
+        <div className="overflow-y-auto">
           {meetup.image_url != null && meetup.image_url !== '' ? (
             <AspectRatio ratio={2 / 1}>
-              <Image
+              <ImageWithFallback
                 src={meetup.image_url}
-                objectFit="cover"
-                borderTopRadius={'md'}
+                className="size-full rounded-t-md object-cover"
               />
             </AspectRatio>
           ) : null}
-          <Flex direction={'column'} padding={'1em'} paddingBottom={'0'}>
-            <Heading paddingBottom={'0.4em'}>{meetup.name}</Heading>
-            <Flex
-              direction={'column'}
-              paddingBottom={'1em'}
-              fontWeight={'semibold'}
-            >
+          <div className="flex flex-col p-4 pb-0">
+            <DialogHeader className="space-y-0 text-left">
+              <DialogTitle className="pb-2 text-2xl font-bold">
+                {meetup.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-1 pb-4 font-semibold">
               {/* Date */}
-              <HStack>
-                <Icon as={FiCalendar} />
-                <Text>
+              <div className="flex items-center gap-2">
+                <FiCalendar />
+                <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                     'MMMM DD, YYYY'
                   )}
-                </Text>
-              </HStack>
+                </p>
+              </div>
 
               {/* Time */}
               {/* TODO(jan): Add end time once implemented into API */}
-              <HStack>
-                <Icon as={FiClock} />
-                <Text>
+              <div className="flex items-center gap-2">
+                <FiClock />
+                <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format('h:mm A')}
                   {' - '}
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss')
                     .add(meetup.duration_hours ?? 0, 'hours')
                     .format('h:mm A')}
-                </Text>
-              </HStack>
+                </p>
+              </div>
 
               {/* Location */}
-              <HStack>
-                <Icon as={FiMapPin} />
-                <Text>{meetup.location.full_address}</Text>
-              </HStack>
+              <div className="flex items-center gap-2">
+                <FiMapPin />
+                <p>{meetup.location.full_address}</p>
+              </div>
 
               {/* Organizers */}
               {meetup.organizers != null ? (
-                <HStack>
-                  <Icon as={FiUser} />
-                  <Text>
+                <div className="flex items-center gap-2">
+                  <FiUser />
+                  <p>
                     Organized by{' '}
                     {new Intl.ListFormat().format(meetup.organizers)}
-                  </Text>
-                </HStack>
+                  </p>
+                </div>
               ) : null}
-            </Flex>
+            </div>
 
             {/* Description */}
             {meetup.description !== '' ? (
               <>
-                <Text fontWeight={'semibold'}>Description</Text>
-                <Text whiteSpace={'pre-line'}>{meetup.description}</Text>
+                <p className="font-semibold">Description</p>
+                <p className="whitespace-pre-line">{meetup.description}</p>
               </>
             ) : (
-              <Text>
+              <p>
                 <i>No description</i>
-              </Text>
+              </p>
             )}
-          </Flex>
-        </ModalBody>
+          </div>
+        </div>
 
-        <ModalFooter>
+        <DialogFooter className="flex-row items-center p-4 sm:justify-between">
           {meetup.tickets != null ? (
             <MeetupCapacityStatus
               available={meetup.tickets.available}
               total={meetup.tickets.total}
             />
-          ) : null}
-          <Spacer />
-          {meetup.eventbrite_url != null ? (
-            <Link href={meetup.eventbrite_url} isExternal mr={3}>
-              <Button leftIcon={<FiExternalLink />}>RSVP</Button>
-            </Link>
-          ) : ticket != null ? (
-            <Button
-              leftIcon={<FiUserX />}
-              colorScheme={'red'}
-              mr={3}
-              isDisabled={!isLoggedIn}
-              onClick={unrsvpOnClick}
-            >
-              Cancel RSVP
-            </Button>
           ) : (
-            <Button
-              leftIcon={<FiUserCheck />}
-              colorScheme={'green'}
-              mr={3}
-              isDisabled={!isLoggedIn}
-              onClick={rsvpOnclick}
-            >
-              RSVP
-            </Button>
+            <span />
           )}
-          <Button colorScheme={'pink'} mr={3} onClick={onClose}>
-            Close
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+          <div className="flex items-center gap-3">
+            {meetup.eventbrite_url != null ? (
+              <a href={meetup.eventbrite_url} target="_blank" rel="noreferrer">
+                <Button>
+                  <FiExternalLink />
+                  RSVP
+                </Button>
+              </a>
+            ) : ticket != null ? (
+              <Button
+                variant="destructive"
+                disabled={!isLoggedIn}
+                onClick={unrsvpOnClick}
+              >
+                <FiUserX />
+                Cancel RSVP
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                disabled={!isLoggedIn}
+                onClick={rsvpOnclick}
+              >
+                <FiUserCheck />
+                RSVP
+              </Button>
+            )}
+            <Button variant="secondary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

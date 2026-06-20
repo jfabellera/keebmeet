@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
-import { HStack, Icon, Text } from '@chakra-ui/react';
 import { FaCircle } from 'react-icons/fa';
+import { cn } from '@/lib/utils';
 
 export interface MeetupCapacityStatusProps {
   available: number;
@@ -15,19 +15,19 @@ export const MeetupCapacityStatus = ({
   const capacityRatio = available / total;
 
   if (capacityRatio > 0.4) {
-    statusColor = 'green.500';
+    statusColor = 'text-green-500';
   } else if (capacityRatio > 0.1) {
-    statusColor = 'yellow.500';
+    statusColor = 'text-yellow-500';
   } else {
-    statusColor = 'red.500';
+    statusColor = 'text-red-500';
   }
 
   return (
-    <HStack>
-      <Icon as={FaCircle} boxSize={3} color={statusColor} />
-      <Text>
+    <div className="flex items-center gap-2">
+      <FaCircle className={cn('size-3', statusColor)} />
+      <p>
         {available} of {total} available
-      </Text>
-    </HStack>
+      </p>
+    </div>
   );
 };

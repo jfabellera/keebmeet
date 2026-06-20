@@ -1,4 +1,3 @@
-import { Box, Flex, Heading, type BoxProps } from '@chakra-ui/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiGift, FiHome, FiSettings, FiUsers } from 'react-icons/fi';
 import { IoTicketOutline } from 'react-icons/io5';
@@ -10,14 +9,11 @@ import { useAppDispatch } from '../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../store/meetupSlice';
 import { organizerSlice } from '../store/organizerSlice';
 
-interface ManageMeetupPageProps extends BoxProps {
+interface ManageMeetupPageProps {
   children: ReactNode;
 }
 
-const ManageMeetupPage = ({
-  children,
-  ...rest
-}: ManageMeetupPageProps): ReactNode => {
+const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
   const { meetupId } = useParams();
   const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
   const location = useLocation();
@@ -113,20 +109,12 @@ const ManageMeetupPage = ({
       sidebarValue={sidebarValue}
       setSidebarValue={setSidebarValue}
     >
-      <Flex direction={'column'} height={'100%'} overflow={'scroll'}>
-        <Heading
-          width={'100%'}
-          textAlign={'center'}
-          marginTop={'1rem'}
-          noOfLines={2}
-          paddingX={'1.5rem'}
-        >
+      <div className="flex h-full flex-col overflow-scroll">
+        <h1 className="mt-4 line-clamp-2 w-full px-6 text-center text-3xl font-bold">
           {meetup?.name}
-        </Heading>
-        <Box flexGrow={1} {...rest}>
-          {children}
-        </Box>
-      </Flex>
+        </h1>
+        <div className="grow">{children}</div>
+      </div>
     </Page>
   );
 };

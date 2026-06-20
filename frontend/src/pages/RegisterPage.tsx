@@ -1,23 +1,10 @@
-'use client';
-
-import { type ReactNode } from 'react';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  FormControl,
-  FormErrorMessage,
-  FormLabel,
-  Heading,
-  Input,
-  Link,
-  Stack,
-  Text,
-  useColorModeValue,
-  type BoxProps,
-} from '@chakra-ui/react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useFormik } from 'formik';
+import { Loader2 } from 'lucide-react';
+import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import Page from '../components/Page/Page';
@@ -46,6 +33,17 @@ const RegisterSchema = Yup.object().shape({
     .required('Required'),
 });
 
+const FieldError = ({
+  show,
+  children,
+}: {
+  show: boolean | undefined;
+  children?: ReactNode;
+}): ReactNode =>
+  show === true ? (
+    <p className="text-destructive text-right text-sm">{children}</p>
+  ) : null;
+
 const RegisterPage = (): ReactNode => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.user);
@@ -65,7 +63,7 @@ const RegisterPage = (): ReactNode => {
           // Get status of register
           if (register.fulfilled.match(action)) {
             // Successfully registered, redirect user to login page
-            navigate('/login');
+            void navigate('/login');
           } else if (register.rejected.match(action)) {
             // Failed to register, show an error message
             // TODO(jan)
@@ -77,191 +75,190 @@ const RegisterPage = (): ReactNode => {
     validateOnMount: true,
   });
 
-  const ErrorMessage = ({ children }: BoxProps): ReactNode => {
-    return (
-      <FormErrorMessage justifyContent={'right'}>{children}</FormErrorMessage>
-    );
-  };
-
   return (
     <Page>
-      <Flex padding={'1rem'} align={'center'} justify={'center'}>
-        <Stack spacing={8} mx={'auto'} maxW={'lg'}>
-          <Stack align={'center'}>
-            <Heading fontSize={'4xl'} textAlign={'center'}>
-              Sign up
-            </Heading>
-          </Stack>
-          <Box
-            rounded={'lg'}
-            bg={useColorModeValue('white', 'gray.700')}
-            boxShadow={'lg'}
-            p={8}
-          >
+      <div className="flex items-center justify-center p-4">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+          <div className="flex flex-col items-center">
+            <h1 className="text-center text-4xl font-bold">Sign up</h1>
+          </div>
+          <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={formik.handleSubmit} noValidate>
-              <Stack spacing={4}>
-                <Stack direction={'row'}>
-                  <Box>
-                    <FormControl
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-row gap-2">
+                  <div className="grid flex-1 gap-1.5">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
                       id="firstName"
-                      isRequired
-                      isInvalid={
+                      type="text"
+                      name="firstName"
+                      aria-invalid={
+                        formik.errors.firstName != null &&
+                        formik.touched.firstName
+                      }
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                    />
+                    <FieldError
+                      show={
                         formik.errors.firstName != null &&
                         formik.touched.firstName
                       }
                     >
-                      <FormLabel>First Name</FormLabel>
-                      <Input
-                        type="text"
-                        name="firstName"
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                      />
-                      <ErrorMessage>{formik.errors.firstName}</ErrorMessage>
-                    </FormControl>
-                  </Box>
-                  <Box>
-                    <FormControl
+                      {formik.errors.firstName}
+                    </FieldError>
+                  </div>
+                  <div className="grid flex-1 gap-1.5">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
                       id="lastName"
-                      isRequired
-                      isInvalid={
+                      type="text"
+                      name="lastName"
+                      aria-invalid={
+                        formik.errors.lastName != null &&
+                        formik.touched.lastName
+                      }
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                    />
+                    <FieldError
+                      show={
                         formik.errors.lastName != null &&
                         formik.touched.lastName
                       }
                     >
-                      <FormLabel>Last Name</FormLabel>
-                      <Input
-                        type="text"
-                        name="lastName"
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                      />
-                      <ErrorMessage>{formik.errors.lastName}</ErrorMessage>
-                    </FormControl>
-                  </Box>
-                </Stack>
-                <FormControl
-                  id="nickName"
-                  isRequired
-                  isInvalid={
-                    formik.errors.nickName != null && formik.touched.nickName
-                  }
-                >
-                  <FormLabel>Display Name</FormLabel>
+                      {formik.errors.lastName}
+                    </FieldError>
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="nickName">Display Name</Label>
                   <Input
+                    id="nickName"
                     type="text"
                     name="nickName"
+                    aria-invalid={
+                      formik.errors.nickName != null && formik.touched.nickName
+                    }
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />
-                  <ErrorMessage>{formik.errors.nickName}</ErrorMessage>
-                </FormControl>
-                <FormControl
-                  id="email"
-                  isRequired
-                  isInvalid={
-                    error === 409 ||
-                    (formik.errors.email != null && formik.touched.email)
-                  }
-                >
-                  <FormLabel>Email address</FormLabel>
+                  <FieldError
+                    show={
+                      formik.errors.nickName != null && formik.touched.nickName
+                    }
+                  >
+                    {formik.errors.nickName}
+                  </FieldError>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="email">Email address</Label>
                   <Input
+                    id="email"
                     type="email"
                     name="email"
+                    aria-invalid={
+                      error === 409 ||
+                      (formik.errors.email != null && formik.touched.email)
+                    }
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />
-                  <ErrorMessage>
+                  <FieldError
+                    show={
+                      error === 409 ||
+                      (formik.errors.email != null && formik.touched.email)
+                    }
+                  >
                     {error === 409
                       ? 'Email is already in use'
                       : formik.errors.email}
-                  </ErrorMessage>
-                </FormControl>
-                <FormControl
-                  id="password"
-                  isRequired
-                  isInvalid={
-                    formik.errors.password != null && formik.touched.password
-                  }
-                >
-                  <FormLabel>Password</FormLabel>
+                  </FieldError>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="password">Password</Label>
                   <Input
+                    id="password"
                     type="password"
                     name="password"
+                    aria-invalid={
+                      formik.errors.password != null && formik.touched.password
+                    }
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />
-                  <ErrorMessage>{formik.errors.password}</ErrorMessage>
-                </FormControl>
-                <FormControl
-                  id="confirmPassword"
-                  isRequired
-                  isInvalid={
-                    formik.errors.confirmPassword != null &&
-                    formik.touched.confirmPassword
-                  }
-                >
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FieldError
+                    show={
+                      formik.errors.password != null && formik.touched.password
+                    }
+                  >
+                    {formik.errors.password}
+                  </FieldError>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
+                    id="confirmPassword"
                     type="password"
                     name="confirmPassword"
+                    aria-invalid={
+                      formik.errors.confirmPassword != null &&
+                      formik.touched.confirmPassword
+                    }
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />
-                  <ErrorMessage>{formik.errors.confirmPassword}</ErrorMessage>
-                </FormControl>
-                <FormControl id="requestOrganizer">
-                  <Flex justify={'center'} mt="2">
-                    <Stack direction="row">
-                      <FormLabel margin={0} pr="4">
-                        Are you an organizer?
-                      </FormLabel>
-                      <Checkbox>Yes</Checkbox>
-                    </Stack>
-                  </Flex>
-                </FormControl>
-                <Stack spacing={10} pt={2}>
+                  <FieldError
+                    show={
+                      formik.errors.confirmPassword != null &&
+                      formik.touched.confirmPassword
+                    }
+                  >
+                    {formik.errors.confirmPassword}
+                  </FieldError>
+                </div>
+                <div className="mt-2 flex items-center justify-center gap-2">
+                  <Label htmlFor="requestOrganizer" className="pr-4">
+                    Are you an organizer?
+                  </Label>
+                  <Checkbox id="requestOrganizer" />
+                  <span>Yes</span>
+                </div>
+                <div className="flex flex-col gap-10 pt-2">
                   <Button
                     type="submit"
-                    loadingText="Submitting"
-                    isLoading={loading}
-                    isDisabled={!formik.isValid}
+                    disabled={loading || !formik.isValid}
                     size="lg"
-                    bg={'blue.400'}
-                    color={'white'}
-                    _hover={{
-                      bg: 'blue.500',
-                    }}
                   >
+                    {loading ? <Loader2 className="animate-spin" /> : null}
                     Sign up
                   </Button>
-                </Stack>
-                <Text
-                  fontSize="sm"
-                  align={'center'}
-                  color="red"
-                  hidden={error == null}
-                >
-                  Registration failed
-                </Text>
-                <Stack pt={2}>
-                  <Text align={'center'}>
+                </div>
+                {error != null ? (
+                  <p className="text-destructive text-center text-sm">
+                    Registration failed
+                  </p>
+                ) : null}
+                <div className="pt-2">
+                  <p className="text-center">
                     Already a user?{' '}
-                    <Link
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer text-blue-500"
                       onClick={() => {
-                        navigate('/login');
+                        void navigate('/login');
                       }}
-                      color={'blue.400'}
                     >
                       Login
-                    </Link>
-                  </Text>
-                </Stack>
-              </Stack>
+                    </span>
+                  </p>
+                </div>
+              </div>
             </form>
-          </Box>
-        </Stack>
-      </Flex>
+          </div>
+        </div>
+      </div>
     </Page>
   );
 };

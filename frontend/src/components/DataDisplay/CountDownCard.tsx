@@ -1,14 +1,7 @@
-import {
-  Box,
-  Heading,
-  HStack,
-  Text,
-  VStack,
-  type BoxProps,
-} from '@chakra-ui/react';
 import dayjs, { type Dayjs } from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 dayjs.extend(duration);
 
 const convertToSmallestUnitOfTime = (
@@ -27,7 +20,7 @@ const convertToSmallestUnitOfTime = (
   return { amount: seconds, unit: `second${seconds > 1 ? 's' : ''}` };
 };
 
-interface CountDownProps extends BoxProps {
+interface CountDownProps extends React.ComponentProps<'div'> {
   date: Date | Dayjs;
   futureText: string;
   pastText: string;
@@ -39,6 +32,7 @@ const CountDown = ({
   futureText,
   pastText,
   simple,
+  className,
   ...rest
 }: CountDownProps): ReactNode => {
   const [durationMs, setDurationMs] = useState<number>(dayjs(date).diff());
@@ -59,35 +53,31 @@ const CountDown = ({
   }, []);
 
   return (
-    <Box
-      background={'white'}
-      borderRadius={'md'}
-      boxShadow={'sm'}
-      padding={'1rem'}
+    <div
+      className={cn(
+        'bg-card text-card-foreground rounded-md p-4 shadow-sm',
+        className
+      )}
       {...rest}
     >
-      <VStack spacing={0}>
-        <HStack align={'baseline'}>
+      <div className="flex flex-col items-center">
+        <div className="flex items-baseline gap-2">
           {simple != null && simple ? (
             <>
-              <Heading size={'2xl'} fontWeight={'medium'}>
-                {amount}
-              </Heading>
-              <Heading size={'sm'} fontWeight={'normal'}>
-                {unit.toUpperCase()}
-              </Heading>
+              <span className="text-4xl font-medium">{amount}</span>
+              <span className="text-sm font-normal">{unit.toUpperCase()}</span>
             </>
           ) : (
-            <Heading size={'2xl'} fontWeight={'medium'}>
+            <span className="text-4xl font-medium">
               {dayjs.duration(Math.abs(durationMs)).format('HH:mm:ss')}
-            </Heading>
+            </span>
           )}
-        </HStack>
-        <Text fontSize={'xs'} textAlign={'center'}>
+        </div>
+        <p className="text-center text-xs">
           {durationMs > 0 ? futureText.toUpperCase() : pastText.toUpperCase()}
-        </Text>
-      </VStack>
-    </Box>
+        </p>
+      </div>
+    </div>
   );
 };
 

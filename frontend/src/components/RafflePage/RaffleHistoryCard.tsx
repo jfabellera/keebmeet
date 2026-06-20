@@ -1,20 +1,13 @@
 import { type ReactNode } from 'react';
-import {
-  Box,
-  Flex,
-  Spacer,
-  Stack,
-  Tag,
-  Text,
-  type BoxProps,
-} from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import RelativeTime from 'dayjs/plugin/relativeTime';
 import { type RaffleRecordResponse } from '../../../../backend/src/interfaces/rafflesInterfaces';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 dayjs.extend(RelativeTime);
 
-interface Props extends BoxProps {
+interface Props extends React.ComponentProps<'div'> {
   raffleRecord: RaffleRecordResponse;
   onCardClick: (raffleRecordId: number) => void;
 }
@@ -22,6 +15,7 @@ interface Props extends BoxProps {
 const RaffleHistoryCard = ({
   raffleRecord,
   onCardClick,
+  className,
   ...rest
 }: Props): ReactNode => {
   const handleClick = (): void => {
@@ -29,33 +23,33 @@ const RaffleHistoryCard = ({
   };
 
   return (
-    <Box
-      width={'100%'}
-      padding={'1rem'}
-      background={'white'}
-      borderRadius={'md'}
-      boxShadow={'sm'}
-      _hover={{ cursor: 'pointer' }}
+    <div
+      className={cn(
+        'bg-card text-card-foreground w-full cursor-pointer rounded-md p-4 shadow-sm',
+        className
+      )}
       onClick={handleClick}
       {...rest}
     >
-      <Stack gap={1.5}>
+      <div className="flex flex-col gap-1.5">
         {raffleRecord.winners.map((winner, index) => (
-          <Flex key={index} justifyContent={'space-between'}>
-            <Text noOfLines={1}>{winner.displayName}</Text>
-            {winner.claimed ? <Tag colorScheme={'green'}>Claimed</Tag> : null}
-          </Flex>
+          <div key={index} className="flex justify-between">
+            <p className="line-clamp-1">{winner.displayName}</p>
+            {winner.claimed ? (
+              <Badge className="bg-green-500 text-white">Claimed</Badge>
+            ) : null}
+          </div>
         ))}
-        <Flex justifyContent={'space-between'} marginTop={'0.5rem'}>
+        <div className="mt-2 flex justify-between">
           {raffleRecord.wasDisplayed ? (
-            <Tag colorScheme={'yellow'}>Displayed</Tag>
+            <Badge className="bg-yellow-400 text-black">Displayed</Badge>
           ) : (
-            <Spacer />
+            <span />
           )}
-          <Text>{dayjs(raffleRecord.createdAt).fromNow(true)}</Text>
-        </Flex>
-      </Stack>
-    </Box>
+          <p>{dayjs(raffleRecord.createdAt).fromNow(true)}</p>
+        </div>
+      </div>
+    </div>
   );
 };
 
