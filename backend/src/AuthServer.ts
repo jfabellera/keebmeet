@@ -33,7 +33,7 @@ class AuthServer {
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Access-Control-Allow-Headers'
+        'Content-Type, Access-Control-Allow-Headers, Authorization'
       );
       next();
     });
