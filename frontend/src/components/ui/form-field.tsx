@@ -9,7 +9,7 @@ interface FormFieldProps<Values> {
   label: string;
   type?: string;
   disabled?: boolean;
-  /** Make the input controlled (otherwise it is left uncontrolled). */
+  /** Override the controlled value (defaults to the formik value). */
   value?: string | number;
   /** Extra classes for the field wrapper (e.g. `flex-1` inside a row). */
   className?: string;
@@ -46,7 +46,7 @@ export const FormField = <Values,>({
         type={type}
         name={name}
         disabled={disabled}
-        value={value}
+        value={value ?? (formik.values[name] as string | number)}
         aria-invalid={show}
         onChange={formik.handleChange}
         onBlur={formik.handleBlur}

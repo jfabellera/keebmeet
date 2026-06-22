@@ -1,21 +1,143 @@
+import { Button } from '@/components/ui/button';
+import { FormField } from '@/components/ui/form-field';
+import { useFormik } from 'formik';
+import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
+import { toast } from 'sonner';
+import * as Yup from 'yup';
 import Page from '../components/Page/Page';
 import config from '../config';
-import { useAppSelector } from '../store/hooks';
+import { updateProfile } from '../store/authSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useGetUserQuery } from '../store/userSlice';
-import { Button } from '@/components/ui/button';
+
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/;
+
+const ProfileSchema = Yup.object().shape({
+  firstName: Yup.string().required('Required'),
+  lastName: Yup.string().required('Required'),
+  displayName: Yup.string().required('Required'),
+  // Password is optional; only validated when the user types a new one.
+  password: Yup.string().test(
+    'password-strength',
+    'Must contain 8 characters, one uppercase, one lowercase, one number, and one special character',
+    (value) => value == null || value === '' || PASSWORD_REGEX.test(value)
+  ),
+  confirmPassword: Yup.string().test(
+    'passwords-match',
+    'Passwords must match',
+    (value, ctx) => ((ctx.parent.password as string) ?? '') === (value ?? '')
+  ),
+});
 
 const AccountPage = (): ReactNode => {
-  const { user: localUser } = useAppSelector((state) => state.user);
-  const { data: user } = useGetUserQuery(localUser?.id ?? NaN, {
+  const dispatch = useAppDispatch();
+  const { user: localUser, loading } = useAppSelector((state) => state.user);
+  const { data: user, refetch } = useGetUserQuery(localUser?.id ?? NaN, {
     skip: localUser == null,
+  });
+
+  const formik = useFormik({
+    // Prefilled from the fetched user; reinitialised once it loads.
+    initialValues: {
+      firstName: user?.first_name ?? '',
+      lastName: user?.last_name ?? '',
+      displayName: user?.display_name ?? '',
+      password: '',
+      confirmPassword: '',
+    },
+    enableReinitialize: true,
+    validationSchema: ProfileSchema,
+    onSubmit: (values) => {
+      if (localUser == null) return;
+
+      void dispatch(
+        updateProfile({
+          userId: localUser.id,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          displayName: values.displayName,
+          password: values.password,
+        })
+      )
+        .then((action) => {
+          if (updateProfile.fulfilled.match(action)) {
+            void refetch();
+            // Reset to the saved values with the password fields cleared. This
+            // also clears touched/errors so no stale validation messages show.
+            formik.resetForm({
+              values: {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                displayName: values.displayName,
+                password: '',
+                confirmPassword: '',
+              },
+            });
+            toast.success('Profile updated');
+          } else {
+            toast.error('Failed to update profile');
+          }
+        })
+        .catch(() => {});
+    },
   });
 
   return (
     <Page>
-      <div className="mx-2 my-4 flex flex-col items-center gap-4">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
         <h1 className="text-center text-2xl font-bold">Account</h1>
-        <div className="bg-card text-card-foreground w-full max-w-2xl rounded-md p-4">
+        <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
+          <form onSubmit={formik.handleSubmit} noValidate>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-row gap-2">
+                <FormField
+                  formik={formik}
+                  name="firstName"
+                  label="First Name"
+                  className="flex-1"
+                />
+                <FormField
+                  formik={formik}
+                  name="lastName"
+                  label="Last Name"
+                  className="flex-1"
+                />
+              </div>
+              <FormField
+                formik={formik}
+                name="displayName"
+                label="Display Name"
+              />
+              <div className="border-border mt-2 border-t pt-4">
+                <div className="flex flex-col gap-4">
+                  <FormField
+                    formik={formik}
+                    name="password"
+                    label="New Password"
+                    type="password"
+                  />
+                  <FormField
+                    formik={formik}
+                    name="confirmPassword"
+                    label="Confirm New Password"
+                    type="password"
+                  />
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={loading || !formik.isValid || !formik.dirty}
+                size="lg"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : null}
+                Save changes
+              </Button>
+            </div>
+          </form>
+        </div>
+        <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
           <a
             href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
           >
