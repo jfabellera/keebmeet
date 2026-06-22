@@ -19,6 +19,9 @@ interface Config {
   gcpApiKey: string;
   eventbriteApiKey: string;
   eventbriteClientSecret: string;
+  discordClientId: string;
+  discordClientSecret: string;
+  discordRedirectUri: string;
   apiUrl: string;
   socketUrl: string;
 }
@@ -40,6 +43,11 @@ const config: Config = {
   gcpApiKey: process.env.GCP_API_KEY ?? '',
   eventbriteApiKey: process.env.EVENTBRITE_API_KEY ?? '',
   eventbriteClientSecret: process.env.EVENTBRITE_CLIENT_SECRET ?? '',
+  discordClientId: process.env.DISCORD_CLIENT_ID ?? '',
+  discordClientSecret: process.env.DISCORD_CLIENT_SECRET ?? '',
+  discordRedirectUri:
+    process.env.DISCORD_REDIRECT_URI ??
+    'http://localhost:5173/auth/discord/callback',
   apiUrl: process.env.MMS_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.MMS_SOCKET_URL ?? 'http://localhost:3002',
 };

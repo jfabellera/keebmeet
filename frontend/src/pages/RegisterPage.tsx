@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
+import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -233,6 +234,7 @@ const RegisterPage = (): ReactNode => {
                     {loading ? <Loader2 className="animate-spin" /> : null}
                     Sign up
                   </Button>
+                  <DiscordLoginButton />
                 </div>
                 {error != null ? (
                   <p className="text-destructive text-center text-sm">
