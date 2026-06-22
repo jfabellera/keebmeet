@@ -219,6 +219,34 @@ export const updateProfile = createAsyncThunk(
 );
 
 /**
+ * Thunk for linking a Discord account to the currently logged-in user.
+ *
+ * Called from the account page's Discord OAuth callback. Sends the Discord
+ * authorization code with the user's session token; the server attaches the
+ * Discord ID to the authenticated account.
+ */
+export const linkDiscord = createAsyncThunk(
+  'auth/linkDiscord',
+  async (code: string, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as { user: AuthState }).user.user?.token;
+
+      await axios.post(
+        `${config.authUrl}/oauth2/discord/link-account`,
+        { code },
+        { headers: { Authorization: `Bearer ${token ?? ''}` } }
+      );
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
  * Gets user object from JWT. If the JWT cannot be decoded, this function will
  * return null.
  *

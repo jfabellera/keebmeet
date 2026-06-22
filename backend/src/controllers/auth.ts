@@ -184,6 +184,33 @@ interface LinkTokenData {
 const LINK_TOKEN_TTL = '10m';
 
 /**
+ * Exchanges a Discord OAuth2 authorization code for the user's Discord profile.
+ * Throws if the exchange or profile fetch fails (handled by the caller).
+ */
+const exchangeCodeForDiscordUser = async (
+  code: string
+): Promise<DiscordUser> => {
+  const params = new URLSearchParams();
+  params.append('client_id', config.discordClientId);
+  params.append('client_secret', config.discordClientSecret);
+  params.append('grant_type', 'authorization_code');
+  params.append('code', code);
+  params.append('redirect_uri', config.discordRedirectUri);
+
+  const tokenResponse = await axios.post(
+    'https://discord.com/api/oauth2/token',
+    params,
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+
+  const userResponse = await axios.get('https://discord.com/api/users/@me', {
+    headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
+  });
+
+  return userResponse.data;
+};
+
+/**
  * Exchanges a Discord OAuth2 authorization code for the user's Discord profile,
  * then logs them in by issuing an MMS JWT.
  *
@@ -206,24 +233,7 @@ export const discordLogin = async (
 
   let discordUser: DiscordUser;
   try {
-    const params = new URLSearchParams();
-    params.append('client_id', config.discordClientId);
-    params.append('client_secret', config.discordClientSecret);
-    params.append('grant_type', 'authorization_code');
-    params.append('code', code);
-    params.append('redirect_uri', config.discordRedirectUri);
-
-    const tokenResponse = await axios.post(
-      'https://discord.com/api/oauth2/token',
-      params,
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-
-    const userResponse = await axios.get('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
-    });
-
-    discordUser = userResponse.data;
+    discordUser = await exchangeCodeForDiscordUser(code);
   } catch (error: any) {
     console.error(
       'Discord SSO failed:',
@@ -361,4 +371,53 @@ export const discordLink = async (
   await existingUser.save();
 
   return res.status(201).json({ token: signToken(existingUser) });
+};
+
+/**
+ * Links a Discord account to the already-authenticated requestor.
+ *
+ * Unlike {@link discordLink} (which links during sign-in for a matched email),
+ * this is called by a logged-in user from their account page. The requestor is
+ * taken from the auth middleware; the Discord ID is rejected if another account
+ * already owns it.
+ */
+export const linkDiscordAccount = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { code } = req.body;
+  const user = res.locals.requestor as User;
+
+  if (code == null) {
+    return res.status(400).json({ message: 'Missing authorization code.' });
+  }
+
+  let discordUser: DiscordUser;
+  try {
+    discordUser = await exchangeCodeForDiscordUser(code);
+  } catch (error: any) {
+    console.error(
+      'Discord link failed:',
+      error.response?.status,
+      error.response?.data ?? error.message
+    );
+    return res
+      .status(401)
+      .json({ message: 'Failed to authenticate with Discord.' });
+  }
+
+  const discordId = String(discordUser.id);
+
+  // Don't steal a Discord ID already linked to another account.
+  const discordOwner = await User.findOneBy({ discord_id: discordId });
+  if (discordOwner != null && discordOwner.id !== user.id) {
+    return res.status(409).json({
+      message: 'This Discord account is already linked to another user.',
+    });
+  }
+
+  user.discord_id = discordId;
+  await user.save();
+
+  return res.status(201).json({ token: signToken(user) });
 };

@@ -5,6 +5,7 @@ import {
   deleteUser,
   discordLink,
   discordLogin,
+  linkDiscordAccount,
   login,
   updateUser,
 } from './controllers/auth';
@@ -55,6 +56,11 @@ class AuthServer {
     this.express.post('/login', login as RequestHandler);
     this.express.post('/oauth2/discord', discordLogin as RequestHandler);
     this.express.post('/oauth2/discord/link', discordLink as RequestHandler);
+    this.express.post(
+      '/oauth2/discord/link-account',
+      authChecker() as RequestHandler,
+      linkDiscordAccount as RequestHandler
+    );
 
     this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');

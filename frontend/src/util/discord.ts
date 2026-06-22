@@ -15,3 +15,21 @@ export const redirectToDiscordLogin = (): void => {
 
   window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
 };
+
+/**
+ * Redirects an already-logged-in user into the Discord OAuth2 flow to link their
+ * Discord account. Reuses the same callback, tagging the request with
+ * `state=link` so the callback links to the current account instead of signing
+ * in.
+ */
+export const redirectToDiscordLink = (): void => {
+  const params = new URLSearchParams({
+    client_id: config.discordClientId,
+    redirect_uri: config.discordRedirectUri,
+    response_type: 'code',
+    scope: 'identify email',
+    state: 'link',
+  });
+
+  window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+};

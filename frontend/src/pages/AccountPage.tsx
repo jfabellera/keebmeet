@@ -3,7 +3,9 @@ import { FormField } from '@/components/ui/form-field';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
+import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
+import { redirectToDiscordLink } from '../util/discord';
 import * as Yup from 'yup';
 import Page from '../components/Page/Page';
 import config from '../config';
@@ -146,16 +148,34 @@ const AccountPage = (): ReactNode => {
             </div>
           </form>
         </div>
-        <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
-          <a
-            href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
-          >
-            <Button disabled={user?.is_eventbrite_linked}>
-              {(user?.is_eventbrite_linked ?? false)
-                ? 'Eventbrite linked!'
-                : 'Link Eventbrite'}
-            </Button>
-          </a>
+        <div className="bg-card text-card-foreground flex flex-col gap-4 rounded-lg p-8 shadow-lg">
+          <h2 className="text-lg font-medium">Connections</h2>
+          <div className="flex items-center justify-between gap-4">
+            <span>Discord</span>
+            {(user?.is_discord_linked ?? false) ? (
+              <span className="text-sm font-medium text-green-600">Linked</span>
+            ) : (
+              <Button
+                className="bg-[#5865F2] text-white hover:bg-[#4752c4]"
+                onClick={redirectToDiscordLink}
+              >
+                <FaDiscord />
+                Link Discord
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span>Eventbrite</span>
+            <a
+              href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
+            >
+              <Button disabled={user?.is_eventbrite_linked}>
+                {(user?.is_eventbrite_linked ?? false)
+                  ? 'Eventbrite linked!'
+                  : 'Link Eventbrite'}
+              </Button>
+            </a>
+          </div>
         </div>
       </div>
     </Page>
