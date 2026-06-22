@@ -23,6 +23,7 @@ import { Provider } from 'react-redux';
 import AccountPage from './pages/AccountPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
 import DiscordCallbackPage from './pages/DiscordCallbackPage';
+import DiscordLinkPage from './pages/DiscordLinkPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
 import { store } from './store/store';
@@ -39,6 +40,7 @@ const App = (): ReactNode => {
             path="/auth/discord/callback"
             element={<DiscordCallbackPage />}
           />
+          <Route path="/auth/discord/link" element={<DiscordLinkPage />} />
           <Route path="/organizer" element={<OrganizerDashboard />} />
           <Route path="/new-meetup" element={<NewMeetupPage />} />
           <Route

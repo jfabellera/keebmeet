@@ -169,12 +169,29 @@ interface DiscordUser {
 }
 
 /**
+ * Payload of the short-lived token issued when a Discord login matches an
+ * existing (unlinked) account by email. It carries the server-verified Discord
+ * ID through the round trip so the client cannot forge which Discord account is
+ * being linked. The user must sign in (see {@link discordLink}) before the link
+ * is committed.
+ */
+interface LinkTokenData {
+  discord_id: string;
+  email: string;
+  purpose: 'discord_link';
+}
+
+const LINK_TOKEN_TTL = '10m';
+
+/**
  * Exchanges a Discord OAuth2 authorization code for the user's Discord profile,
  * then logs them in by issuing an MMS JWT.
  *
  * The user is resolved in priority order:
  *   1. An existing account already linked to this Discord ID.
- *   2. An existing account with a matching email (auto-linked to Discord).
+ *   2. An existing account with a matching email — the caller is asked to
+ *      confirm and sign in before linking (see {@link discordLink}); a signed
+ *      link token is returned instead of a session.
  *   3. A brand new account created from the Discord profile.
  */
 export const discordLogin = async (
@@ -224,12 +241,26 @@ export const discordLogin = async (
   // 1. Already linked to this Discord account
   let user = await User.findOneBy({ discord_id: discordId });
 
-  // 2. Auto-link to an existing account with the same email
+  // 2. An account with this email already exists but isn't linked to Discord.
+  // Don't auto-link or log in: ask the caller to confirm and sign in first.
+  // Hand back a signed link token carrying the verified Discord ID.
   if (user == null && email != null) {
-    user = await User.findOne({ where: { email: ILike(email) } });
-    if (user != null) {
-      user.discord_id = discordId;
-      await user.save();
+    const existingUser = await User.findOne({ where: { email: ILike(email) } });
+    if (existingUser != null) {
+      const linkTokenData: LinkTokenData = {
+        discord_id: discordId,
+        email: existingUser.email,
+        purpose: 'discord_link',
+      };
+      const linkToken = jwt.sign(linkTokenData, config.jwtSecret, {
+        expiresIn: LINK_TOKEN_TTL,
+      });
+
+      return res.status(200).json({
+        requiresLink: true,
+        email: existingUser.email,
+        linkToken,
+      });
     }
   }
 
@@ -258,4 +289,76 @@ export const discordLogin = async (
   }
 
   return res.status(201).json({ token: signToken(user) });
+};
+
+/**
+ * Completes Discord linking after the user confirms and signs in.
+ *
+ * Verifies the credentials (as in {@link login}), validates the signed link
+ * token issued by {@link discordLogin}, and — only if the authenticated account
+ * matches the token's email and the Discord ID isn't already claimed — links the
+ * Discord ID and issues a session token.
+ */
+export const discordLink = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { email, password, linkToken } = req.body;
+
+  if (linkToken == null) {
+    return res.status(400).json({ message: 'Missing link token.' });
+  }
+
+  let linkTokenData: LinkTokenData;
+  try {
+    linkTokenData = jwt.verify(linkToken, config.jwtSecret) as LinkTokenData;
+  } catch {
+    return res
+      .status(401)
+      .json({ message: 'Link request has expired. Please try again.' });
+  }
+
+  if (linkTokenData.purpose !== 'discord_link') {
+    return res.status(401).json({ message: 'Invalid link token.' });
+  }
+
+  // Authenticate the user with their existing credentials.
+  const existingUser = await User.findOne({
+    where: { email: ILike(email) },
+  });
+
+  if (existingUser == null || existingUser.password_hash == null) {
+    return res.status(401).json({ message: 'Invalid email or password.' });
+  }
+
+  const isAuthenticated = await bcrypt.compare(
+    password,
+    existingUser.password_hash
+  );
+
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: 'Invalid email or password.' });
+  }
+
+  // The signed-in account must be the one the link token was issued for.
+  if (existingUser.email.toLowerCase() !== linkTokenData.email.toLowerCase()) {
+    return res
+      .status(401)
+      .json({ message: 'This Discord account cannot be linked to this user.' });
+  }
+
+  // Don't steal a Discord ID already linked to another account.
+  const discordOwner = await User.findOneBy({
+    discord_id: linkTokenData.discord_id,
+  });
+  if (discordOwner != null && discordOwner.id !== existingUser.id) {
+    return res.status(409).json({
+      message: 'This Discord account is already linked to another user.',
+    });
+  }
+
+  existingUser.discord_id = linkTokenData.discord_id;
+  await existingUser.save();
+
+  return res.status(201).json({ token: signToken(existingUser) });
 };

@@ -3,6 +3,7 @@ import config from './config';
 import {
   createUser,
   deleteUser,
+  discordLink,
   discordLogin,
   login,
   updateUser,
@@ -53,6 +54,7 @@ class AuthServer {
 
     this.express.post('/login', login as RequestHandler);
     this.express.post('/oauth2/discord', discordLogin as RequestHandler);
+    this.express.post('/oauth2/discord/link', discordLink as RequestHandler);
 
     this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');

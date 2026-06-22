@@ -21,6 +21,23 @@ export interface RegisterPayload {
   password: string;
 }
 
+export interface DiscordLinkPayload {
+  email: string;
+  password: string;
+  linkToken: string;
+}
+
+/**
+ * Returned by {@link discordLogin} when the Discord account's email matches an
+ * existing, unlinked MMS account. The user must confirm and sign in (via
+ * {@link discordLink}) before the accounts are linked.
+ */
+export interface DiscordLinkRequired {
+  requiresLink: true;
+  email: string;
+  linkToken: string;
+}
+
 interface User {
   token: string;
   id: number;
@@ -75,6 +92,46 @@ export const discordLogin = createAsyncThunk(
       const response = await axios.post(`${config.authUrl}/oauth2/discord`, {
         code,
       });
+      const { data } = response;
+
+      // An account with this email already exists but isn't linked to Discord.
+      // Surface the link request instead of logging in.
+      if (data.requiresLink === true) {
+        return {
+          requiresLink: true,
+          email: data.email,
+          linkToken: data.linkToken,
+        } satisfies DiscordLinkRequired;
+      }
+
+      localStorage.setItem('token', data.token);
+
+      return getUserFromToken(data.token);
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
+ * Thunk for linking a Discord account to an existing MMS account.
+ *
+ * Called after the user confirms linking and signs in. Sends the credentials
+ * along with the link token from {@link discordLogin}; on success the accounts
+ * are linked and a session token is stored.
+ */
+export const discordLink = createAsyncThunk(
+  'auth/discordLink',
+  async (payload: DiscordLinkPayload, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${config.authUrl}/oauth2/discord/link`,
+        payload
+      );
       const { data } = response;
 
       localStorage.setItem('token', data.token);
@@ -191,11 +248,30 @@ const authSlice = createSlice({
       })
       .addCase(discordLogin.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
+        state.error = null;
+        // Linking required: not logged in yet, the user must sign in to confirm.
+        if (action.payload?.requiresLink === true) {
+          return;
+        }
+        state.user = action.payload;
+        state.isLoggedIn = true;
+      })
+      .addCase(discordLogin.rejected, (state, action: PayloadAction<any>) => {
+        state.loading = false;
+        state.user = null;
+        state.isLoggedIn = false;
+        state.error = action.payload;
+      })
+      .addCase(discordLink.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(discordLink.fulfilled, (state, action: PayloadAction<any>) => {
+        state.loading = false;
         state.user = action.payload;
         state.isLoggedIn = true;
         state.error = null;
       })
-      .addCase(discordLogin.rejected, (state, action: PayloadAction<any>) => {
+      .addCase(discordLink.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.user = null;
         state.isLoggedIn = false;

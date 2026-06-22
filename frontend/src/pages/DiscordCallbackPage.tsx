@@ -26,6 +26,18 @@ const DiscordCallbackPage = (): ReactNode => {
         const action = await dispatch(discordLogin(code));
 
         if (discordLogin.fulfilled.match(action)) {
+          const payload = action.payload;
+          // An account with this email already exists; ask the user to confirm
+          // and sign in before linking.
+          if (payload != null && 'requiresLink' in payload) {
+            void navigate('/auth/discord/link', {
+              state: {
+                email: payload.email,
+                linkToken: payload.linkToken,
+              },
+            });
+            return;
+          }
           void navigate('/');
         } else {
           toast.error('Error', {
