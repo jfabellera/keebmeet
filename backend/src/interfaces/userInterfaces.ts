@@ -8,4 +8,6 @@ export interface User {
   is_organizer: boolean;
   is_eventbrite_linked: boolean;
   is_discord_linked: boolean;
+  // Resolved from the Discord API at request time; only populated by getUser.
+  discord_username?: string | null;
 }

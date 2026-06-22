@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express';
 import { User } from '../entity/User';
 import { type User as UserInterface } from '../interfaces/userInterfaces';
+import { fetchDiscordUsername } from '../util/discord';
 
 export const getAllUsers = async (
   req: Request,
@@ -50,6 +51,11 @@ export const getUser = async (
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
     is_discord_linked: user.discord_id != null,
   };
+
+  // Resolve the current Discord handle from the Discord API (not stored).
+  if (user.discord_id != null) {
+    response.discord_username = await fetchDiscordUsername(user.discord_id);
+  }
 
   return res.json(response);
 };

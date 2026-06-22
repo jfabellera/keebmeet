@@ -153,7 +153,16 @@ const AccountPage = (): ReactNode => {
           <div className="flex items-center justify-between gap-4">
             <span>Discord</span>
             {(user?.is_discord_linked ?? false) ? (
-              <span className="text-sm font-medium text-green-600">Linked</span>
+              <div className="flex items-center gap-2">
+                {user?.discord_username != null ? (
+                  <span className="text-foreground/70 text-sm">
+                    @{user.discord_username}
+                  </span>
+                ) : null}
+                <span className="text-sm font-medium text-green-600">
+                  Linked
+                </span>
+              </div>
             ) : (
               <Button
                 className="bg-[#5865F2] text-white hover:bg-[#4752c4]"
