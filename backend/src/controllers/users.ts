@@ -18,6 +18,7 @@ export const getAllUsers = async (
       is_admin: user.is_admin,
       is_organizer: user.is_organizer,
       is_eventbrite_linked: user.encrypted_eventbrite_token != null,
+      is_discord_linked: user.discord_id != null,
     } satisfies UserInterface;
   });
 
@@ -47,6 +48,7 @@ export const getUser = async (
     is_admin: user.is_admin,
     is_organizer: user.is_organizer,
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
+    is_discord_linked: user.discord_id != null,
   };
 
   return res.json(response);

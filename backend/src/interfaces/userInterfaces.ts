@@ -7,4 +7,5 @@ export interface User {
   is_admin: boolean;
   is_organizer: boolean;
   is_eventbrite_linked: boolean;
+  is_discord_linked: boolean;
 }
