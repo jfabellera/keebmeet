@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express';
 import { User } from '../entity/User';
 import { type User as UserInterface } from '../interfaces/userInterfaces';
+import { fetchDiscordUsername } from '../util/discord';
 
 export const getAllUsers = async (
   req: Request,
@@ -11,12 +12,14 @@ export const getAllUsers = async (
   const response: UserInterface[] = users.map((user): UserInterface => {
     return {
       id: user.id,
+      email: user.email,
       display_name: user.nick_name,
       first_name: user.first_name,
       last_name: user.last_name,
       is_admin: user.is_admin,
       is_organizer: user.is_organizer,
       is_eventbrite_linked: user.encrypted_eventbrite_token != null,
+      is_discord_linked: user.discord_id != null,
     } satisfies UserInterface;
   });
 
@@ -39,13 +42,20 @@ export const getUser = async (
 
   const response: UserInterface = {
     id: user.id,
+    email: user.email,
     display_name: user.nick_name,
     first_name: user.first_name,
     last_name: user.last_name,
     is_admin: user.is_admin,
     is_organizer: user.is_organizer,
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
+    is_discord_linked: user.discord_id != null,
   };
+
+  // Resolve the current Discord handle from the Discord API (not stored).
+  if (user.discord_id != null) {
+    response.discord_username = await fetchDiscordUsername(user.discord_id);
+  }
 
   return res.json(response);
 };

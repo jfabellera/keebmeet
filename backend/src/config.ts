@@ -21,6 +21,7 @@ interface Config {
   eventbriteClientSecret: string;
   discordClientId: string;
   discordClientSecret: string;
+  discordBotToken: string;
   discordRedirectUri: string;
   apiUrl: string;
   socketUrl: string;
@@ -45,6 +46,7 @@ const config: Config = {
   eventbriteClientSecret: process.env.EVENTBRITE_CLIENT_SECRET ?? '',
   discordClientId: process.env.DISCORD_CLIENT_ID ?? '',
   discordClientSecret: process.env.DISCORD_CLIENT_SECRET ?? '',
+  discordBotToken: process.env.DISCORD_BOT_TOKEN ?? '',
   discordRedirectUri:
     process.env.DISCORD_REDIRECT_URI ??
     'http://localhost:5173/auth/discord/callback',
