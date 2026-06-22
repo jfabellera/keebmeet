@@ -11,6 +11,7 @@ export const getAllUsers = async (
   const response: UserInterface[] = users.map((user): UserInterface => {
     return {
       id: user.id,
+      email: user.email,
       display_name: user.nick_name,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -39,6 +40,7 @@ export const getUser = async (
 
   const response: UserInterface = {
     id: user.id,
+    email: user.email,
     display_name: user.nick_name,
     first_name: user.first_name,
     last_name: user.last_name,

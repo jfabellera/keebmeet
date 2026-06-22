@@ -41,6 +41,7 @@ const AccountPage = (): ReactNode => {
   const formik = useFormik({
     // Prefilled from the fetched user; reinitialised once it loads.
     initialValues: {
+      email: user?.email ?? '',
       firstName: user?.first_name ?? '',
       lastName: user?.last_name ?? '',
       displayName: user?.display_name ?? '',
@@ -68,6 +69,7 @@ const AccountPage = (): ReactNode => {
             // also clears touched/errors so no stale validation messages show.
             formik.resetForm({
               values: {
+                email: values.email,
                 firstName: values.firstName,
                 lastName: values.lastName,
                 displayName: values.displayName,
@@ -91,6 +93,13 @@ const AccountPage = (): ReactNode => {
         <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
             <div className="flex flex-col gap-4">
+              <FormField
+                formik={formik}
+                name="email"
+                label="Email address"
+                type="email"
+                disabled
+              />
               <div className="flex flex-row gap-2">
                 <FormField
                   formik={formik}
