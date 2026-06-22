@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
-import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -64,24 +64,24 @@ const LoginPage = (): ReactNode => {
           <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={handleSubmit}>
               <div className="flex flex-col gap-4">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="email">Email</Label>
+                <Field>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
                   <Input
                     id="email"
                     type="email"
                     name="email"
                     onChange={handleChange}
                   />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="password">Password</Label>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
                   <Input
                     id="password"
                     type="password"
                     name="password"
                     onChange={handleChange}
                   />
-                </div>
+                </Field>
                 {loginFailed ? (
                   <p className="text-destructive text-center text-sm">
                     Invalid email or password

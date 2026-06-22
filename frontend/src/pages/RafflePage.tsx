@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -402,8 +403,8 @@ const RafflePage = (): ReactNode => {
           </SheetHeader>
           <div className="flex flex-col gap-6 px-4 pb-4">
             {/* TODO(jan): Implement logic */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="rollQuantity">Roll quantity</Label>
+            <Field>
+              <FieldLabel htmlFor="rollQuantity">Roll quantity</FieldLabel>
               <Input
                 id="rollQuantity"
                 type="number"
@@ -411,7 +412,7 @@ const RafflePage = (): ReactNode => {
                 value={formik.values.rollQuantity}
                 onChange={formik.handleChange}
               />
-            </div>
+            </Field>
 
             <div className="flex items-center gap-3">
               <Label htmlFor="displayOnRoll" className="mb-0">

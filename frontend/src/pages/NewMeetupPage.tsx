@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FieldError } from '@/components/ui/field-error';
-import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -86,161 +86,48 @@ const NewMeetupPage = (): ReactNode => {
                 >
                   Use Eventbrite
                 </span>
-                <div className="grid min-w-0 gap-1.5">
-                  <Label htmlFor="name">Meetup Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    name="name"
-                    aria-invalid={
-                      formik.errors.name != null && formik.touched.name
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
+                <FormField formik={formik} name="name" label="Meetup Name" />
+
+                <div className="flex gap-2">
+                  <FormField
+                    formik={formik}
+                    name="date"
+                    label="Date"
+                    type="date"
+                    className="flex-1"
                   />
-                  <FieldError
-                    show={formik.errors.name != null && formik.touched.name}
-                  >
-                    {formik.errors.name}
-                  </FieldError>
+                  <FormField
+                    formik={formik}
+                    name="startTime"
+                    label="Start Time"
+                    type="time"
+                    className="flex-1"
+                  />
                 </div>
 
                 <div className="flex gap-2">
-                  <div className="grid min-w-0 flex-1 gap-1.5">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      name="date"
-                      aria-invalid={
-                        formik.errors.date != null && formik.touched.date
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={formik.errors.date != null && formik.touched.date}
-                    >
-                      {formik.errors.date}
-                    </FieldError>
-                  </div>
-
-                  <div className="grid min-w-0 flex-1 gap-1.5">
-                    <Label htmlFor="startTime">Start Time</Label>
-                    <Input
-                      id="startTime"
-                      type="time"
-                      name="startTime"
-                      aria-invalid={
-                        formik.errors.startTime != null &&
-                        formik.touched.startTime
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={
-                        formik.errors.startTime != null &&
-                        formik.touched.startTime
-                      }
-                    >
-                      {formik.errors.startTime}
-                    </FieldError>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="grid min-w-0 flex-1 gap-1.5">
-                    <Label htmlFor="duration">Duration (hours)</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      name="duration"
-                      aria-invalid={
-                        formik.errors.duration != null &&
-                        formik.touched.duration
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={
-                        formik.errors.duration != null &&
-                        formik.touched.duration
-                      }
-                    >
-                      {formik.errors.duration}
-                    </FieldError>
-                  </div>
-
-                  <div className="grid min-w-0 flex-1 gap-1.5">
-                    <Label htmlFor="capacity">Capacity</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      name="capacity"
-                      aria-invalid={
-                        formik.errors.capacity != null &&
-                        formik.touched.capacity
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={
-                        formik.errors.capacity != null &&
-                        formik.touched.capacity
-                      }
-                    >
-                      {formik.errors.capacity}
-                    </FieldError>
-                  </div>
-                </div>
-
-                <div className="grid min-w-0 gap-1.5">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    type="text"
-                    name="address"
-                    aria-invalid={
-                      formik.errors.address != null && formik.touched.address
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
+                  <FormField
+                    formik={formik}
+                    name="duration"
+                    label="Duration (hours)"
+                    type="number"
+                    className="flex-1"
                   />
-                  <FieldError
-                    show={
-                      formik.errors.address != null && formik.touched.address
-                    }
-                  >
-                    {formik.errors.address}
-                  </FieldError>
-                </div>
-
-                <div className="grid min-w-0 gap-1.5">
-                  <Label htmlFor="imageUrl">Image URL</Label>
-                  <Input
-                    id="imageUrl"
-                    type="text"
-                    name="imageUrl"
-                    aria-invalid={
-                      formik.errors.imageUrl != null && formik.touched.imageUrl
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
+                  <FormField
+                    formik={formik}
+                    name="capacity"
+                    label="Capacity"
+                    type="number"
+                    className="flex-1"
                   />
-                  <FieldError
-                    show={
-                      formik.errors.imageUrl != null && formik.touched.imageUrl
-                    }
-                  >
-                    {formik.errors.imageUrl}
-                  </FieldError>
                 </div>
 
-                <div className="grid min-w-0 gap-1.5">
-                  <Label htmlFor="description">Description</Label>
+                <FormField formik={formik} name="address" label="Address" />
+
+                <FormField formik={formik} name="imageUrl" label="Image URL" />
+
+                <Field>
+                  <FieldLabel htmlFor="description">Description</FieldLabel>
                   <Textarea
                     id="description"
                     name="description"
@@ -258,7 +145,7 @@ const NewMeetupPage = (): ReactNode => {
                   >
                     {formik.values.description.length} / 500
                   </p>
-                </div>
+                </Field>
 
                 <div className="flex items-center gap-2">
                   <Label htmlFor="hasRaffle" className="pr-4">
@@ -275,32 +162,14 @@ const NewMeetupPage = (): ReactNode => {
                   <span>Yes</span>
                 </div>
 
-                <div className="grid min-w-0 gap-1.5">
-                  <Label htmlFor="defaultRaffleEntries">
-                    Default raffle entries per attendee
-                  </Label>
-                  <Input
-                    id="defaultRaffleEntries"
-                    type="number"
-                    name="defaultRaffleEntries"
-                    disabled={!formik.values.hasRaffle}
-                    aria-invalid={
-                      formik.errors.defaultRaffleEntries != null &&
-                      formik.touched.defaultRaffleEntries
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    value={formik.values.defaultRaffleEntries}
-                  />
-                  <FieldError
-                    show={
-                      formik.errors.defaultRaffleEntries != null &&
-                      formik.touched.defaultRaffleEntries
-                    }
-                  >
-                    {formik.errors.defaultRaffleEntries}
-                  </FieldError>
-                </div>
+                <FormField
+                  formik={formik}
+                  name="defaultRaffleEntries"
+                  label="Default raffle entries per attendee"
+                  type="number"
+                  disabled={!formik.values.hasRaffle}
+                  value={formik.values.defaultRaffleEntries}
+                />
 
                 <Button type="submit" disabled={!formik.isValid} size="lg">
                   Create
