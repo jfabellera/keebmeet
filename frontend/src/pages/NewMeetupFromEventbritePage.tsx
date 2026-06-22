@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FieldError } from '@/components/ui/field-error';
-import { Input } from '@/components/ui/input';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -117,8 +117,8 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
     disabled,
   }: FormSelectProps): ReactNode => {
     return (
-      <div className="grid w-full gap-1.5">
-        <Label htmlFor={id}>{name}</Label>
+      <Field className="w-full">
+        <FieldLabel htmlFor={id}>{name}</FieldLabel>
         <Select
           value={Number.isNaN(value) ? '' : String(value)}
           onValueChange={(selected) => {
@@ -139,7 +139,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
               : null}
           </SelectContent>
         </Select>
-      </div>
+      </Field>
     );
   };
 
@@ -206,32 +206,15 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
                 <span>Yes</span>
               </div>
 
-              <div className="grid w-full min-w-0 gap-1.5">
-                <Label htmlFor="defaultRaffleEntries">
-                  Default raffle entries per attendee
-                </Label>
-                <Input
-                  id="defaultRaffleEntries"
-                  type="number"
-                  name="defaultRaffleEntries"
-                  disabled={!formik.values.hasRaffle}
-                  aria-invalid={
-                    formik.errors.defaultRaffleEntries != null &&
-                    formik.touched.defaultRaffleEntries
-                  }
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  value={formik.values.defaultRaffleEntries}
-                />
-                <FieldError
-                  show={
-                    formik.errors.defaultRaffleEntries != null &&
-                    formik.touched.defaultRaffleEntries
-                  }
-                >
-                  {formik.errors.defaultRaffleEntries}
-                </FieldError>
-              </div>
+              <FormField
+                formik={formik}
+                name="defaultRaffleEntries"
+                label="Default raffle entries per attendee"
+                type="number"
+                disabled={!formik.values.hasRaffle}
+                value={formik.values.defaultRaffleEntries}
+                className="w-full"
+              />
               <Button type={'submit'} disabled={!formik.isValid || isLoading}>
                 Submit
               </Button>

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
+import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
@@ -33,17 +33,6 @@ const RegisterSchema = Yup.object().shape({
     .oneOf([Yup.ref('password')], 'Passwords must match')
     .required('Required'),
 });
-
-const FieldError = ({
-  show,
-  children,
-}: {
-  show: boolean | undefined;
-  children?: ReactNode;
-}): ReactNode =>
-  show === true ? (
-    <p className="text-destructive text-right text-sm">{children}</p>
-  ) : null;
 
 const RegisterPage = (): ReactNode => {
   const dispatch = useAppDispatch();
@@ -87,137 +76,49 @@ const RegisterPage = (): ReactNode => {
             <form onSubmit={formik.handleSubmit} noValidate>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-row gap-2">
-                  <div className="grid flex-1 gap-1.5">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      name="firstName"
-                      aria-invalid={
-                        formik.errors.firstName != null &&
-                        formik.touched.firstName
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={
-                        formik.errors.firstName != null &&
-                        formik.touched.firstName
-                      }
-                    >
-                      {formik.errors.firstName}
-                    </FieldError>
-                  </div>
-                  <div className="grid flex-1 gap-1.5">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      name="lastName"
-                      aria-invalid={
-                        formik.errors.lastName != null &&
-                        formik.touched.lastName
-                      }
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                    />
-                    <FieldError
-                      show={
-                        formik.errors.lastName != null &&
-                        formik.touched.lastName
-                      }
-                    >
-                      {formik.errors.lastName}
-                    </FieldError>
-                  </div>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="nickName">Display Name</Label>
-                  <Input
-                    id="nickName"
-                    type="text"
-                    name="nickName"
-                    aria-invalid={
-                      formik.errors.nickName != null && formik.touched.nickName
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
+                  <FormField
+                    formik={formik}
+                    name="firstName"
+                    label="First Name"
+                    className="flex-1"
                   />
-                  <FieldError
-                    show={
-                      formik.errors.nickName != null && formik.touched.nickName
-                    }
-                  >
-                    {formik.errors.nickName}
-                  </FieldError>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="email">Email address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    name="email"
-                    aria-invalid={
-                      error === 409 ||
-                      (formik.errors.email != null && formik.touched.email)
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
+                  <FormField
+                    formik={formik}
+                    name="lastName"
+                    label="Last Name"
+                    className="flex-1"
                   />
-                  <FieldError
-                    show={
-                      error === 409 ||
-                      (formik.errors.email != null && formik.touched.email)
-                    }
-                  >
-                    {error === 409
-                      ? 'Email is already in use'
-                      : formik.errors.email}
-                  </FieldError>
                 </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    name="password"
-                    aria-invalid={
-                      formik.errors.password != null && formik.touched.password
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                  />
-                  <FieldError
-                    show={
-                      formik.errors.password != null && formik.touched.password
-                    }
-                  >
-                    {formik.errors.password}
-                  </FieldError>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    name="confirmPassword"
-                    aria-invalid={
-                      formik.errors.confirmPassword != null &&
-                      formik.touched.confirmPassword
-                    }
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                  />
-                  <FieldError
-                    show={
-                      formik.errors.confirmPassword != null &&
-                      formik.touched.confirmPassword
-                    }
-                  >
-                    {formik.errors.confirmPassword}
-                  </FieldError>
-                </div>
+                <FormField
+                  formik={formik}
+                  name="nickName"
+                  label="Display Name"
+                />
+                <FormField
+                  formik={formik}
+                  name="email"
+                  label="Email address"
+                  type="email"
+                  invalid={
+                    error === 409 ||
+                    (formik.errors.email != null && formik.touched.email)
+                  }
+                  message={
+                    error === 409 ? 'Email is already in use' : undefined
+                  }
+                />
+                <FormField
+                  formik={formik}
+                  name="password"
+                  label="Password"
+                  type="password"
+                />
+                <FormField
+                  formik={formik}
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type="password"
+                />
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <Label htmlFor="requestOrganizer" className="pr-4">
                     Are you an organizer?

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 interface FieldDisplayProps {
@@ -29,10 +29,13 @@ const EditableFormField = ({
   className,
 }: FieldDisplayProps): ReactNode => {
   return (
-    <div className={cn('max-w-sm min-w-0 py-2', className)}>
-      <Label htmlFor={id} className="mb-1 line-clamp-1">
+    <Field
+      data-invalid={isInvalid}
+      className={cn('max-w-sm min-w-0 py-2', className)}
+    >
+      <FieldLabel htmlFor={id} className="line-clamp-1">
         {name}
-      </Label>
+      </FieldLabel>
       {editable ? (
         <>
           <Input
@@ -44,16 +47,12 @@ const EditableFormField = ({
             onBlur={onBlur}
             defaultValue={value}
           />
-          {isInvalid === true && errorMessage != null ? (
-            <p className="text-destructive mt-1 text-right text-sm">
-              {errorMessage}
-            </p>
-          ) : null}
+          {isInvalid === true ? <FieldError>{errorMessage}</FieldError> : null}
         </>
       ) : (
         <p className="text-foreground/70">{value ?? 'N/A'}</p>
       )}
-    </div>
+    </Field>
   );
 };
 
