@@ -5,6 +5,7 @@ import {
   deleteUser,
   discordLink,
   discordLogin,
+  discordRegister,
   linkDiscordAccount,
   login,
   updateUser,
@@ -56,6 +57,10 @@ class AuthServer {
     this.express.post('/login', login as RequestHandler);
     this.express.post('/oauth2/discord', discordLogin as RequestHandler);
     this.express.post('/oauth2/discord/link', discordLink as RequestHandler);
+    this.express.post(
+      '/oauth2/discord/register',
+      discordRegister as RequestHandler
+    );
     this.express.post(
       '/oauth2/discord/link-account',
       authChecker() as RequestHandler,

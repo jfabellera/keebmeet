@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Page from '../components/Page/Page';
-import { discordLink } from '../store/authSlice';
+import { discordLink, discordRegister } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
 interface DiscordLinkState {
@@ -14,11 +14,13 @@ interface DiscordLinkState {
   linkToken: string;
 }
 
+type Mode = 'choose' | 'link' | 'create';
+
 /**
- * Asks the user to confirm linking their Discord account to an existing MMS
- * account (same email), then requires them to sign in before the link is
- * committed. Reached from {@link DiscordCallbackPage} with the email and link
- * token in the router location state.
+ * Reached from {@link DiscordCallbackPage} when a Discord login's email already
+ * belongs to an existing MMS account. The user chooses to either link Discord to
+ * that account (confirm + sign in) or create a new, separate account under a
+ * different email.
  */
 const DiscordLinkPage = (): ReactNode => {
   const location = useLocation();
@@ -27,9 +29,11 @@ const DiscordLinkPage = (): ReactNode => {
   const { loading } = useAppSelector((state) => state.user);
 
   const state = location.state as DiscordLinkState | null;
-  const [confirmed, setConfirmed] = useState<boolean>(false);
+  const [mode, setMode] = useState<Mode>('choose');
   const [password, setPassword] = useState<string>('');
   const [linkFailed, setLinkFailed] = useState<boolean>(false);
+  const [newEmail, setNewEmail] = useState<string>('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // No link context (e.g. direct navigation or a refresh): start over.
   useEffect(() => {
@@ -42,7 +46,7 @@ const DiscordLinkPage = (): ReactNode => {
     return null;
   }
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
+  const handleLink = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     setLinkFailed(false);
 
@@ -66,43 +70,77 @@ const DiscordLinkPage = (): ReactNode => {
       .catch(() => {});
   };
 
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    setCreateError(null);
+
+    dispatch(
+      discordRegister({
+        email: newEmail,
+        linkToken: state.linkToken,
+      })
+    )
+      .then((action) => {
+        if (discordRegister.fulfilled.match(action)) {
+          toast.success('Success', {
+            description: 'Your account has been created.',
+          });
+          void navigate('/');
+        } else {
+          setCreateError(
+            action.payload === 409
+              ? 'That email is already in use. Try another.'
+              : 'Unable to create account. Please try again.'
+          );
+        }
+      })
+      .catch(() => {});
+  };
+
   return (
     <Page>
       <div className="flex items-center justify-center p-4">
         <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
           <div className="flex flex-col items-center">
-            <h1 className="text-4xl font-bold">Link Discord account</h1>
+            <h1 className="text-4xl font-bold">
+              {mode === 'create' ? 'Create account' : 'Link Discord account'}
+            </h1>
           </div>
           <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
-            {!confirmed ? (
+            {mode === 'choose' ? (
               <div className="flex flex-col gap-4">
                 <p className="text-sm">
                   An account already exists for{' '}
-                  <span className="font-semibold">{state.email}</span>. Do you
-                  want to link your Discord account to it?
+                  <span className="font-semibold">{state.email}</span>. You can
+                  link your Discord account to it, or create a new account with a
+                  different email.
                 </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      void navigate('/login');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={() => {
-                      setConfirmed(true);
-                    }}
-                  >
-                    Link account
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => {
+                    setMode('link');
+                  }}
+                >
+                  Link to existing account
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setMode('create');
+                  }}
+                >
+                  Create a new account
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    void navigate('/login');
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit}>
+            ) : mode === 'link' ? (
+              <form onSubmit={handleLink}>
                 <div className="flex flex-col gap-4">
                   <p className="text-sm">
                     Sign in to confirm linking Discord to your account.
@@ -138,6 +176,54 @@ const DiscordLinkPage = (): ReactNode => {
                   <Button type="submit" disabled={loading}>
                     {loading ? <Loader2 className="animate-spin" /> : null}
                     Link and sign in
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMode('choose');
+                    }}
+                  >
+                    Back
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleCreate}>
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm">
+                    Enter a different email address to create a new, separate
+                    account.
+                  </p>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="newEmail">Email</Label>
+                    <Input
+                      id="newEmail"
+                      type="email"
+                      name="newEmail"
+                      value={newEmail}
+                      onChange={(event) => {
+                        setNewEmail(event.target.value);
+                      }}
+                    />
+                  </div>
+                  {createError != null ? (
+                    <p className="text-destructive text-center text-sm">
+                      {createError}
+                    </p>
+                  ) : null}
+                  <Button type="submit" disabled={loading}>
+                    {loading ? <Loader2 className="animate-spin" /> : null}
+                    Create account
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMode('choose');
+                    }}
+                  >
+                    Back
                   </Button>
                 </div>
               </form>

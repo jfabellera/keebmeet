@@ -178,6 +178,7 @@ interface DiscordUser {
 interface LinkTokenData {
   discord_id: string;
   email: string;
+  nick_name: string;
   purpose: 'discord_link';
 }
 
@@ -247,19 +248,27 @@ export const discordLogin = async (
 
   const discordId = String(discordUser.id);
   const email = discordUser.email;
+  const displayName = (
+    discordUser.global_name ??
+    discordUser.username ??
+    'Discord User'
+  ).slice(0, 30);
 
   // 1. Already linked to this Discord account
   let user = await User.findOneBy({ discord_id: discordId });
 
   // 2. An account with this email already exists but isn't linked to Discord.
-  // Don't auto-link or log in: ask the caller to confirm and sign in first.
-  // Hand back a signed link token carrying the verified Discord ID.
+  // Don't auto-link or log in: hand back a signed link token carrying the
+  // verified Discord ID. The caller can either confirm + sign in to link (see
+  // {@link discordLink}) or create a separate account with a different email
+  // (see {@link discordRegister}).
   if (user == null && email != null) {
     const existingUser = await User.findOne({ where: { email: ILike(email) } });
     if (existingUser != null) {
       const linkTokenData: LinkTokenData = {
         discord_id: discordId,
         email: existingUser.email,
+        nick_name: displayName,
         purpose: 'discord_link',
       };
       const linkToken = jwt.sign(linkTokenData, config.jwtSecret, {
@@ -281,12 +290,6 @@ export const discordLogin = async (
         .status(400)
         .json({ message: 'Discord account has no email address.' });
     }
-
-    const displayName = (
-      discordUser.global_name ??
-      discordUser.username ??
-      'Discord User'
-    ).slice(0, 30);
 
     user = User.create({
       email,
@@ -371,6 +374,70 @@ export const discordLink = async (
   await existingUser.save();
 
   return res.status(201).json({ token: signToken(existingUser) });
+};
+
+/**
+ * Creates a brand new account from a Discord login whose email already belongs
+ * to another account.
+ *
+ * Reached when {@link discordLogin} returns `requiresLink` and the user chooses
+ * to create a separate account instead of linking. The signed link token proves
+ * the Discord ID (and display name) were verified by Discord; the caller must
+ * supply a different, unused email for the new account.
+ */
+export const discordRegister = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { email, linkToken } = req.body;
+
+  if (linkToken == null) {
+    return res.status(400).json({ message: 'Missing link token.' });
+  }
+
+  if (email == null) {
+    return res.status(400).json({ message: 'An email address is required.' });
+  }
+
+  let linkTokenData: LinkTokenData;
+  try {
+    linkTokenData = jwt.verify(linkToken, config.jwtSecret) as LinkTokenData;
+  } catch {
+    return res
+      .status(401)
+      .json({ message: 'Link request has expired. Please try again.' });
+  }
+
+  if (linkTokenData.purpose !== 'discord_link') {
+    return res.status(401).json({ message: 'Invalid link token.' });
+  }
+
+  // The new account needs an email that isn't already in use.
+  const existingUser = await User.findOne({ where: { email: ILike(email) } });
+  if (existingUser != null) {
+    return res.status(409).json({ message: 'Email is taken.' });
+  }
+
+  // Don't steal a Discord ID already linked to another account.
+  const discordOwner = await User.findOneBy({
+    discord_id: linkTokenData.discord_id,
+  });
+  if (discordOwner != null) {
+    return res.status(409).json({
+      message: 'This Discord account is already linked to another user.',
+    });
+  }
+
+  const user = User.create({
+    email,
+    first_name: '',
+    last_name: '',
+    nick_name: linkTokenData.nick_name,
+    discord_id: linkTokenData.discord_id,
+  });
+  await user.save();
+
+  return res.status(201).json({ token: signToken(user) });
 };
 
 /**
