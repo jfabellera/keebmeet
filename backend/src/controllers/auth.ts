@@ -6,7 +6,11 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
-import { createUserSchema, editUserSchema } from '../util/validator';
+import {
+  createUserSchema,
+  editUserSchema,
+  verifyUserSchema,
+} from '../util/validator';
 
 export interface TokenData {
   id: number;
@@ -68,6 +72,40 @@ export const createUser = async (
   await sendVerificationEmail(newUser.email);
 
   return res.status(201).json(newUser);
+};
+
+export const verifyUser = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = verifyUserSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const { user_id } = req.params as Record<string, string>;
+
+  const user = await User.findOneBy({
+    id: parseInt(user_id),
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  // Verify OTP
+  const otp = req.body.otp;
+  // TODO(jan)
+
+  if (false) {
+    return res.status(400).json({ message: 'Invalid OTP.' });
+  }
+
+  user.is_verified = true;
+  await user.save();
+
+  return res.status(200).json({ message: 'User verified successfully.' });
 };
 
 export const updateUser = async (

@@ -85,6 +85,12 @@ export const createUserSchema = z.object({
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;
 
+export const verifyUserSchema = z.object({
+  otp: z.string().length(6, 'OTP must be 6 characters long'),
+});
+
+export type VerifyUserPayload = z.infer<typeof verifyUserSchema>;
+
 export const editUserSchema = z.object({
   email: z.string().email().optional(),
   first_name: z.string().optional(),
