@@ -6,6 +6,7 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
+import { generateOtp, verifyOtp } from '../util/otp';
 import {
   createUserSchema,
   editUserSchema,
@@ -69,7 +70,7 @@ export const createUser = async (
   });
   await newUser.save();
 
-  await sendVerificationEmail(newUser.email);
+  await sendVerificationEmail(newUser.email, generateOtp(newUser.id));
 
   return res.status(201).json(newUser);
 };
@@ -95,11 +96,13 @@ export const verifyUser = async (
   }
 
   // Verify OTP
-  const otp = req.body.otp;
-  // TODO(jan)
-
-  if (false) {
+  if (!verifyOtp(user.id, req.body.otp)) {
     return res.status(400).json({ message: 'Invalid OTP.' });
+  }
+
+  // Already verified: nothing to do.
+  if (user.is_verified) {
+    return res.status(200).json({ message: 'User already verified.' });
   }
 
   user.is_verified = true;

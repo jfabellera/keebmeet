@@ -10,6 +10,7 @@ jest.mock('../config', () => ({
   __esModule: true,
   default: {
     jwtSecret: 'test-secret',
+    otpSecret: 'test-otp-secret',
     discordClientId: 'client-id',
     discordClientSecret: 'client-secret',
     discordRedirectUri: 'http://localhost/cb',
@@ -34,12 +35,25 @@ jest.mock('../util/email', () => ({
   sendVerificationEmail: jest.fn(),
 }));
 
+// Control OTP generation/verification directly; the crypto itself is covered by
+// otp.test.ts.
+jest.mock('../util/otp', () => ({
+  __esModule: true,
+  generateOtp: jest.fn(() => '123456'),
+  verifyOtp: jest.fn(),
+}));
+
 import bcrypt from 'bcrypt';
 import { createUser, deleteUser, login, updateUser, verifyUser } from './auth';
 import { User } from '../entity/User';
+import { sendVerificationEmail } from '../util/email';
+import { generateOtp, verifyOtp } from '../util/otp';
 
 const mockedUser = jest.mocked(User);
 const mockedBcrypt = jest.mocked(bcrypt);
+const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
+const mockedGenerateOtp = jest.mocked(generateOtp);
+const mockedVerifyOtp = jest.mocked(verifyOtp);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -96,6 +110,9 @@ beforeEach(() => {
   // create() echoes its input back as a saveable row by default.
   mockedUser.create.mockImplementation((attrs: any) => fakeUser(attrs) as never);
   (mockedBcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
+  mockedGenerateOtp.mockReturnValue('123456');
+  // Default to a valid OTP; individual tests override as needed.
+  mockedVerifyOtp.mockReturnValue(true);
 });
 
 // ---- createUser ------------------------------------------------------------
@@ -137,6 +154,20 @@ describe('createUser', () => {
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('emails a freshly generated verification code on success', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    const created = res.body as any;
+    expect(mockedGenerateOtp).toHaveBeenCalledWith(created.id);
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      'new@example.com',
+      '123456'
+    );
   });
 });
 
@@ -282,21 +313,15 @@ describe('deleteUser', () => {
 // ---- verifyUser ------------------------------------------------------------
 
 describe('verifyUser', () => {
-  // A correctly-formatted OTP (the schema requires exactly 6 characters). The
-  // accepted/rejected distinction depends on the OTP mechanism that is still a
-  // TODO in the controller — once that lands, ACCEPTED_OTP should be whatever
-  // the implementation treats as the user's valid code.
-  const ACCEPTED_OTP = '123456';
-  const REJECTED_OTP = '000000';
+  // A correctly-formatted OTP (the schema requires exactly 6 characters).
+  // Whether it is accepted is decided by the mocked verifyOtp, not the value.
+  const VALID_OTP = '123456';
 
   it('returns 404 when the user does not exist', async () => {
     mockedUser.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
 
-    await verifyUser(
-      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '99' }),
-      res
-    );
+    await verifyUser(mockRequest({ otp: VALID_OTP }, { user_id: '99' }), res);
 
     expect(res.statusCode).toBe(404);
     expect(res.body).toEqual({ message: 'Invalid user ID.' });
@@ -315,13 +340,12 @@ describe('verifyUser', () => {
   it('returns 400 when the OTP is incorrect', async () => {
     const target = fakeUser({ id: 1, is_verified: false });
     mockedUser.findOneBy.mockResolvedValue(target);
+    mockedVerifyOtp.mockReturnValue(false);
     const res = mockResponse();
 
-    await verifyUser(
-      mockRequest({ otp: REJECTED_OTP }, { user_id: '1' }),
-      res
-    );
+    await verifyUser(mockRequest({ otp: VALID_OTP }, { user_id: '1' }), res);
 
+    expect(mockedVerifyOtp).toHaveBeenCalledWith(1, VALID_OTP);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ message: 'Invalid OTP.' });
     expect(target.is_verified).toBe(false);
@@ -331,12 +355,10 @@ describe('verifyUser', () => {
   it('returns 200 when the OTP is accepted and the user is verified', async () => {
     const target = fakeUser({ id: 1, is_verified: false });
     mockedUser.findOneBy.mockResolvedValue(target);
+    mockedVerifyOtp.mockReturnValue(true);
     const res = mockResponse();
 
-    await verifyUser(
-      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
-      res
-    );
+    await verifyUser(mockRequest({ otp: VALID_OTP }, { user_id: '1' }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ message: 'User verified successfully.' });
@@ -345,12 +367,10 @@ describe('verifyUser', () => {
   it('marks is_verified and saves for a newly verified user', async () => {
     const target = fakeUser({ id: 1, is_verified: false });
     mockedUser.findOneBy.mockResolvedValue(target);
+    mockedVerifyOtp.mockReturnValue(true);
     const res = mockResponse();
 
-    await verifyUser(
-      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
-      res
-    );
+    await verifyUser(mockRequest({ otp: VALID_OTP }, { user_id: '1' }), res);
 
     expect(target.is_verified).toBe(true);
     expect(target.save).toHaveBeenCalled();
@@ -359,14 +379,13 @@ describe('verifyUser', () => {
   it('is a no-op when the user is already verified', async () => {
     const target = fakeUser({ id: 1, is_verified: true });
     mockedUser.findOneBy.mockResolvedValue(target);
+    mockedVerifyOtp.mockReturnValue(true);
     const res = mockResponse();
 
-    await verifyUser(
-      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
-      res
-    );
+    await verifyUser(mockRequest({ otp: VALID_OTP }, { user_id: '1' }), res);
 
     expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'User already verified.' });
     expect(target.is_verified).toBe(true);
     expect(target.save).not.toHaveBeenCalled();
   });

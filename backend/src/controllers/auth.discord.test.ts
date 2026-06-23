@@ -28,6 +28,13 @@ jest.mock('../entity/User', () => ({
 jest.mock('axios');
 jest.mock('bcrypt');
 
+// Stub the email module so importing the controller doesn't construct a real
+// Resend client (which throws without RESEND_API_KEY at module load).
+jest.mock('../util/email', () => ({
+  __esModule: true,
+  sendVerificationEmail: jest.fn(),
+}));
+
 import axios from 'axios';
 import bcrypt from 'bcrypt';
 import {
