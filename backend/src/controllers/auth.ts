@@ -250,6 +250,8 @@ interface DiscordUser {
   username: string;
   global_name: string | null;
   email: string | null;
+  /** Whether Discord has verified ownership of the email address. */
+  verified: boolean;
 }
 
 /**
@@ -331,7 +333,10 @@ export const discordLogin = async (
   }
 
   const discordId = String(discordUser.id);
-  const email = discordUser.email;
+  // Only trust the Discord email if Discord has verified ownership of it.
+  // Treating an unverified address as absent prevents it from matching an
+  // existing account or producing a verified SSO account.
+  const email = discordUser.verified ? discordUser.email : null;
   const displayName = (
     discordUser.global_name ??
     discordUser.username ??

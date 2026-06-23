@@ -75,6 +75,7 @@ type DiscordProfile = {
   username: string;
   global_name: string | null;
   email: string | null;
+  verified: boolean;
 };
 
 /** A fake User row with a stubbed save(). */
@@ -97,6 +98,7 @@ const DISCORD_PROFILE: DiscordProfile = {
   username: 'janediscord',
   global_name: 'Jane D',
   email: 'user@example.com',
+  verified: true,
 };
 
 /** Make exchangeCodeForDiscordUser() resolve to the given Discord profile. */
@@ -223,6 +225,34 @@ describe('discordLogin', () => {
     expect(res.body).toEqual({
       message: 'Discord account has no email address.',
     });
+  });
+
+  it('treats an unverified Discord email as absent (no new account)', async () => {
+    mockDiscordExchange({ ...DISCORD_PROFILE, verified: false });
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await discordLogin(mockRequest({ code: 'abc' }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      message: 'Discord account has no email address.',
+    });
+    expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('does not offer to link when the Discord email is unverified', async () => {
+    mockDiscordExchange({ ...DISCORD_PROFILE, verified: false });
+    mockedUser.findOneBy.mockResolvedValue(null); // not linked by discord_id
+    const res = mockResponse();
+
+    await discordLogin(mockRequest({ code: 'abc' }), res);
+
+    // An unverified email must not match an existing account, so no link token
+    // is issued (it falls through to the no-email branch instead).
+    expect(res.statusCode).toBe(400);
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
   });
 });
 
