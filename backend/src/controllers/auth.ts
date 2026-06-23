@@ -381,6 +381,9 @@ export const discordLogin = async (
       last_name: '',
       nick_name: displayName,
       discord_id: discordId,
+      // Discord supplies a verified email address, so no separate
+      // email-verification step is needed for SSO accounts.
+      is_verified: true,
     });
     await user.save();
   }
@@ -455,6 +458,9 @@ export const discordLink = async (
   }
 
   existingUser.discord_id = linkTokenData.discord_id;
+  // Linking matched this account by its email, which Discord has verified, so
+  // the account is now email-verified too.
+  existingUser.is_verified = true;
   await existingUser.save();
 
   return res.status(201).json({ token: signToken(existingUser) });

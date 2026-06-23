@@ -205,6 +205,7 @@ describe('discordLogin', () => {
         email: 'user@example.com',
         nick_name: 'Jane D',
         discord_id: '123456789',
+        is_verified: true,
       })
     );
     expect(res.statusCode).toBe(201);
@@ -355,6 +356,7 @@ describe('discordLink', () => {
     );
 
     expect(existing.discord_id).toBe('123456789');
+    expect(existing.is_verified).toBe(true);
     expect(existing.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
