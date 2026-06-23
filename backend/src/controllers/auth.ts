@@ -111,6 +111,32 @@ export const verifyUser = async (
   return res.status(200).json({ message: 'User verified successfully.' });
 };
 
+export const resendVerificationCode = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { user_id } = req.params as Record<string, string>;
+
+  const user = await User.findOneBy({
+    id: parseInt(user_id),
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  // Nothing to send to an already-verified user.
+  if (user.is_verified) {
+    return res.status(200).json({ message: 'User already verified.' });
+  }
+
+  // Stateless OTPs are derived from the current time window, so a resend within
+  // the same hour re-sends the still-valid code rather than minting a new one.
+  await sendVerificationEmail(user.email, generateOtp(user.id));
+
+  return res.status(200).json({ message: 'Verification code sent.' });
+};
+
 export const updateUser = async (
   req: Request,
   res: Response

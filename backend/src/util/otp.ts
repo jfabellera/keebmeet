@@ -45,10 +45,8 @@ const safeEqual = (a: string, b: string): boolean => {
 };
 
 /** Generates the current verification code for a user. */
-export const generateOtp = (
-  userId: number,
-  now: number = Date.now()
-): string => deriveOtp(userId, counterFor(now));
+export const generateOtp = (userId: number, now: number = Date.now()): string =>
+  deriveOtp(userId, counterFor(now));
 
 /**
  * Verifies a code for a user.

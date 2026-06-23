@@ -44,7 +44,14 @@ jest.mock('../util/otp', () => ({
 }));
 
 import bcrypt from 'bcrypt';
-import { createUser, deleteUser, login, updateUser, verifyUser } from './auth';
+import {
+  createUser,
+  deleteUser,
+  login,
+  resendVerificationCode,
+  updateUser,
+  verifyUser,
+} from './auth';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
 import { generateOtp, verifyOtp } from '../util/otp';
@@ -388,6 +395,49 @@ describe('verifyUser', () => {
     expect(res.body).toEqual({ message: 'User already verified.' });
     expect(target.is_verified).toBe(true);
     expect(target.save).not.toHaveBeenCalled();
+  });
+});
+
+// ---- resendVerificationCode ------------------------------------------------
+
+describe('resendVerificationCode', () => {
+  it('returns 404 when the user does not exist', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await resendVerificationCode(mockRequest({}, { user_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ message: 'Invalid user ID.' });
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not resend to an already-verified user', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, is_verified: true }));
+    const res = mockResponse();
+
+    await resendVerificationCode(mockRequest({}, { user_id: '1' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'User already verified.' });
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('emails a freshly generated code to an unverified user', async () => {
+    mockedUser.findOneBy.mockResolvedValue(
+      fakeUser({ id: 1, email: 'user@example.com', is_verified: false })
+    );
+    const res = mockResponse();
+
+    await resendVerificationCode(mockRequest({}, { user_id: '1' }), res);
+
+    expect(mockedGenerateOtp).toHaveBeenCalledWith(1);
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      'user@example.com',
+      '123456'
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'Verification code sent.' });
   });
 });
 
