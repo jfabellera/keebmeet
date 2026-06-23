@@ -229,6 +229,15 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     );
 
     if (isAuthenticated) {
+      // Block sign-in until the email is verified; hand back the user id so the
+      // client can offer to resend the verification email.
+      if (!existingUser.is_verified) {
+        return res.status(403).json({
+          message: 'Please verify your email before signing in.',
+          user_id: existingUser.id,
+        });
+      }
+
       return res.status(201).json({ token: signToken(existingUser) });
     }
   }

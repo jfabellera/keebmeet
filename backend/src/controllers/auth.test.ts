@@ -488,9 +488,34 @@ describe('login', () => {
     expect(res.body).toEqual({ message: 'Invalid email or password.' });
   });
 
+  it('returns 403 when the password is correct but the email is unverified', async () => {
+    mockedUser.findOne.mockResolvedValue(
+      fakeUser({ id: 7, is_verified: false })
+    );
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
+    const res = mockResponse();
+
+    await login(
+      mockRequest({ email: 'user@example.com', password: 'correct' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({
+      message: 'Please verify your email before signing in.',
+      user_id: 7,
+    });
+  });
+
   it('returns a signed session token on success', async () => {
     mockedUser.findOne.mockResolvedValue(
-      fakeUser({ id: 7, nick_name: 'jane', is_admin: true, is_organizer: false })
+      fakeUser({
+        id: 7,
+        nick_name: 'jane',
+        is_admin: true,
+        is_organizer: false,
+        is_verified: true,
+      })
     );
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     const res = mockResponse();
