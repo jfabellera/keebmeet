@@ -393,6 +393,17 @@ export const discordLogin = async (
     await user.save();
   }
 
+  // An account linked to this Discord ID but whose (self-chosen) email is not
+  // yet verified must verify before being granted a session. Accounts created
+  // straight from a verified Discord email are already verified above.
+  if (!user.is_verified) {
+    return res.status(200).json({
+      requiresVerification: true,
+      email: user.email,
+      user_id: user.id,
+    });
+  }
+
   return res.status(201).json({ token: signToken(user) });
 };
 
@@ -532,7 +543,16 @@ export const discordRegister = async (
   });
   await user.save();
 
-  return res.status(201).json({ token: signToken(user) });
+  // This email was supplied by the user, not verified by Discord, so verify it
+  // ourselves. No session is issued until the link is clicked (see verifyUser).
+  const token = generateVerificationToken(user.id);
+  await sendVerificationEmail(user.email, buildVerificationLink(token));
+
+  return res.status(201).json({
+    requiresVerification: true,
+    email: user.email,
+    user_id: user.id,
+  });
 };
 
 /**

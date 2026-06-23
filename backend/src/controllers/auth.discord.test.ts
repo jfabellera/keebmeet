@@ -35,6 +35,15 @@ jest.mock('../util/email', () => ({
   sendVerificationEmail: jest.fn(),
 }));
 
+jest.mock('../util/emailVerification', () => ({
+  __esModule: true,
+  generateVerificationToken: jest.fn(() => 'verify-token'),
+  buildVerificationLink: jest.fn(
+    (token: string) => `https://app.test/verify-email?token=${token}`
+  ),
+  verifyVerificationToken: jest.fn(),
+}));
+
 import axios from 'axios';
 import bcrypt from 'bcrypt';
 import {
@@ -44,10 +53,12 @@ import {
   linkDiscordAccount,
 } from './auth';
 import { User } from '../entity/User';
+import { sendVerificationEmail } from '../util/email';
 
 const mockedAxios = jest.mocked(axios);
 const mockedUser = jest.mocked(User);
 const mockedBcrypt = jest.mocked(bcrypt);
+const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -158,7 +169,7 @@ describe('discordLogin', () => {
 
   it('logs in an account already linked to the Discord ID', async () => {
     mockDiscordExchange();
-    const existing = fakeUser({ discord_id: '123456789' });
+    const existing = fakeUser({ discord_id: '123456789', is_verified: true });
     mockedUser.findOneBy.mockResolvedValue(existing);
     const res = mockResponse();
 
@@ -167,6 +178,22 @@ describe('discordLogin', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
     expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('asks an already-linked but unverified account to verify first', async () => {
+    mockDiscordExchange();
+    mockedUser.findOneBy.mockResolvedValue(
+      fakeUser({ id: 5, discord_id: '123456789', is_verified: false })
+    );
+    const res = mockResponse();
+
+    await discordLogin(mockRequest({ code: 'abc' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(
+      expect.objectContaining({ requiresVerification: true, user_id: 5 })
+    );
+    expect(res.body).not.toHaveProperty('token');
   });
 
   it('asks to link when the email matches an existing account', async () => {
@@ -447,7 +474,7 @@ describe('discordRegister', () => {
     expect(res.statusCode).toBe(409);
   });
 
-  it('creates a separate account on success', async () => {
+  it('creates a separate account and sends a verification email', async () => {
     mockedUser.findOne.mockResolvedValue(null);
     mockedUser.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
@@ -470,8 +497,24 @@ describe('discordRegister', () => {
         discord_id: '123456789',
       })
     );
+    // The self-supplied email is not Discord-verified, so it must not be
+    // trusted: no session is issued and a verification email is sent instead.
+    expect(mockedUser.create.mock.calls[0][0]).not.toHaveProperty(
+      'is_verified',
+      true
+    );
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      'new@example.com',
+      'https://app.test/verify-email?token=verify-token'
+    );
     expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('token');
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        requiresVerification: true,
+        email: 'new@example.com',
+      })
+    );
+    expect(res.body).not.toHaveProperty('token');
   });
 });
 

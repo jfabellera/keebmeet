@@ -82,10 +82,13 @@ const DiscordLinkPage = (): ReactNode => {
     )
       .then((action) => {
         if (discordRegister.fulfilled.match(action)) {
-          toast.success('Success', {
-            description: 'Your account has been created.',
+          toast.success('Account created', {
+            description:
+              'Check your email for a link to verify your account before signing in.',
           });
-          void navigate('/');
+          void navigate('/login', {
+            state: { unverifiedUserId: action.payload.userId },
+          });
         } else {
           setCreateError(
             action.payload === 409

@@ -65,6 +65,16 @@ const DiscordCallbackPage = (): ReactNode => {
             });
             return;
           }
+          // The account exists but its email isn't verified yet.
+          if (payload != null && 'requiresVerification' in payload) {
+            toast.error('Verify your email', {
+              description: 'Please verify your email address before signing in.',
+            });
+            void navigate('/login', {
+              state: { unverifiedUserId: payload.userId },
+            });
+            return;
+          }
           void navigate('/');
         } else {
           toast.error('Error', {
