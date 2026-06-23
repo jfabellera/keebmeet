@@ -41,4 +41,7 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', length: 96, nullable: true })
   encrypted_eventbrite_token?: string;
+
+  @Column({ type: 'boolean', default: false })
+  is_verified: boolean;
 }

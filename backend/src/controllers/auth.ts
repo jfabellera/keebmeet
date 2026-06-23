@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
+import { sendVerificationEmail } from '../util/email';
 import { createUserSchema, editUserSchema } from '../util/validator';
 
 export interface TokenData {
@@ -63,6 +64,8 @@ export const createUser = async (
     password_hash,
   });
   await newUser.save();
+
+  await sendVerificationEmail(newUser.email);
 
   return res.status(201).json(newUser);
 };
