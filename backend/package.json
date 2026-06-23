@@ -10,7 +10,8 @@
     "devAuth": "ts-node-dev --respawn -r dotenv/config ./src/AuthServer.ts",
     "devSocket": "ts-node-dev --respawn -r dotenv/config ./src/SocketServer.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "test:ci": "jest --ci --reporters=default --reporters=jest-junit"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -20,6 +21,7 @@
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
     "jest": "^30.4.2",
+    "jest-junit": "^16.0.0",
     "ts-jest": "^29.4.11",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.0"
