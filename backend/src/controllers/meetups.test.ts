@@ -1,0 +1,631 @@
+/// <reference types="jest" />
+import { type Request, type Response } from 'express';
+
+// ---- Mocks -----------------------------------------------------------------
+
+jest.mock('../Server', () => ({ socket: { emit: jest.fn() } }));
+
+jest.mock('../config', () => ({
+  __esModule: true,
+  default: { apiUrl: 'http://api.test' },
+}));
+
+jest.mock('../entity/Meetup', () => ({
+  Meetup: {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    findOneBy: jest.fn(),
+    count: jest.fn(),
+    create: jest.fn(),
+  },
+}));
+jest.mock('../entity/EventbriteRecord', () => ({
+  EventbriteRecord: { create: jest.fn() },
+}));
+jest.mock('../entity/MeetupDisplayRecord', () => ({
+  MeetupDisplayRecord: { create: jest.fn() },
+}));
+jest.mock('../entity/Ticket', () => ({
+  Ticket: { count: jest.fn() },
+}));
+
+jest.mock('../util/eventbriteApi', () => ({
+  createEventbriteWebhook: jest.fn(),
+  getEventbriteAttendees: jest.fn(),
+  getEventbriteEvent: jest.fn(),
+  getEventbriteTicket: jest.fn(),
+  getEventbriteVenue: jest.fn(),
+}));
+jest.mock('../util/externalApis', () => ({
+  geocode: jest.fn(),
+  getUtcOffset: jest.fn(),
+}));
+jest.mock('../util/security', () => ({
+  decrypt: jest.fn((value: string) => `decrypted(${value})`),
+}));
+jest.mock('./tickets', () => ({
+  syncEventbriteAttendee: jest.fn(),
+}));
+
+import {
+  createMeetup,
+  createMeetupFromEventbrite,
+  deleteMeetup,
+  getAllMeetups,
+  getMeetup,
+  getMeetupAttendees,
+  getMeetupDisplayAssets,
+  syncEventbriteAttendees,
+  updateMeetup,
+} from './meetups';
+import { socket } from '../Server';
+import { Meetup } from '../entity/Meetup';
+import { EventbriteRecord } from '../entity/EventbriteRecord';
+import { Ticket } from '../entity/Ticket';
+import {
+  createEventbriteWebhook,
+  getEventbriteAttendees,
+  getEventbriteEvent,
+  getEventbriteTicket,
+  getEventbriteVenue,
+} from '../util/eventbriteApi';
+import { geocode, getUtcOffset } from '../util/externalApis';
+
+const mockedMeetup = jest.mocked(Meetup);
+const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
+const mockedTicket = jest.mocked(Ticket);
+const mockedSocket = jest.mocked(socket);
+const mockedGeocode = jest.mocked(geocode);
+const mockedGetUtcOffset = jest.mocked(getUtcOffset);
+const mockedGetEvent = jest.mocked(getEventbriteEvent);
+const mockedGetVenue = jest.mocked(getEventbriteVenue);
+const mockedGetTicket = jest.mocked(getEventbriteTicket);
+const mockedGetAttendees = jest.mocked(getEventbriteAttendees);
+const mockedCreateWebhook = jest.mocked(createEventbriteWebhook);
+
+// ---- Helpers ---------------------------------------------------------------
+
+type MockResponse = Response & { statusCode?: number; body?: unknown };
+
+const mockResponse = (): MockResponse => {
+  const res: any = {};
+  res.status = jest.fn().mockImplementation((code: number) => {
+    res.statusCode = code;
+    return res;
+  });
+  res.json = jest.fn().mockImplementation((body: unknown) => {
+    res.body = body;
+    return res;
+  });
+  res.end = jest.fn().mockImplementation(() => res);
+  res.locals = {};
+  return res as MockResponse;
+};
+
+const mockRequest = (
+  body: unknown = {},
+  params: Record<string, string> = {},
+  query: Record<string, unknown> = {}
+): Request => ({ body, params, query }) as unknown as Request;
+
+const fakeMeetupRow = (overrides = {}): any => ({
+  id: 10,
+  name: 'Tex Mechs',
+  date: '2026-07-01T18:00:00.000Z',
+  utc_offset: -5,
+  duration_hours: 3,
+  city: 'Austin',
+  state: 'TX',
+  country: 'US',
+  address: '123 Main St',
+  description: 'A meetup',
+  capacity: 100,
+  image_url: 'http://img',
+  organizers: [{ id: 1, nick_name: 'jane' }],
+  eventbriteRecord: null,
+  ...overrides,
+});
+
+const geocodeResult = {
+  fullAddress: '123 Main St, Austin, TX',
+  city: 'Austin',
+  state: 'TX',
+  country: 'US',
+  latitude: 30.26,
+  longitude: -97.74,
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockedMeetup.create.mockImplementation((attrs: any) => ({
+    organizers: [],
+    ...attrs,
+    save: jest.fn().mockResolvedValue(undefined),
+  }));
+  mockedEventbriteRecord.create.mockImplementation((attrs: any) => ({
+    ...attrs,
+    save: jest.fn().mockResolvedValue(undefined),
+  }));
+});
+
+// ---- getAllMeetups ---------------------------------------------------------
+
+describe('getAllMeetups', () => {
+  it('returns the simple shape by default (no ticket counts)', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest(), res);
+
+    const body = res.body as any[];
+    expect(body).toHaveLength(1);
+    expect(body[0].location.city).toBe('Austin');
+    expect(body[0].tickets).toBeUndefined();
+    expect(mockedTicket.count).not.toHaveBeenCalled();
+  });
+
+  it('includes ticket availability when detailed', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow({ capacity: 100 })]);
+    mockedTicket.count.mockResolvedValue(30);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { detail_level: 'detailed' }), res);
+
+    const body = res.body as any[];
+    expect(body[0].tickets).toEqual({ total: 100, available: 70 });
+    expect(body[0].organizers).toEqual(['jane']);
+  });
+});
+
+// ---- getMeetup -------------------------------------------------------------
+
+describe('getMeetup', () => {
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await getMeetup(mockRequest({}, { meetup_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('defaults to the detailed shape', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    mockedTicket.count.mockResolvedValue(10);
+    const res = mockResponse();
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    const body = res.body as any;
+    expect(body.tickets).toEqual({ total: 100, available: 90 });
+    expect(body.location.full_address).toBe('123 Main St');
+  });
+
+  it('honors detail_level=simple', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    const res = mockResponse();
+
+    await getMeetup(
+      mockRequest({}, { meetup_id: '10' }, { detail_level: 'simple' }),
+      res
+    );
+
+    expect((res.body as any).tickets).toBeUndefined();
+  });
+});
+
+// ---- createMeetup ----------------------------------------------------------
+
+const validCreateBody = (overrides = {}) => ({
+  name: 'Brand New Meetup',
+  date: '2026-08-01T18:00:00.000Z',
+  address: '500 Congress Ave',
+  duration_hours: 4,
+  capacity: 50,
+  image_url: 'http://img',
+  ...overrides,
+});
+
+describe('createMeetup', () => {
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await createMeetup(mockRequest({ name: 'x' }), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 409 when the name is taken', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({ message: 'Meetup name is taken.' });
+  });
+
+  it('returns 400 when geocoding fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockRejectedValue(new Error('bad address'));
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'bad address' });
+  });
+
+  it('creates the meetup with the requestor as organizer', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
+    expect(created.city).toBe('Austin');
+    expect(created.save).toHaveBeenCalled();
+  });
+});
+
+// ---- updateMeetup ----------------------------------------------------------
+
+describe('updateMeetup', () => {
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ capacity: -1 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOne.mockResolvedValueOnce(null); // target lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 5 }, { meetup_id: '99' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('updates simple fields and emits an update', async () => {
+    const meetup = fakeMeetupRow({ save: jest.fn().mockResolvedValue(undefined) });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 6, capacity: 200 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.duration_hours).toBe(6);
+    expect(meetup.capacity).toBe(200);
+    expect(meetup.save).toHaveBeenCalled();
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: 10,
+    });
+    expect(res.statusCode).toBe(201);
+  });
+
+  // BUG: the "name taken" guard matches the meetup being edited against itself,
+  // so re-saving a meetup while sending its current name always 409s. The guard
+  // should ignore the meetup whose id is being updated. Most edit forms submit
+  // the unchanged name, so this blocks routine edits. Remove `.failing` once the
+  // lookup excludes the current meetup id.
+  it.failing('allows saving a meetup with its own unchanged name', async () => {
+    const meetup = fakeMeetupRow({
+      id: 10,
+      name: 'Tex Mechs',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup (id 10)
+      .mockResolvedValueOnce(meetup); // name lookup returns the SAME meetup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ name: 'Tex Mechs', duration_hours: 6 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+  });
+});
+
+// ---- deleteMeetup ----------------------------------------------------------
+
+describe('deleteMeetup', () => {
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  // BUG: deleteMeetup re-fetches with `findOneBy`, which does NOT load the
+  // `organizers` relation, then reads `meetup.organizers[0].id` — that throws a
+  // TypeError (organizers is undefined), crashing every delete. It should either
+  // load the relation or reuse `res.locals.meetup` (authChecker already loaded
+  // it with organizers). These assert the intended authorization outcome; remove
+  // `.failing` once the relation is available.
+  it.failing('lets the head organizer delete the meetup', async () => {
+    // findOneBy realistically returns the row WITHOUT relations.
+    const meetup = {
+      id: 10,
+      organizers: undefined,
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+    res.locals.meetup = { id: 10, organizers: [{ id: 1 }] };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.statusCode).toBe(204);
+  });
+
+  it.failing('rejects a non-head organizer with 401', async () => {
+    const meetup = {
+      id: 10,
+      organizers: undefined,
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: 2 };
+    res.locals.meetup = { id: 10, organizers: [{ id: 1 }, { id: 2 }] };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+// ---- getMeetupAttendees ----------------------------------------------------
+
+describe('getMeetupAttendees', () => {
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await getMeetupAttendees(mockRequest({}, { meetup_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('maps tickets and includes checked_in_at only for checked-in tickets', async () => {
+    const checkedInAt = new Date('2026-07-01T19:00:00.000Z');
+    mockedMeetup.findOne.mockResolvedValue({
+      id: 10,
+      tickets: [
+        {
+          id: 1,
+          created_at: new Date('2026-06-01'),
+          is_checked_in: true,
+          checked_in_at: checkedInAt,
+          ticket_holder_display_name: 'eve',
+          ticket_holder_first_name: 'eve',
+          ticket_holder_last_name: 'stone',
+        },
+        {
+          id: 2,
+          created_at: new Date('2026-06-02'),
+          is_checked_in: false,
+          checked_in_at: null,
+          ticket_holder_display_name: 'sam',
+          ticket_holder_first_name: 'sam',
+          ticket_holder_last_name: 'lee',
+        },
+      ],
+    } as any);
+    const res = mockResponse();
+
+    await getMeetupAttendees(mockRequest({}, { meetup_id: '10' }), res);
+
+    const body = res.body as any[];
+    expect(body[0].checked_in_at).toBe(checkedInAt);
+    expect(body[1]).not.toHaveProperty('checked_in_at');
+  });
+});
+
+// ---- getMeetupDisplayAssets ------------------------------------------------
+
+describe('getMeetupDisplayAssets', () => {
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns nulls when there is no display record', async () => {
+    mockedMeetup.findOne.mockResolvedValue({ id: 10, displayRecord: null } as any);
+    const res = mockResponse();
+
+    await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.body).toEqual({
+      idleImageUrls: null,
+      raffleWinnerBackgroundImageUrl: null,
+      batchRaffleWinnerBackgroundImageUrl: null,
+    });
+  });
+
+  it('returns the stored display assets when present', async () => {
+    mockedMeetup.findOne.mockResolvedValue({
+      id: 10,
+      displayRecord: {
+        idle_image_urls: ['a', 'b'],
+        raffle_background_url: 'bg',
+        batch_raffle_background_url: 'batch-bg',
+      },
+    } as any);
+    const res = mockResponse();
+
+    await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.body).toEqual({
+      idleImageUrls: ['a', 'b'],
+      raffleWinnerBackgroundImageUrl: 'bg',
+      batchRaffleWinnerBackgroundImageUrl: 'batch-bg',
+    });
+  });
+});
+
+// ---- syncEventbriteAttendees -----------------------------------------------
+
+describe('syncEventbriteAttendees', () => {
+  it('returns 400 when the meetup has no Eventbrite record', async () => {
+    const res = mockResponse();
+    res.locals.meetup = { id: 10, eventbriteRecord: null };
+    res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
+
+    await syncEventbriteAttendees(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 400 when the requestor has no Eventbrite token', async () => {
+    const res = mockResponse();
+    res.locals.meetup = { id: 10, eventbriteRecord: { event_id: 1 } };
+    res.locals.requestor = { encrypted_eventbrite_token: null };
+
+    await syncEventbriteAttendees(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 500 when fetching attendees fails', async () => {
+    mockedGetAttendees.mockRejectedValue(new Error('eb down'));
+    const res = mockResponse();
+    res.locals.meetup = {
+      id: 10,
+      eventbriteRecord: {
+        event_id: 1,
+        ticket_class_id: 2,
+        display_name_question_id: 3,
+      },
+    };
+    res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
+
+    await syncEventbriteAttendees(mockRequest(), res);
+
+    expect(res.statusCode).toBe(500);
+  });
+
+  it('emits an update and returns 200 on success', async () => {
+    mockedGetAttendees.mockResolvedValue([]);
+    const res = mockResponse();
+    res.locals.meetup = {
+      id: 10,
+      eventbriteRecord: {
+        event_id: 1,
+        ticket_class_id: 2,
+        display_name_question_id: 3,
+      },
+    };
+    res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
+
+    await syncEventbriteAttendees(mockRequest(), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: 10,
+    });
+  });
+});
+
+// ---- createMeetupFromEventbrite --------------------------------------------
+
+describe('createMeetupFromEventbrite', () => {
+  const validBody = {
+    eventbrite_event_id: 1,
+    eventbrite_ticket_id: 2,
+    eventbrite_question_id: 3,
+  };
+
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest({}), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 401 when the requestor has no Eventbrite token', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { encrypted_eventbrite_token: null };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 500 when the event has no venue', async () => {
+    mockedGetEvent.mockResolvedValue({ venueId: null } as any);
+    const res = mockResponse();
+    res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
+    expect(res.statusCode).toBe(500);
+  });
+
+  it('creates the meetup and Eventbrite record on success', async () => {
+    mockedGetEvent.mockResolvedValue({
+      id: 1,
+      venueId: 7,
+      startTime: '2026-09-01T18:00:00.000Z',
+      endTime: '2026-09-01T21:00:00.000Z',
+      organizationId: 99,
+      name: 'EB Meetup',
+      url: 'http://eb',
+      imageUrl: 'http://img',
+      description: 'desc',
+    } as any);
+    mockedGetVenue.mockResolvedValue({ address: '1 Venue Way' } as any);
+    mockedGetTicket.mockResolvedValue({ total: 80 } as any);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedCreateWebhook.mockResolvedValue({ id: 555 } as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
+    expect(mockedMeetup.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'EB Meetup', capacity: 80 })
+    );
+    expect(mockedEventbriteRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_id: 1,
+        ticket_class_id: 2,
+        display_name_question_id: 3,
+      })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+});
