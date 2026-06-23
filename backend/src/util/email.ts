@@ -2,12 +2,15 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const sendVerificationEmail = async (email: string, otp: string) => {
+export const sendVerificationEmail = async (
+  email: string,
+  verificationLink: string
+) => {
   const { error } = await resend.emails.send({
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
-    subject: 'Verification Code',
-    html: `<p>Your verification code is <strong>${otp}</strong>. It expires in one hour.</p>`,
+    subject: 'Verify your email',
+    html: `<p>Click <a href="${verificationLink}">here</a> to verify your email. This link expires in one hour.</p>`,
   });
 
   if (error) {

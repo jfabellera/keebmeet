@@ -15,7 +15,6 @@ interface Config {
   databaseUser: string;
   databasePassword: string;
   jwtSecret: string;
-  otpSecret: string;
   aesKey: string;
   gcpApiKey: string;
   eventbriteApiKey: string;
@@ -26,6 +25,7 @@ interface Config {
   discordRedirectUri: string;
   apiUrl: string;
   socketUrl: string;
+  webUrl: string;
 }
 
 const config: Config = {
@@ -41,7 +41,6 @@ const config: Config = {
   databaseUser: process.env.MMS_DATABASE_USER ?? '',
   databasePassword: process.env.MMS_DATABASE_PASSWORD ?? '',
   jwtSecret: process.env.JWT_ACCESS_SECRET ?? '',
-  otpSecret: process.env.OTP_SECRET ?? '',
   aesKey: process.env.AES_ENCRYPTION_KEY ?? '',
   gcpApiKey: process.env.GCP_API_KEY ?? '',
   eventbriteApiKey: process.env.EVENTBRITE_API_KEY ?? '',
@@ -54,6 +53,7 @@ const config: Config = {
     'http://localhost:5173/auth/discord/callback',
   apiUrl: process.env.MMS_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.MMS_SOCKET_URL ?? 'http://localhost:3002',
+  webUrl: process.env.MMS_WEB_URL ?? 'http://localhost:5173',
 };
 
 export default config;

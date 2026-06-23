@@ -6,11 +6,15 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
-import { generateOtp, verifyOtp } from '../util/otp';
+import {
+  buildVerificationLink,
+  generateVerificationToken,
+  verifyVerificationToken,
+} from '../util/emailVerification';
 import {
   createUserSchema,
   editUserSchema,
-  verifyUserSchema,
+  verifyEmailSchema,
 } from '../util/validator';
 
 export interface TokenData {
@@ -70,7 +74,8 @@ export const createUser = async (
   });
   await newUser.save();
 
-  await sendVerificationEmail(newUser.email, generateOtp(newUser.id));
+  const token = generateVerificationToken(newUser.id);
+  await sendVerificationEmail(newUser.email, buildVerificationLink(token));
 
   return res.status(201).json(newUser);
 };
@@ -79,25 +84,26 @@ export const verifyUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const result = verifyUserSchema.safeParse(req.body);
+  const result = verifyEmailSchema.safeParse(req.body);
 
   if (!result.success) {
     return res.status(400).json(result.error);
   }
 
-  const { user_id } = req.params as Record<string, string>;
+  const userId = verifyVerificationToken(req.body.token);
+
+  if (userId == null) {
+    return res
+      .status(400)
+      .json({ message: 'Invalid or expired verification link.' });
+  }
 
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: userId,
   });
 
   if (user == null) {
     return res.status(404).json({ message: 'Invalid user ID.' });
-  }
-
-  // Verify OTP
-  if (!verifyOtp(user.id, req.body.otp)) {
-    return res.status(400).json({ message: 'Invalid OTP.' });
   }
 
   // Already verified: nothing to do.
@@ -111,7 +117,7 @@ export const verifyUser = async (
   return res.status(200).json({ message: 'User verified successfully.' });
 };
 
-export const resendVerificationCode = async (
+export const resendVerificationEmail = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -130,11 +136,10 @@ export const resendVerificationCode = async (
     return res.status(200).json({ message: 'User already verified.' });
   }
 
-  // Stateless OTPs are derived from the current time window, so a resend within
-  // the same hour re-sends the still-valid code rather than minting a new one.
-  await sendVerificationEmail(user.email, generateOtp(user.id));
+  const token = generateVerificationToken(user.id);
+  await sendVerificationEmail(user.email, buildVerificationLink(token));
 
-  return res.status(200).json({ message: 'Verification code sent.' });
+  return res.status(200).json({ message: 'Verification email sent.' });
 };
 
 export const updateUser = async (

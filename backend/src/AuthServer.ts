@@ -8,7 +8,7 @@ import {
   discordRegister,
   linkDiscordAccount,
   login,
-  resendVerificationCode,
+  resendVerificationEmail,
   updateUser,
   verifyUser,
 } from './controllers/auth';
@@ -45,10 +45,10 @@ class AuthServer {
 
   private routes(): void {
     this.express.post('/', createUser as RequestHandler);
-    this.express.post('/:user_id/verify', verifyUser as RequestHandler);
+    this.express.post('/verify-email', verifyUser as RequestHandler);
     this.express.post(
       '/:user_id/resend-verification',
-      resendVerificationCode as RequestHandler
+      resendVerificationEmail as RequestHandler
     );
     this.express.put(
       '/:user_id',

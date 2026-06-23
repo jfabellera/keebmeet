@@ -85,11 +85,11 @@ export const createUserSchema = z.object({
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;
 
-export const verifyUserSchema = z.object({
-  otp: z.string().length(6, 'OTP must be 6 characters long'),
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'A verification token is required'),
 });
 
-export type VerifyUserPayload = z.infer<typeof verifyUserSchema>;
+export type VerifyEmailPayload = z.infer<typeof verifyEmailSchema>;
 
 export const editUserSchema = z.object({
   email: z.string().email().optional(),
