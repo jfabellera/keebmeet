@@ -348,9 +348,8 @@ export const discordLogin = async (
 
   // 2. An account with this email already exists but isn't linked to Discord.
   // Don't auto-link or log in: hand back a signed link token carrying the
-  // verified Discord ID. The caller can either confirm + sign in to link (see
-  // {@link discordLink}) or create a separate account with a different email
-  // (see {@link discordRegister}).
+  // verified Discord ID so the caller can confirm + sign in to link (see
+  // {@link discordLink}).
   if (user == null && email != null) {
     const existingUser = await User.findOne({ where: { email: ILike(email) } });
     if (existingUser != null) {
@@ -391,17 +390,6 @@ export const discordLogin = async (
       is_verified: true,
     });
     await user.save();
-  }
-
-  // An account linked to this Discord ID but whose (self-chosen) email is not
-  // yet verified must verify before being granted a session. Accounts created
-  // straight from a verified Discord email are already verified above.
-  if (!user.is_verified) {
-    return res.status(200).json({
-      requiresVerification: true,
-      email: user.email,
-      user_id: user.id,
-    });
   }
 
   return res.status(201).json({ token: signToken(user) });
@@ -480,79 +468,6 @@ export const discordLink = async (
   await existingUser.save();
 
   return res.status(201).json({ token: signToken(existingUser) });
-};
-
-/**
- * Creates a brand new account from a Discord login whose email already belongs
- * to another account.
- *
- * Reached when {@link discordLogin} returns `requiresLink` and the user chooses
- * to create a separate account instead of linking. The signed link token proves
- * the Discord ID (and display name) were verified by Discord; the caller must
- * supply a different, unused email for the new account.
- */
-export const discordRegister = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  const { email, linkToken } = req.body;
-
-  if (linkToken == null) {
-    return res.status(400).json({ message: 'Missing link token.' });
-  }
-
-  if (email == null) {
-    return res.status(400).json({ message: 'An email address is required.' });
-  }
-
-  let linkTokenData: LinkTokenData;
-  try {
-    linkTokenData = jwt.verify(linkToken, config.jwtSecret) as LinkTokenData;
-  } catch {
-    return res
-      .status(401)
-      .json({ message: 'Link request has expired. Please try again.' });
-  }
-
-  if (linkTokenData.purpose !== 'discord_link') {
-    return res.status(401).json({ message: 'Invalid link token.' });
-  }
-
-  // The new account needs an email that isn't already in use.
-  const existingUser = await User.findOne({ where: { email: ILike(email) } });
-  if (existingUser != null) {
-    return res.status(409).json({ message: 'Email is taken.' });
-  }
-
-  // Don't steal a Discord ID already linked to another account.
-  const discordOwner = await User.findOneBy({
-    discord_id: linkTokenData.discord_id,
-  });
-  if (discordOwner != null) {
-    return res.status(409).json({
-      message: 'This Discord account is already linked to another user.',
-    });
-  }
-
-  const user = User.create({
-    email,
-    first_name: '',
-    last_name: '',
-    nick_name: linkTokenData.nick_name,
-    discord_id: linkTokenData.discord_id,
-  });
-  await user.save();
-
-  // This email was supplied by the user, not verified by Discord, so verify it
-  // ourselves. No session is issued until the link is clicked (see verifyUser).
-  const token = generateVerificationToken(user.id);
-  await sendVerificationEmail(user.email, buildVerificationLink(token));
-
-  return res.status(201).json({
-    requiresVerification: true,
-    email: user.email,
-    user_id: user.id,
-  });
 };
 
 /**

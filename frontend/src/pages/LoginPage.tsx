@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Page from '../components/Page/Page';
 import {
@@ -20,13 +20,7 @@ const LoginPage = (): ReactNode => {
     password: '',
   });
   const [loginFailed, setLoginFailed] = useState<boolean>(false);
-  // The Discord flows redirect here with an unverified account id so the user
-  // can request a fresh verification email.
-  const location = useLocation();
-  const navState = location.state as { unverifiedUserId?: number } | null;
-  const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(
-    navState?.unverifiedUserId ?? null
-  );
+  const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(null);
   const [resending, setResending] = useState<boolean>(false);
   const { loading } = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();

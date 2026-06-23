@@ -27,11 +27,6 @@ export interface DiscordLinkPayload {
   linkToken: string;
 }
 
-export interface DiscordRegisterPayload {
-  email: string;
-  linkToken: string;
-}
-
 export interface UpdateProfilePayload {
   userId: number;
   firstName: string;
@@ -50,17 +45,6 @@ export interface DiscordLinkRequired {
   requiresLink: true;
   email: string;
   linkToken: string;
-}
-
-/**
- * Returned by {@link discordLogin}/{@link discordRegister} when the account's
- * email hasn't been verified (e.g. a separate account created with a
- * self-supplied email). The user must verify before a session is granted.
- */
-export interface DiscordVerificationRequired {
-  requiresVerification: true;
-  email: string;
-  userId: number;
 }
 
 interface User {
@@ -150,15 +134,6 @@ export const discordLogin = createAsyncThunk(
         } satisfies DiscordLinkRequired;
       }
 
-      // The linked account's email isn't verified yet: don't log in.
-      if (data.requiresVerification === true) {
-        return {
-          requiresVerification: true,
-          email: data.email,
-          userId: data.user_id,
-        } satisfies DiscordVerificationRequired;
-      }
-
       localStorage.setItem('token', data.token);
 
       return getUserFromToken(data.token);
@@ -192,40 +167,6 @@ export const discordLink = createAsyncThunk(
       localStorage.setItem('token', data.token);
 
       return getUserFromToken(data.token);
-    } catch (err) {
-      if (err instanceof AxiosError && err.response != null) {
-        return rejectWithValue(err.response?.status);
-      } else {
-        return rejectWithValue(500);
-      }
-    }
-  }
-);
-
-/**
- * Thunk for creating a new account from a Discord login when the Discord email
- * already belongs to another account.
- *
- * Sends the signed link token (from {@link discordLogin}) along with a different,
- * unused email. On success a session token is stored and the user is logged in.
- */
-export const discordRegister = createAsyncThunk(
-  'auth/discordRegister',
-  async (payload: DiscordRegisterPayload, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(
-        `${config.authUrl}/oauth2/discord/register`,
-        payload
-      );
-      const { data } = response;
-
-      // The chosen email isn't Discord-verified, so the server requires email
-      // verification before issuing a session. No token is returned here.
-      return {
-        requiresVerification: true,
-        email: data.email,
-        userId: data.user_id,
-      } satisfies DiscordVerificationRequired;
     } catch (err) {
       if (err instanceof AxiosError && err.response != null) {
         return rejectWithValue(err.response?.status);
@@ -447,12 +388,8 @@ const authSlice = createSlice({
       .addCase(discordLogin.fulfilled, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.error = null;
-        // Linking or verification required: not logged in yet, the user has a
-        // further step to complete first.
-        if (
-          action.payload?.requiresLink === true ||
-          action.payload?.requiresVerification === true
-        ) {
+        // Linking required: not logged in yet, the user must sign in to confirm.
+        if (action.payload?.requiresLink === true) {
           return;
         }
         state.user = action.payload;
@@ -479,24 +416,6 @@ const authSlice = createSlice({
         state.isLoggedIn = false;
         state.error = action.payload;
       })
-      .addCase(discordRegister.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(discordRegister.fulfilled, (state) => {
-        // Registration always requires email verification before a session, so
-        // the user is not logged in here.
-        state.loading = false;
-        state.error = null;
-      })
-      .addCase(
-        discordRegister.rejected,
-        (state, action: PayloadAction<any>) => {
-          state.loading = false;
-          state.user = null;
-          state.isLoggedIn = false;
-          state.error = action.payload;
-        }
-      )
       .addCase(register.pending, (state) => {
         state.loading = true;
       })
