@@ -27,8 +27,15 @@ jest.mock('../entity/User', () => ({
 
 jest.mock('bcrypt');
 
+// Stub the email module so importing the controller doesn't construct a real
+// Resend client (which throws without RESEND_API_KEY at module load).
+jest.mock('../util/email', () => ({
+  __esModule: true,
+  sendVerificationEmail: jest.fn(),
+}));
+
 import bcrypt from 'bcrypt';
-import { createUser, deleteUser, login, updateUser } from './auth';
+import { createUser, deleteUser, login, updateUser, verifyUser } from './auth';
 import { User } from '../entity/User';
 
 const mockedUser = jest.mocked(User);
@@ -269,6 +276,99 @@ describe('deleteUser', () => {
     expect(target.remove).toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
     expect(res.end).toHaveBeenCalled();
+  });
+});
+
+// ---- verifyUser ------------------------------------------------------------
+
+describe('verifyUser', () => {
+  // A correctly-formatted OTP (the schema requires exactly 6 characters). The
+  // accepted/rejected distinction depends on the OTP mechanism that is still a
+  // TODO in the controller — once that lands, ACCEPTED_OTP should be whatever
+  // the implementation treats as the user's valid code.
+  const ACCEPTED_OTP = '123456';
+  const REJECTED_OTP = '000000';
+
+  it('returns 404 when the user does not exist', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await verifyUser(
+      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '99' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ message: 'Invalid user ID.' });
+  });
+
+  it('returns 400 when the OTP is malformed', async () => {
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ otp: '123' }, { user_id: '1' }), res);
+
+    expect(res.statusCode).toBe(400);
+    // Bails out on validation before ever touching the database.
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the OTP is incorrect', async () => {
+    const target = fakeUser({ id: 1, is_verified: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(
+      mockRequest({ otp: REJECTED_OTP }, { user_id: '1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Invalid OTP.' });
+    expect(target.is_verified).toBe(false);
+    expect(target.save).not.toHaveBeenCalled();
+  });
+
+  it('returns 200 when the OTP is accepted and the user is verified', async () => {
+    const target = fakeUser({ id: 1, is_verified: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(
+      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'User verified successfully.' });
+  });
+
+  it('marks is_verified and saves for a newly verified user', async () => {
+    const target = fakeUser({ id: 1, is_verified: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(
+      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
+      res
+    );
+
+    expect(target.is_verified).toBe(true);
+    expect(target.save).toHaveBeenCalled();
+  });
+
+  it('is a no-op when the user is already verified', async () => {
+    const target = fakeUser({ id: 1, is_verified: true });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(
+      mockRequest({ otp: ACCEPTED_OTP }, { user_id: '1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(target.is_verified).toBe(true);
+    expect(target.save).not.toHaveBeenCalled();
   });
 });
 
