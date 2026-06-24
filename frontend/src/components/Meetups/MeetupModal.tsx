@@ -137,7 +137,7 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="gap-0 overflow-hidden p-0 sm:max-h-[90vh]"
+        className="gap-0 overflow-auto p-0 sm:max-h-[90vh]"
         showCloseButton={false}
       >
         <div className="overflow-y-auto">
