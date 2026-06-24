@@ -58,6 +58,11 @@ const VerifyEmailPage = (): ReactNode => {
       toast.success('Email sent', {
         description: 'Check your inbox for a new verification link.',
       });
+    } else if (action.payload === 429) {
+      toast.error('Too many requests', {
+        description:
+          'You have requested too many verification emails. Please wait a few minutes and try again.',
+      });
     } else {
       toast.error('Error', {
         description: 'Could not send a new verification email.',

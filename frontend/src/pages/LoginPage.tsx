@@ -63,6 +63,14 @@ const LoginPage = (): ReactNode => {
           ) {
             setUnverifiedUserId(payload.userId);
             setLoginFailed(false);
+          } else if (payload === 429) {
+            // Rate limited: don't imply the credentials were wrong.
+            setLoginFailed(false);
+            setUnverifiedUserId(null);
+            toast.error('Too many attempts', {
+              description:
+                'Too many login attempts. Please wait a few minutes and try again.',
+            });
           } else {
             // Failed to login, show an error message
             setLoginFailed(true);
@@ -84,6 +92,11 @@ const LoginPage = (): ReactNode => {
     if (resendVerification.fulfilled.match(action)) {
       toast.success('Email sent', {
         description: 'Check your inbox for a new verification link.',
+      });
+    } else if (action.payload === 429) {
+      toast.error('Too many requests', {
+        description:
+          'You have requested too many verification emails. Please wait a few minutes and try again.',
       });
     } else {
       toast.error('Error', {
