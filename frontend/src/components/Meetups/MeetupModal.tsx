@@ -180,7 +180,6 @@ export const MeetupModal = ({
               </div>
 
               {/* Time */}
-              {/* TODO(jan): Add end time once implemented into API */}
               <div className="flex items-start gap-2">
                 <FiClock className="mt-1 shrink-0" />
                 <p>
