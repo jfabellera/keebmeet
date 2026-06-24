@@ -65,6 +65,10 @@ export const createTicket = async (
     return res.status(409).json({ message: 'Ticket already exists.' });
   }
 
+  if (new Date(meetup.date) < new Date()) {
+    return res.status(400).json({ message: 'Meetup has already occurred.' });
+  }
+
   const newTicket = Ticket.create({
     meetup,
     user,
@@ -121,6 +125,10 @@ export const deleteTicket = async (
 ): Promise<Response> => {
   const ticket = res.locals.ticket as Ticket;
   const meetupId = ticket.meetup.id;
+
+  if (new Date(ticket.meetup.date) < new Date()) {
+    return res.status(400).json({ message: 'Meetup has already occurred.' });
+  }
 
   await ticket.remove();
 

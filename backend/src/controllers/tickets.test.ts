@@ -159,6 +159,18 @@ describe('createTicket', () => {
     expect(res.body).toEqual({ message: 'Ticket already exists.' });
   });
 
+  it('returns 400 when the meetup has already occurred', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup({ date: '2020-01-01' });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+  });
+
   it('creates the ticket with the meetup default entries and emits an update', async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -242,6 +254,20 @@ describe('updateTicket', () => {
 // ---- deleteTicket ----------------------------------------------------------
 
 describe('deleteTicket', () => {
+  it('returns 400 when the meetup has already occurred', async () => {
+    const ticket = {
+      meetup: { id: 10, date: '2020-01-01' },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    const res = mockResponse();
+    res.locals.ticket = ticket;
+
+    await deleteTicket(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+  });
+
   it('removes the ticket from locals and emits with its meetup id', async () => {
     const ticket = {
       meetup: { id: 10 },
