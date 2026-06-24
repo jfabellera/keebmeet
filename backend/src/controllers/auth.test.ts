@@ -414,25 +414,40 @@ describe('verifyUser', () => {
 // ---- resendVerificationEmail -----------------------------------------------
 
 describe('resendVerificationEmail', () => {
-  it('returns 404 when the user does not exist', async () => {
+  const GENERIC_MESSAGE = {
+    message: 'If an account requires verification, a new email has been sent.',
+  };
+
+  it('returns a generic 200 and sends nothing when the user does not exist', async () => {
     mockedUser.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
 
     await resendVerificationEmail(mockRequest({}, { user_id: '99' }), res);
 
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toEqual({ message: 'Invalid user ID.' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
     expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
   });
 
-  it('does not resend to an already-verified user', async () => {
+  it('does not resend to an already-verified user, but still returns the generic 200', async () => {
     mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, is_verified: true }));
     const res = mockResponse();
 
     await resendVerificationEmail(mockRequest({}, { user_id: '1' }), res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ message: 'User already verified.' });
+    expect(res.body).toEqual(GENERIC_MESSAGE);
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not query the DB for a non-numeric user id', async () => {
+    const res = mockResponse();
+
+    await resendVerificationEmail(mockRequest({}, { user_id: '1abc' }), res);
+
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
     expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
   });
 
@@ -450,7 +465,7 @@ describe('resendVerificationEmail', () => {
       'https://app.test/verify-email?token=verify-token'
     );
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ message: 'Verification email sent.' });
+    expect(res.body).toEqual(GENERIC_MESSAGE);
   });
 });
 

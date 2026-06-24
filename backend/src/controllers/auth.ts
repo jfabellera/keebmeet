@@ -124,23 +124,32 @@ export const resendVerificationEmail = async (
 ): Promise<Response> => {
   const { user_id } = req.params as Record<string, string>;
 
-  const user = await User.findOneBy({
-    id: parseInt(user_id),
-  });
+  // This endpoint is unauthenticated, so always respond with the same generic
+  // message. Distinct responses would let an attacker enumerate which user IDs
+  // exist and which are already verified by walking the sequential PK.
+  const genericResponse = (): Response =>
+    res.status(200).json({
+      message:
+        'If an account requires verification, a new email has been sent.',
+    });
 
-  if (user == null) {
-    return res.status(404).json({ message: 'Invalid user ID.' });
+  // Reject anything that isn't a positive integer before querying — parseInt
+  // would otherwise yield NaN or partially parse strings like "1abc".
+  const id = Number(user_id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return genericResponse();
   }
 
-  // Nothing to send to an already-verified user.
-  if (user.is_verified) {
-    return res.status(200).json({ message: 'User already verified.' });
+  const user = await User.findOneBy({ id });
+
+  // Only send mail to an existing, unverified user, but never reveal which of
+  // those conditions failed.
+  if (user != null && !user.is_verified) {
+    const token = generateVerificationToken(user.id);
+    await sendVerificationEmail(user.email, buildVerificationLink(token));
   }
 
-  const token = generateVerificationToken(user.id);
-  await sendVerificationEmail(user.email, buildVerificationLink(token));
-
-  return res.status(200).json({ message: 'Verification email sent.' });
+  return genericResponse();
 };
 
 export const updateUser = async (
