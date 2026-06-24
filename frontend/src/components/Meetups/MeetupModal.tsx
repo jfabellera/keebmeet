@@ -194,7 +194,18 @@ export const MeetupModal = ({
               {/* Location */}
               <div className="flex items-start gap-2">
                 <FiMapPin className="mt-1 shrink-0" />
-                <p>{meetup.location.full_address}</p>
+                <p>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      meetup.location.full_address ?? ''
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {meetup.location.full_address}
+                  </a>
+                </p>
               </div>
 
               {/* Organizers */}
