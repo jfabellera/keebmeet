@@ -167,8 +167,11 @@ describe('createUser', () => {
       })
     );
     expect(res.statusCode).toBe(201);
-    const created = res.body as any;
+    const created = mockedUser.create.mock.results[0].value as any;
     expect(created.save).toHaveBeenCalled();
+    // The response must not leak sensitive columns.
+    expect(res.body).not.toHaveProperty('password_hash');
+    expect(res.body).not.toHaveProperty('encrypted_eventbrite_token');
   });
 
   it('emails a freshly generated verification link on success', async () => {

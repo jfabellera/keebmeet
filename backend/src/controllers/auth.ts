@@ -6,6 +6,7 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
+import { toUserResponse } from '../util/userResponse';
 import {
   buildVerificationLink,
   generateVerificationToken,
@@ -77,7 +78,7 @@ export const createUser = async (
   const token = generateVerificationToken(newUser.id);
   await sendVerificationEmail(newUser.email, buildVerificationLink(token));
 
-  return res.status(201).json(newUser);
+  return res.status(201).json(toUserResponse(newUser));
 };
 
 export const verifyUser = async (
@@ -191,7 +192,7 @@ export const updateUser = async (
 
   await user.save();
 
-  return res.status(201).json(user);
+  return res.status(201).json(toUserResponse(user));
 };
 
 export const deleteUser = async (
