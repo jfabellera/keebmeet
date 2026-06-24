@@ -137,10 +137,10 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="gap-0 overflow-auto p-0 sm:max-h-[90vh]"
+        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
         showCloseButton={false}
       >
-        <div className="overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {meetup.image_url != null && meetup.image_url !== '' ? (
             <AspectRatio ratio={2 / 1}>
               <ImageWithFallback
@@ -234,7 +234,7 @@ export const MeetupModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row flex-wrap items-center justify-between gap-3 p-4">
+        <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
           {meetup.tickets != null ? (
             <MeetupCapacityStatus
               available={meetup.tickets.available}
