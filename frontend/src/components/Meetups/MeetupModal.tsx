@@ -170,8 +170,8 @@ export const MeetupModal = ({
             </DialogHeader>
             <div className="flex flex-col gap-1 pb-4 font-semibold">
               {/* Date */}
-              <div className="flex items-center gap-2">
-                <FiCalendar />
+              <div className="flex items-start gap-2">
+                <FiCalendar className="mt-1 shrink-0" />
                 <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                     'MMMM DD, YYYY'
@@ -181,8 +181,8 @@ export const MeetupModal = ({
 
               {/* Time */}
               {/* TODO(jan): Add end time once implemented into API */}
-              <div className="flex items-center gap-2">
-                <FiClock />
+              <div className="flex items-start gap-2">
+                <FiClock className="mt-1 shrink-0" />
                 <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format('h:mm A')}
                   {' - '}
@@ -193,15 +193,15 @@ export const MeetupModal = ({
               </div>
 
               {/* Location */}
-              <div className="flex items-center gap-2">
-                <FiMapPin />
+              <div className="flex items-start gap-2">
+                <FiMapPin className="mt-1 shrink-0" />
                 <p>{meetup.location.full_address}</p>
               </div>
 
               {/* Organizers */}
               {meetup.organizers != null ? (
-                <div className="flex items-center gap-2">
-                  <FiUser />
+                <div className="flex items-start gap-2">
+                  <FiUser className="mt-1 shrink-0" />
                   <p>
                     Organized by{' '}
                     {new Intl.ListFormat().format(meetup.organizers)}
