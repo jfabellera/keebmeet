@@ -224,7 +224,7 @@ export const MeetupModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row items-center p-4 sm:justify-between">
+        <DialogFooter className="flex-row flex-wrap items-center justify-between gap-3 p-4">
           {meetup.tickets != null ? (
             <MeetupCapacityStatus
               available={meetup.tickets.available}
@@ -233,7 +233,7 @@ export const MeetupModal = ({
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-3">
             {isRsvpable ? (
               meetup.eventbrite_url != null ? (
                 <a
