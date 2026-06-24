@@ -1,4 +1,5 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,6 +30,7 @@ import {
   useCreateTicketMutation,
   useDeleteTicketMutation,
 } from '../../store/ticketSlice';
+import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 
 dayjs.extend(customParseFormat);
@@ -121,6 +123,11 @@ export const MeetupModal = ({
 
   if (meetup == null) return <></>;
 
+  const isHappeningNow = isMeetupHappeningNow(meetup);
+  const hasEnded = hasMeetupEnded(meetup);
+  // A meetup can be RSVP'd to (or cancelled) right up until it ends.
+  const isRsvpable = !hasEnded;
+
   return (
     <Dialog
       open={isOpen}
@@ -146,6 +153,19 @@ export const MeetupModal = ({
             <DialogHeader className="space-y-0 text-left">
               <DialogTitle className="pb-2 text-2xl font-bold">
                 {meetup.name}
+                {isHappeningNow ? (
+                  <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                    <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                    Happening now
+                  </Badge>
+                ) : hasEnded ? (
+                  <Badge
+                    variant="secondary"
+                    className="ml-3 -translate-y-0.5 align-middle"
+                  >
+                    Ended
+                  </Badge>
+                ) : null}
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-1 pb-4 font-semibold">
@@ -214,32 +234,38 @@ export const MeetupModal = ({
             <span />
           )}
           <div className="flex items-center gap-3">
-            {meetup.eventbrite_url != null ? (
-              <a href={meetup.eventbrite_url} target="_blank" rel="noreferrer">
-                <Button>
-                  <FiExternalLink />
+            {isRsvpable ? (
+              meetup.eventbrite_url != null ? (
+                <a
+                  href={meetup.eventbrite_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button>
+                    <FiExternalLink />
+                    RSVP
+                  </Button>
+                </a>
+              ) : ticket != null ? (
+                <Button
+                  variant="destructive"
+                  disabled={!isLoggedIn}
+                  onClick={unrsvpOnClick}
+                >
+                  <FiUserX />
+                  Cancel RSVP
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  disabled={!isLoggedIn}
+                  onClick={rsvpOnclick}
+                >
+                  <FiUserCheck />
                   RSVP
                 </Button>
-              </a>
-            ) : ticket != null ? (
-              <Button
-                variant="destructive"
-                disabled={!isLoggedIn}
-                onClick={unrsvpOnClick}
-              >
-                <FiUserX />
-                Cancel RSVP
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                disabled={!isLoggedIn}
-                onClick={rsvpOnclick}
-              >
-                <FiUserCheck />
-                RSVP
-              </Button>
-            )}
+              )
+            ) : null}
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
