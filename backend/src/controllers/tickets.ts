@@ -12,6 +12,13 @@ export interface SimpleTicketInfo {
   meetup_id: number;
 }
 
+// The meetup is still happening until its start date plus its duration.
+const getMeetupEnd = (meetup: Meetup): Date => {
+  const end = new Date(meetup.date);
+  end.setHours(end.getHours() + meetup.duration_hours);
+  return end;
+};
+
 export const getAllTickets = async (
   req: Request,
   res: Response
@@ -65,7 +72,7 @@ export const createTicket = async (
     return res.status(409).json({ message: 'Ticket already exists.' });
   }
 
-  if (new Date(meetup.date) < new Date()) {
+  if (getMeetupEnd(meetup) < new Date()) {
     return res.status(400).json({ message: 'Meetup has already occurred.' });
   }
 
@@ -126,7 +133,7 @@ export const deleteTicket = async (
   const ticket = res.locals.ticket as Ticket;
   const meetupId = ticket.meetup.id;
 
-  if (new Date(ticket.meetup.date) < new Date()) {
+  if (getMeetupEnd(ticket.meetup) < new Date()) {
     return res.status(400).json({ message: 'Meetup has already occurred.' });
   }
 

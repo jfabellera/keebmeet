@@ -20,6 +20,10 @@ jest.mock('../util/eventbriteApi', () => ({
   getEventbriteAttendeeByUri: jest.fn(),
 }));
 
+import { socket } from '../Server';
+import { Meetup } from '../entity/Meetup';
+import { Ticket } from '../entity/Ticket';
+import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import {
   checkInTicket,
   createTicket,
@@ -31,10 +35,6 @@ import {
   updateTicket,
   updateTicketViaWebhook,
 } from './tickets';
-import { socket } from '../Server';
-import { Ticket } from '../entity/Ticket';
-import { Meetup } from '../entity/Meetup';
-import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 
 const mockedTicket = jest.mocked(Ticket);
 const mockedMeetup = jest.mocked(Meetup);
@@ -66,9 +66,15 @@ const mockRequest = (
   query: Record<string, unknown> = {}
 ): Request => ({ body, params, query }) as unknown as Request;
 
+// Build an ISO timestamp a given number of hours from now.
+const hoursFromNow = (hours: number): string =>
+  new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
 const fakeMeetup = (overrides = {}): any => ({
   id: 10,
   default_raffle_entries: 2,
+  date: hoursFromNow(1),
+  duration_hours: 2,
   ...overrides,
 });
 
@@ -159,16 +165,36 @@ describe('createTicket', () => {
     expect(res.body).toEqual({ message: 'Ticket already exists.' });
   });
 
-  it('returns 400 when the meetup has already occurred', async () => {
+  it('returns 400 when the meetup has fully ended (past its date + duration)', async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.meetup = fakeMeetup({ date: '2020-01-01' });
+    // Started 3h ago, ran for 2h -> ended 1h ago.
+    res.locals.meetup = fakeMeetup({
+      date: hoursFromNow(-3),
+      duration_hours: 2,
+    });
     res.locals.requestor = fakeRequestor();
 
     await createTicket(mockRequest(), res);
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+  });
+
+  it('creates the ticket while the meetup is happening (started but not yet ended)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    // Started 1h ago, runs for 2h -> still has 1h left.
+    res.locals.meetup = fakeMeetup({
+      date: hoursFromNow(-1),
+      duration_hours: 2,
+    });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(mockedTicket.create).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
   });
 
   it('creates the ticket with the meetup default entries and emits an update', async () => {
@@ -254,9 +280,10 @@ describe('updateTicket', () => {
 // ---- deleteTicket ----------------------------------------------------------
 
 describe('deleteTicket', () => {
-  it('returns 400 when the meetup has already occurred', async () => {
+  it('returns 400 when the meetup has fully ended (past its date + duration)', async () => {
     const ticket = {
-      meetup: { id: 10, date: '2020-01-01' },
+      // Started 3h ago, ran for 2h -> ended 1h ago.
+      meetup: { id: 10, date: hoursFromNow(-3), duration_hours: 2 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -266,11 +293,13 @@ describe('deleteTicket', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+    expect(ticket.remove).not.toHaveBeenCalled();
   });
 
-  it('removes the ticket from locals and emits with its meetup id', async () => {
+  it('removes the ticket while the meetup is happening (started but not yet ended)', async () => {
     const ticket = {
-      meetup: { id: 10 },
+      // Started 1h ago, runs for 2h -> still has 1h left.
+      meetup: { id: 10, date: hoursFromNow(-1), duration_hours: 2 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -289,7 +318,7 @@ describe('deleteTicket', () => {
 // ---- getUserTickets --------------------------------------------------------
 
 describe('getUserTickets', () => {
-  it('maps a user\'s tickets to id + meetup_id', async () => {
+  it("maps a user's tickets to id + meetup_id", async () => {
     mockedTicket.find.mockResolvedValue([
       { id: 1, meetup: { id: 10 } },
       { id: 2, meetup: { id: 11 } },
@@ -472,7 +501,10 @@ describe('updateTicketViaWebhook', () => {
   it('returns 500 when fetching the attendee fails', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     mockedGetAttendee.mockRejectedValue(new Error('eb down'));
     const res = mockResponse();
@@ -489,7 +521,10 @@ describe('updateTicketViaWebhook', () => {
   it('returns 400 when no attendee is resolved', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     mockedGetAttendee.mockResolvedValue(undefined as any);
     const res = mockResponse();
@@ -505,7 +540,10 @@ describe('updateTicketViaWebhook', () => {
   it('syncs the attendee and emits an update on success', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     // A different ticket class makes the (separately tested) sync a no-op,
     // isolating the webhook's own control flow.
