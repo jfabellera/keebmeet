@@ -27,11 +27,6 @@ export interface DiscordLinkPayload {
   linkToken: string;
 }
 
-export interface DiscordRegisterPayload {
-  email: string;
-  linkToken: string;
-}
-
 export interface UpdateProfilePayload {
   userId: number;
   firstName: string;
@@ -73,7 +68,21 @@ interface AuthState {
  * This will set the authentication token in local storage if successfully
  * authenticated.
  */
-export const login = createAsyncThunk(
+/**
+ * Rejection payload from {@link login} when the credentials are valid but the
+ * account's email hasn't been verified. Carries the user id so the UI can offer
+ * to resend the verification email.
+ */
+export interface UnverifiedEmailError {
+  unverified: true;
+  userId: number;
+}
+
+export const login = createAsyncThunk<
+  User | null,
+  LoginPayload,
+  { rejectValue: number | UnverifiedEmailError }
+>(
   'auth/login',
   async (payload: LoginPayload, { rejectWithValue }) => {
     try {
@@ -85,7 +94,14 @@ export const login = createAsyncThunk(
       return getUserFromToken(data.token);
     } catch (err) {
       if (err instanceof AxiosError && err.response != null) {
-        return rejectWithValue(err.response?.status);
+        // Unverified email: surface it distinctly so the user can resend.
+        if (err.response.status === 403 && err.response.data?.user_id != null) {
+          return rejectWithValue({
+            unverified: true,
+            userId: err.response.data.user_id,
+          } satisfies UnverifiedEmailError);
+        }
+        return rejectWithValue(err.response.status);
       } else {
         return rejectWithValue(500);
       }
@@ -162,36 +178,6 @@ export const discordLink = createAsyncThunk(
 );
 
 /**
- * Thunk for creating a new account from a Discord login when the Discord email
- * already belongs to another account.
- *
- * Sends the signed link token (from {@link discordLogin}) along with a different,
- * unused email. On success a session token is stored and the user is logged in.
- */
-export const discordRegister = createAsyncThunk(
-  'auth/discordRegister',
-  async (payload: DiscordRegisterPayload, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(
-        `${config.authUrl}/oauth2/discord/register`,
-        payload
-      );
-      const { data } = response;
-
-      localStorage.setItem('token', data.token);
-
-      return getUserFromToken(data.token);
-    } catch (err) {
-      if (err instanceof AxiosError && err.response != null) {
-        return rejectWithValue(err.response?.status);
-      } else {
-        return rejectWithValue(500);
-      }
-    }
-  }
-);
-
-/**
  * Thunk for registering.
  */
 export const register = createAsyncThunk(
@@ -206,6 +192,49 @@ export const register = createAsyncThunk(
         password: payload.password,
       });
     } catch (err: any) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
+ * Thunk for verifying an email address.
+ *
+ * Sends the signed token from the verification link (see the auth server's
+ * email-verification flow) to the auth server, which validates the signature and
+ * embedded expiry and marks the account verified. No session is involved.
+ */
+export const verifyEmail = createAsyncThunk(
+  'auth/verifyEmail',
+  async (token: string, { rejectWithValue }) => {
+    try {
+      await axios.post(`${config.authUrl}/verify-email`, { token });
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
+ * Thunk for resending the verification email.
+ *
+ * Used when a verification link has expired; the auth server issues a fresh
+ * link for the given user. No-ops server-side if the user is already verified.
+ */
+export const resendVerification = createAsyncThunk(
+  'auth/resendVerification',
+  async (userId: number, { rejectWithValue }) => {
+    try {
+      await axios.post(`${config.authUrl}/${userId}/resend-verification`);
+    } catch (err) {
       if (err instanceof AxiosError && err.response != null) {
         return rejectWithValue(err.response?.status);
       } else {
@@ -387,27 +416,6 @@ const authSlice = createSlice({
         state.isLoggedIn = false;
         state.error = action.payload;
       })
-      .addCase(discordRegister.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(
-        discordRegister.fulfilled,
-        (state, action: PayloadAction<any>) => {
-          state.loading = false;
-          state.user = action.payload;
-          state.isLoggedIn = true;
-          state.error = null;
-        }
-      )
-      .addCase(
-        discordRegister.rejected,
-        (state, action: PayloadAction<any>) => {
-          state.loading = false;
-          state.user = null;
-          state.isLoggedIn = false;
-          state.error = action.payload;
-        }
-      )
       .addCase(register.pending, (state) => {
         state.loading = true;
       })

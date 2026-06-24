@@ -25,6 +25,7 @@ interface Config {
   discordRedirectUri: string;
   apiUrl: string;
   socketUrl: string;
+  webUrl: string;
 }
 
 const config: Config = {
@@ -52,6 +53,7 @@ const config: Config = {
     'http://localhost:5173/auth/discord/callback',
   apiUrl: process.env.MMS_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.MMS_SOCKET_URL ?? 'http://localhost:3002',
+  webUrl: process.env.MMS_WEB_URL ?? 'http://localhost:5173',
 };
 
 export default config;

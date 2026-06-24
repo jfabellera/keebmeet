@@ -5,8 +5,13 @@ import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import Page from '../components/Page/Page';
-import { login, type LoginPayload } from '../store/authSlice';
+import {
+  login,
+  resendVerification,
+  type LoginPayload,
+} from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
 const LoginPage = (): ReactNode => {
@@ -15,6 +20,8 @@ const LoginPage = (): ReactNode => {
     password: '',
   });
   const [loginFailed, setLoginFailed] = useState<boolean>(false);
+  const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(null);
+  const [resending, setResending] = useState<boolean>(false);
   const { loading } = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -47,11 +54,55 @@ const LoginPage = (): ReactNode => {
           // Successfully logged in, redirect user to homepage
           void navigate('/');
         } else if (login.rejected.match(action)) {
-          // Failed to login, show an error message
-          setLoginFailed(true);
+          const payload = action.payload;
+          // Credentials were valid but the email isn't verified yet.
+          if (
+            typeof payload === 'object' &&
+            payload != null &&
+            'unverified' in payload
+          ) {
+            setUnverifiedUserId(payload.userId);
+            setLoginFailed(false);
+          } else if (payload === 429) {
+            // Rate limited: don't imply the credentials were wrong.
+            setLoginFailed(false);
+            setUnverifiedUserId(null);
+            toast.error('Too many attempts', {
+              description:
+                'Too many login attempts. Please wait a few minutes and try again.',
+            });
+          } else {
+            // Failed to login, show an error message
+            setLoginFailed(true);
+            setUnverifiedUserId(null);
+          }
         }
       })
       .catch(() => {});
+  };
+
+  /** Requests a fresh verification email for the unverified account. */
+  const handleResend = async (): Promise<void> => {
+    if (unverifiedUserId == null) return;
+
+    setResending(true);
+    const action = await dispatch(resendVerification(unverifiedUserId));
+    setResending(false);
+
+    if (resendVerification.fulfilled.match(action)) {
+      toast.success('Email sent', {
+        description: 'Check your inbox for a new verification link.',
+      });
+    } else if (action.payload === 429) {
+      toast.error('Too many requests', {
+        description:
+          'You have requested too many verification emails. Please wait a few minutes and try again.',
+      });
+    } else {
+      toast.error('Error', {
+        description: 'Could not send a new verification email.',
+      });
+    }
   };
 
   return (
@@ -82,7 +133,23 @@ const LoginPage = (): ReactNode => {
                     onChange={handleChange}
                   />
                 </Field>
-                {loginFailed ? (
+                {unverifiedUserId != null ? (
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <p className="text-destructive text-sm">
+                      Please verify your email before signing in.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={resending}
+                      onClick={() => void handleResend()}
+                    >
+                      {resending ? <Loader2 className="animate-spin" /> : null}
+                      Resend verification email
+                    </Button>
+                  </div>
+                ) : loginFailed ? (
                   <p className="text-destructive text-center text-sm">
                     Invalid email or password
                   </p>

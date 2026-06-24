@@ -5,7 +5,18 @@ import jwt from 'jsonwebtoken';
 import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
-import { createUserSchema, editUserSchema } from '../util/validator';
+import { sendVerificationEmail } from '../util/email';
+import { toUserResponse } from '../util/userResponse';
+import {
+  buildVerificationLink,
+  generateVerificationToken,
+  verifyVerificationToken,
+} from '../util/emailVerification';
+import {
+  createUserSchema,
+  editUserSchema,
+  verifyEmailSchema,
+} from '../util/validator';
 
 export interface TokenData {
   id: number;
@@ -64,7 +75,81 @@ export const createUser = async (
   });
   await newUser.save();
 
-  return res.status(201).json(newUser);
+  const token = generateVerificationToken(newUser.id);
+  await sendVerificationEmail(newUser.email, buildVerificationLink(token));
+
+  return res.status(201).json(toUserResponse(newUser));
+};
+
+export const verifyUser = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = verifyEmailSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const userId = verifyVerificationToken(req.body.token);
+
+  if (userId == null) {
+    return res
+      .status(400)
+      .json({ message: 'Invalid or expired verification link.' });
+  }
+
+  const user = await User.findOneBy({
+    id: userId,
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  // Already verified: nothing to do.
+  if (user.is_verified) {
+    return res.status(200).json({ message: 'User already verified.' });
+  }
+
+  user.is_verified = true;
+  await user.save();
+
+  return res.status(200).json({ message: 'User verified successfully.' });
+};
+
+export const resendVerificationEmail = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { user_id } = req.params as Record<string, string>;
+
+  // This endpoint is unauthenticated, so always respond with the same generic
+  // message. Distinct responses would let an attacker enumerate which user IDs
+  // exist and which are already verified by walking the sequential PK.
+  const genericResponse = (): Response =>
+    res.status(200).json({
+      message:
+        'If an account requires verification, a new email has been sent.',
+    });
+
+  // Reject anything that isn't a positive integer before querying — parseInt
+  // would otherwise yield NaN or partially parse strings like "1abc".
+  const id = Number(user_id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return genericResponse();
+  }
+
+  const user = await User.findOneBy({ id });
+
+  // Only send mail to an existing, unverified user, but never reveal which of
+  // those conditions failed.
+  if (user != null && !user.is_verified) {
+    const token = generateVerificationToken(user.id);
+    await sendVerificationEmail(user.email, buildVerificationLink(token));
+  }
+
+  return genericResponse();
 };
 
 export const updateUser = async (
@@ -116,7 +201,7 @@ export const updateUser = async (
 
   await user.save();
 
-  return res.status(201).json(user);
+  return res.status(201).json(toUserResponse(user));
 };
 
 export const deleteUser = async (
@@ -154,6 +239,15 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     );
 
     if (isAuthenticated) {
+      // Block sign-in until the email is verified; hand back the user id so the
+      // client can offer to resend the verification email.
+      if (!existingUser.is_verified) {
+        return res.status(403).json({
+          message: 'Please verify your email before signing in.',
+          user_id: existingUser.id,
+        });
+      }
+
       return res.status(201).json({ token: signToken(existingUser) });
     }
   }
@@ -166,6 +260,8 @@ interface DiscordUser {
   username: string;
   global_name: string | null;
   email: string | null;
+  /** Whether Discord has verified ownership of the email address. */
+  verified: boolean;
 }
 
 /**
@@ -247,7 +343,10 @@ export const discordLogin = async (
   }
 
   const discordId = String(discordUser.id);
-  const email = discordUser.email;
+  // Only trust the Discord email if Discord has verified ownership of it.
+  // Treating an unverified address as absent prevents it from matching an
+  // existing account or producing a verified SSO account.
+  const email = discordUser.verified ? discordUser.email : null;
   const displayName = (
     discordUser.global_name ??
     discordUser.username ??
@@ -259,9 +358,8 @@ export const discordLogin = async (
 
   // 2. An account with this email already exists but isn't linked to Discord.
   // Don't auto-link or log in: hand back a signed link token carrying the
-  // verified Discord ID. The caller can either confirm + sign in to link (see
-  // {@link discordLink}) or create a separate account with a different email
-  // (see {@link discordRegister}).
+  // verified Discord ID so the caller can confirm + sign in to link (see
+  // {@link discordLink}).
   if (user == null && email != null) {
     const existingUser = await User.findOne({ where: { email: ILike(email) } });
     if (existingUser != null) {
@@ -297,6 +395,9 @@ export const discordLogin = async (
       last_name: '',
       nick_name: displayName,
       discord_id: discordId,
+      // Discord supplies a verified email address, so no separate
+      // email-verification step is needed for SSO accounts.
+      is_verified: true,
     });
     await user.save();
   }
@@ -371,73 +472,12 @@ export const discordLink = async (
   }
 
   existingUser.discord_id = linkTokenData.discord_id;
+  // Linking matched this account by its email, which Discord has verified, so
+  // the account is now email-verified too.
+  existingUser.is_verified = true;
   await existingUser.save();
 
   return res.status(201).json({ token: signToken(existingUser) });
-};
-
-/**
- * Creates a brand new account from a Discord login whose email already belongs
- * to another account.
- *
- * Reached when {@link discordLogin} returns `requiresLink` and the user chooses
- * to create a separate account instead of linking. The signed link token proves
- * the Discord ID (and display name) were verified by Discord; the caller must
- * supply a different, unused email for the new account.
- */
-export const discordRegister = async (
-  req: Request,
-  res: Response
-): Promise<Response> => {
-  const { email, linkToken } = req.body;
-
-  if (linkToken == null) {
-    return res.status(400).json({ message: 'Missing link token.' });
-  }
-
-  if (email == null) {
-    return res.status(400).json({ message: 'An email address is required.' });
-  }
-
-  let linkTokenData: LinkTokenData;
-  try {
-    linkTokenData = jwt.verify(linkToken, config.jwtSecret) as LinkTokenData;
-  } catch {
-    return res
-      .status(401)
-      .json({ message: 'Link request has expired. Please try again.' });
-  }
-
-  if (linkTokenData.purpose !== 'discord_link') {
-    return res.status(401).json({ message: 'Invalid link token.' });
-  }
-
-  // The new account needs an email that isn't already in use.
-  const existingUser = await User.findOne({ where: { email: ILike(email) } });
-  if (existingUser != null) {
-    return res.status(409).json({ message: 'Email is taken.' });
-  }
-
-  // Don't steal a Discord ID already linked to another account.
-  const discordOwner = await User.findOneBy({
-    discord_id: linkTokenData.discord_id,
-  });
-  if (discordOwner != null) {
-    return res.status(409).json({
-      message: 'This Discord account is already linked to another user.',
-    });
-  }
-
-  const user = User.create({
-    email,
-    first_name: '',
-    last_name: '',
-    nick_name: linkTokenData.nick_name,
-    discord_id: linkTokenData.discord_id,
-  });
-  await user.save();
-
-  return res.status(201).json({ token: signToken(user) });
 };
 
 /**

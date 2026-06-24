@@ -6,6 +6,7 @@ import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import * as Yup from 'yup';
 import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
@@ -52,7 +53,11 @@ const RegisterPage = (): ReactNode => {
         .then((action) => {
           // Get status of register
           if (register.fulfilled.match(action)) {
-            // Successfully registered, redirect user to login page
+            // Successfully registered, prompt the user to verify their email.
+            toast.success('Account created', {
+              description:
+                'Check your email for a link to verify your account.',
+            });
             void navigate('/login');
           } else if (register.rejected.match(action)) {
             // Failed to register, show an error message

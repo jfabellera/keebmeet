@@ -26,6 +26,7 @@ import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import { store } from './store/store';
 
 const App = (): ReactNode => {
@@ -36,6 +37,7 @@ const App = (): ReactNode => {
           <Route path="/" element={<Homepage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
             path="/auth/discord/callback"
             element={<DiscordCallbackPage />}

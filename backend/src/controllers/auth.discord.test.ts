@@ -28,14 +28,16 @@ jest.mock('../entity/User', () => ({
 jest.mock('axios');
 jest.mock('bcrypt');
 
+// Stub the email module so importing the controller doesn't construct a real
+// Resend client (which throws without RESEND_API_KEY at module load).
+jest.mock('../util/email', () => ({
+  __esModule: true,
+  sendVerificationEmail: jest.fn(),
+}));
+
 import axios from 'axios';
 import bcrypt from 'bcrypt';
-import {
-  discordLink,
-  discordLogin,
-  discordRegister,
-  linkDiscordAccount,
-} from './auth';
+import { discordLink, discordLogin, linkDiscordAccount } from './auth';
 import { User } from '../entity/User';
 
 const mockedAxios = jest.mocked(axios);
@@ -68,6 +70,7 @@ type DiscordProfile = {
   username: string;
   global_name: string | null;
   email: string | null;
+  verified: boolean;
 };
 
 /** A fake User row with a stubbed save(). */
@@ -90,6 +93,7 @@ const DISCORD_PROFILE: DiscordProfile = {
   username: 'janediscord',
   global_name: 'Jane D',
   email: 'user@example.com',
+  verified: true,
 };
 
 /** Make exchangeCodeForDiscordUser() resolve to the given Discord profile. */
@@ -198,6 +202,7 @@ describe('discordLogin', () => {
         email: 'user@example.com',
         nick_name: 'Jane D',
         discord_id: '123456789',
+        is_verified: true,
       })
     );
     expect(res.statusCode).toBe(201);
@@ -215,6 +220,34 @@ describe('discordLogin', () => {
     expect(res.body).toEqual({
       message: 'Discord account has no email address.',
     });
+  });
+
+  it('treats an unverified Discord email as absent (no new account)', async () => {
+    mockDiscordExchange({ ...DISCORD_PROFILE, verified: false });
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await discordLogin(mockRequest({ code: 'abc' }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      message: 'Discord account has no email address.',
+    });
+    expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('does not offer to link when the Discord email is unverified', async () => {
+    mockDiscordExchange({ ...DISCORD_PROFILE, verified: false });
+    mockedUser.findOneBy.mockResolvedValue(null); // not linked by discord_id
+    const res = mockResponse();
+
+    await discordLogin(mockRequest({ code: 'abc' }), res);
+
+    // An unverified email must not match an existing account, so no link token
+    // is issued (it falls through to the no-email branch instead).
+    expect(res.statusCode).toBe(400);
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
   });
 });
 
@@ -348,89 +381,8 @@ describe('discordLink', () => {
     );
 
     expect(existing.discord_id).toBe('123456789');
+    expect(existing.is_verified).toBe(true);
     expect(existing.save).toHaveBeenCalled();
-    expect(res.statusCode).toBe(201);
-    expect(res.body).toHaveProperty('token');
-  });
-});
-
-// ---- discordRegister -------------------------------------------------------
-
-describe('discordRegister', () => {
-  it('returns 400 when the link token is missing', async () => {
-    const res = mockResponse();
-    await discordRegister(mockRequest({ email: 'new@example.com' }), res);
-
-    expect(res.statusCode).toBe(400);
-  });
-
-  it('returns 400 when the email is missing', async () => {
-    const res = mockResponse();
-    await discordRegister(mockRequest({ linkToken: signLinkToken() }), res);
-
-    expect(res.statusCode).toBe(400);
-    expect(res.body).toEqual({ message: 'An email address is required.' });
-  });
-
-  it('returns 401 for an invalid link token', async () => {
-    const res = mockResponse();
-    await discordRegister(
-      mockRequest({ email: 'new@example.com', linkToken: 'garbage' }),
-      res
-    );
-
-    expect(res.statusCode).toBe(401);
-  });
-
-  it('returns 409 when the chosen email is taken', async () => {
-    mockedUser.findOne.mockResolvedValue(fakeUser());
-    const res = mockResponse();
-
-    await discordRegister(
-      mockRequest({ email: 'taken@example.com', linkToken: signLinkToken() }),
-      res
-    );
-
-    expect(res.statusCode).toBe(409);
-    expect(res.body).toEqual({ message: 'Email is taken.' });
-  });
-
-  it('returns 409 when the Discord ID is already linked', async () => {
-    mockedUser.findOne.mockResolvedValue(null); // email free
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 99 })); // discord taken
-    const res = mockResponse();
-
-    await discordRegister(
-      mockRequest({ email: 'new@example.com', linkToken: signLinkToken() }),
-      res
-    );
-
-    expect(res.statusCode).toBe(409);
-  });
-
-  it('creates a separate account on success', async () => {
-    mockedUser.findOne.mockResolvedValue(null);
-    mockedUser.findOneBy.mockResolvedValue(null);
-    const res = mockResponse();
-
-    await discordRegister(
-      mockRequest({
-        email: 'new@example.com',
-        linkToken: signLinkToken({
-          discord_id: '123456789',
-          nick_name: 'Jane D',
-        }),
-      }),
-      res
-    );
-
-    expect(mockedUser.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: 'new@example.com',
-        nick_name: 'Jane D',
-        discord_id: '123456789',
-      })
-    );
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
   });

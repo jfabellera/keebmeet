@@ -5,13 +5,18 @@ import {
   deleteUser,
   discordLink,
   discordLogin,
-  discordRegister,
   linkDiscordAccount,
   login,
+  resendVerificationEmail,
   updateUser,
+  verifyUser,
 } from './controllers/auth';
 import { AppDataSource } from './datasource';
 import { Rule, authChecker } from './middleware/authChecker';
+import {
+  loginLimiter,
+  resendVerificationLimiter,
+} from './middleware/rateLimiter';
 
 void AppDataSource.initialize();
 
@@ -43,6 +48,12 @@ class AuthServer {
 
   private routes(): void {
     this.express.post('/', createUser as RequestHandler);
+    this.express.post('/verify-email', verifyUser as RequestHandler);
+    this.express.post(
+      '/:user_id/resend-verification',
+      resendVerificationLimiter,
+      resendVerificationEmail as RequestHandler
+    );
     this.express.put(
       '/:user_id',
       authChecker([Rule.overrideAdmin]) as RequestHandler,
@@ -54,13 +65,9 @@ class AuthServer {
       deleteUser as RequestHandler
     );
 
-    this.express.post('/login', login as RequestHandler);
+    this.express.post('/login', loginLimiter, login as RequestHandler);
     this.express.post('/oauth2/discord', discordLogin as RequestHandler);
     this.express.post('/oauth2/discord/link', discordLink as RequestHandler);
-    this.express.post(
-      '/oauth2/discord/register',
-      discordRegister as RequestHandler
-    );
     this.express.post(
       '/oauth2/discord/link-account',
       authChecker() as RequestHandler,

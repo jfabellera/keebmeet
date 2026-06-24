@@ -27,12 +27,47 @@ jest.mock('../entity/User', () => ({
 
 jest.mock('bcrypt');
 
+// Stub the email module so importing the controller doesn't construct a real
+// Resend client (which throws without RESEND_API_KEY at module load).
+jest.mock('../util/email', () => ({
+  __esModule: true,
+  sendVerificationEmail: jest.fn(),
+}));
+
+// Control token issuing/verification directly; the JWT logic itself is covered
+// by emailVerification.test.ts.
+jest.mock('../util/emailVerification', () => ({
+  __esModule: true,
+  generateVerificationToken: jest.fn(() => 'verify-token'),
+  buildVerificationLink: jest.fn(
+    (token: string) => `https://app.test/verify-email?token=${token}`
+  ),
+  verifyVerificationToken: jest.fn(),
+}));
+
 import bcrypt from 'bcrypt';
-import { createUser, deleteUser, login, updateUser } from './auth';
+import {
+  createUser,
+  deleteUser,
+  login,
+  resendVerificationEmail,
+  updateUser,
+  verifyUser,
+} from './auth';
 import { User } from '../entity/User';
+import { sendVerificationEmail } from '../util/email';
+import {
+  buildVerificationLink,
+  generateVerificationToken,
+  verifyVerificationToken,
+} from '../util/emailVerification';
 
 const mockedUser = jest.mocked(User);
 const mockedBcrypt = jest.mocked(bcrypt);
+const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
+const mockedGenerateVerificationToken = jest.mocked(generateVerificationToken);
+const mockedBuildVerificationLink = jest.mocked(buildVerificationLink);
+const mockedVerifyVerificationToken = jest.mocked(verifyVerificationToken);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -89,6 +124,10 @@ beforeEach(() => {
   // create() echoes its input back as a saveable row by default.
   mockedUser.create.mockImplementation((attrs: any) => fakeUser(attrs) as never);
   (mockedBcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
+  mockedGenerateVerificationToken.mockReturnValue('verify-token');
+  mockedBuildVerificationLink.mockImplementation(
+    (token: string) => `https://app.test/verify-email?token=${token}`
+  );
 });
 
 // ---- createUser ------------------------------------------------------------
@@ -128,8 +167,25 @@ describe('createUser', () => {
       })
     );
     expect(res.statusCode).toBe(201);
-    const created = res.body as any;
+    const created = mockedUser.create.mock.results[0].value as any;
     expect(created.save).toHaveBeenCalled();
+    // The response must not leak sensitive columns.
+    expect(res.body).not.toHaveProperty('password_hash');
+    expect(res.body).not.toHaveProperty('encrypted_eventbrite_token');
+  });
+
+  it('emails a freshly generated verification link on success', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    const created = res.body as any;
+    expect(mockedGenerateVerificationToken).toHaveBeenCalledWith(created.id);
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      'new@example.com',
+      'https://app.test/verify-email?token=verify-token'
+    );
   });
 });
 
@@ -272,6 +328,147 @@ describe('deleteUser', () => {
   });
 });
 
+// ---- verifyUser ------------------------------------------------------------
+
+describe('verifyUser', () => {
+  // Whether a token is accepted is decided by the mocked verifyVerificationToken,
+  // not the value.
+  const TOKEN = 'verify-token';
+
+  it('returns 400 when the token is missing', async () => {
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({}), res);
+
+    expect(res.statusCode).toBe(400);
+    // Bails out on validation before ever touching the database.
+    expect(mockedVerifyVerificationToken).not.toHaveBeenCalled();
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the token is invalid or expired', async () => {
+    mockedVerifyVerificationToken.mockReturnValue(null);
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ token: TOKEN }), res);
+
+    expect(mockedVerifyVerificationToken).toHaveBeenCalledWith(TOKEN);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      message: 'Invalid or expired verification link.',
+    });
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the token is valid but the user is gone', async () => {
+    mockedVerifyVerificationToken.mockReturnValue(99);
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ token: TOKEN }), res);
+
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: 99 });
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ message: 'Invalid user ID.' });
+  });
+
+  it('returns 200 when the token is accepted and the user is verified', async () => {
+    const target = fakeUser({ id: 1, is_verified: false });
+    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ token: TOKEN }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'User verified successfully.' });
+  });
+
+  it('marks is_verified and saves for a newly verified user', async () => {
+    const target = fakeUser({ id: 1, is_verified: false });
+    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ token: TOKEN }), res);
+
+    expect(target.is_verified).toBe(true);
+    expect(target.save).toHaveBeenCalled();
+  });
+
+  it('is a no-op when the user is already verified', async () => {
+    const target = fakeUser({ id: 1, is_verified: true });
+    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await verifyUser(mockRequest({ token: TOKEN }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ message: 'User already verified.' });
+    expect(target.is_verified).toBe(true);
+    expect(target.save).not.toHaveBeenCalled();
+  });
+});
+
+// ---- resendVerificationEmail -----------------------------------------------
+
+describe('resendVerificationEmail', () => {
+  const GENERIC_MESSAGE = {
+    message: 'If an account requires verification, a new email has been sent.',
+  };
+
+  it('returns a generic 200 and sends nothing when the user does not exist', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await resendVerificationEmail(mockRequest({}, { user_id: '99' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not resend to an already-verified user, but still returns the generic 200', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, is_verified: true }));
+    const res = mockResponse();
+
+    await resendVerificationEmail(mockRequest({}, { user_id: '1' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not query the DB for a non-numeric user id', async () => {
+    const res = mockResponse();
+
+    await resendVerificationEmail(mockRequest({}, { user_id: '1abc' }), res);
+
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
+    expect(mockedSendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('emails a freshly generated link to an unverified user', async () => {
+    mockedUser.findOneBy.mockResolvedValue(
+      fakeUser({ id: 1, email: 'user@example.com', is_verified: false })
+    );
+    const res = mockResponse();
+
+    await resendVerificationEmail(mockRequest({}, { user_id: '1' }), res);
+
+    expect(mockedGenerateVerificationToken).toHaveBeenCalledWith(1);
+    expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
+      'user@example.com',
+      'https://app.test/verify-email?token=verify-token'
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(GENERIC_MESSAGE);
+  });
+});
+
 // ---- login -----------------------------------------------------------------
 
 describe('login', () => {
@@ -309,9 +506,34 @@ describe('login', () => {
     expect(res.body).toEqual({ message: 'Invalid email or password.' });
   });
 
+  it('returns 403 when the password is correct but the email is unverified', async () => {
+    mockedUser.findOne.mockResolvedValue(
+      fakeUser({ id: 7, is_verified: false })
+    );
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
+    const res = mockResponse();
+
+    await login(
+      mockRequest({ email: 'user@example.com', password: 'correct' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({
+      message: 'Please verify your email before signing in.',
+      user_id: 7,
+    });
+  });
+
   it('returns a signed session token on success', async () => {
     mockedUser.findOne.mockResolvedValue(
-      fakeUser({ id: 7, nick_name: 'jane', is_admin: true, is_organizer: false })
+      fakeUser({
+        id: 7,
+        nick_name: 'jane',
+        is_admin: true,
+        is_organizer: false,
+        is_verified: true,
+      })
     );
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     const res = mockResponse();
