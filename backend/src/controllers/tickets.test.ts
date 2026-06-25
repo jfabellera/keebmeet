@@ -19,6 +19,9 @@ jest.mock('../entity/Meetup', () => ({
 jest.mock('../util/eventbriteApi', () => ({
   getEventbriteAttendeeByUri: jest.fn(),
 }));
+jest.mock('../util/email', () => ({
+  sendRsvpConfirmationEmail: jest.fn(),
+}));
 
 import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
