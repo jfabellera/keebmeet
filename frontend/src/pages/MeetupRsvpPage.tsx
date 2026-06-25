@@ -171,21 +171,21 @@ const MeetupRsvpPage = (): ReactNode => {
           Back
         </Button>
         <Card className="w-full overflow-hidden p-0">
-          {/* Reverse wrap: side-by-side on wide screens (RSVP left, details
-              right); stacked on narrow screens with details on top. */}
-          <div className="flex flex-wrap-reverse">
+          <div className="flex flex-col-reverse md:max-h-[75vh] md:flex-row">
             {/* RSVP process — the larger, primary column. */}
             <form
               onSubmit={formik.handleSubmit}
               noValidate
-              className="flex grow-2 basis-80 flex-col gap-4 p-6"
+              className="flex grow-2 basis-80 flex-col gap-4 p-6 md:min-h-0 md:overflow-y-auto"
             >
               <div>
                 <h1 className="text-2xl font-bold">
                   {isManaging ? 'Manage your RSVP' : 'Confirm your RSVP'}
                 </h1>
                 <p className="text-muted-foreground text-sm">
-                  {isManaging ? 'Update your details for ' : 'Reserve your spot at '}
+                  {isManaging
+                    ? 'Update your details for '
+                    : 'Reserve your spot at '}
                   <span className="font-semibold">{meetup.name}</span>.
                 </p>
               </div>
@@ -304,8 +304,8 @@ const MeetupRsvpPage = (): ReactNode => {
               </Dialog>
             </form>
 
-            {/* Banner + meetup details. */}
-            <div className="bg-muted/30 grow basis-80 border-l">
+            {/* Banner + meetup details. Scrolls internally on wide screens. */}
+            <div className="bg-muted/30 grow basis-80 md:min-h-0 md:overflow-y-auto md:border-l">
               {meetup.image_url != null && meetup.image_url !== '' ? (
                 <AspectRatio ratio={2 / 1}>
                   <ImageWithFallback
