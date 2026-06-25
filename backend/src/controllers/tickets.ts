@@ -5,12 +5,19 @@ import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
-import { editTicketSchema } from '../util/validator';
+import { createTicketSchema, editTicketSchema } from '../util/validator';
 
 export interface SimpleTicketInfo {
   id: number;
   meetup_id: number;
 }
+
+// The meetup is still happening until its start date plus its duration.
+const getMeetupEnd = (meetup: Meetup): Date => {
+  const end = new Date(meetup.date);
+  end.setHours(end.getHours() + meetup.duration_hours);
+  return end;
+};
 
 export const getAllTickets = async (
   req: Request,
@@ -44,9 +51,14 @@ export const createTicket = async (
 ): Promise<Response> => {
   const meetup = res.locals.meetup as Meetup;
   const user = res.locals.requestor as User;
+  const result = createTicketSchema.safeParse(req.body ?? {});
 
   if (meetup == null || user == null) {
     return res.status(400).end();
+  }
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
   }
 
   // Check if ticket already exists
@@ -65,13 +77,21 @@ export const createTicket = async (
     return res.status(409).json({ message: 'Ticket already exists.' });
   }
 
+  if (getMeetupEnd(meetup) < new Date()) {
+    return res.status(400).json({ message: 'Meetup has already occurred.' });
+  }
+
   const newTicket = Ticket.create({
     meetup,
     user,
     raffle_entries: meetup.default_raffle_entries,
-    ticket_holder_display_name: user.nick_name,
-    ticket_holder_first_name: user.first_name,
-    ticket_holder_last_name: user.last_name,
+    ticket_holder_display_name:
+      result.data.ticket_holder?.display_name ?? user.nick_name,
+    ticket_holder_first_name:
+      result.data.ticket_holder?.first_name ?? user.first_name,
+    ticket_holder_last_name:
+      result.data.ticket_holder?.last_name ?? user.last_name,
+    ticket_holder_email: result.data.ticket_holder?.email ?? user.email,
   });
   await newTicket.save();
 
@@ -109,6 +129,13 @@ export const updateTicket = async (
   ticket.raffle_entries = req.body.raffle_entries ?? ticket.raffle_entries;
   ticket.raffle_wins = req.body.raffle_wins ?? ticket.raffle_wins;
 
+  if (result.data.ticket_holder != null) {
+    ticket.ticket_holder_display_name = result.data.ticket_holder.display_name;
+    ticket.ticket_holder_first_name = result.data.ticket_holder.first_name;
+    ticket.ticket_holder_last_name = result.data.ticket_holder.last_name;
+    ticket.ticket_holder_email = result.data.ticket_holder.email;
+  }
+
   await ticket.save();
 
   socket.emit('meetup:update', { meetupId: ticket.meetup.id });
@@ -121,6 +148,10 @@ export const deleteTicket = async (
 ): Promise<Response> => {
   const ticket = res.locals.ticket as Ticket;
   const meetupId = ticket.meetup.id;
+
+  if (getMeetupEnd(ticket.meetup) < new Date()) {
+    return res.status(400).json({ message: 'Meetup has already occurred.' });
+  }
 
   await ticket.remove();
 

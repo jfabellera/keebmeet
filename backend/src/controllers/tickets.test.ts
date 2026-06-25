@@ -20,6 +20,10 @@ jest.mock('../util/eventbriteApi', () => ({
   getEventbriteAttendeeByUri: jest.fn(),
 }));
 
+import { socket } from '../Server';
+import { Meetup } from '../entity/Meetup';
+import { Ticket } from '../entity/Ticket';
+import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import {
   checkInTicket,
   createTicket,
@@ -31,10 +35,6 @@ import {
   updateTicket,
   updateTicketViaWebhook,
 } from './tickets';
-import { socket } from '../Server';
-import { Ticket } from '../entity/Ticket';
-import { Meetup } from '../entity/Meetup';
-import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 
 const mockedTicket = jest.mocked(Ticket);
 const mockedMeetup = jest.mocked(Meetup);
@@ -66,9 +66,15 @@ const mockRequest = (
   query: Record<string, unknown> = {}
 ): Request => ({ body, params, query }) as unknown as Request;
 
+// Build an ISO timestamp a given number of hours from now.
+const hoursFromNow = (hours: number): string =>
+  new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
 const fakeMeetup = (overrides = {}): any => ({
   id: 10,
   default_raffle_entries: 2,
+  date: hoursFromNow(1),
+  duration_hours: 2,
   ...overrides,
 });
 
@@ -77,6 +83,17 @@ const fakeRequestor = (overrides = {}): any => ({
   nick_name: 'jane',
   first_name: 'Jane',
   last_name: 'Doe',
+  email: 'jane@example.com',
+  ...overrides,
+});
+
+// createTicketSchema wraps an optional `ticket_holder` object: when present,
+// every field is required; when absent, the requestor's details win.
+const fakeTicketHolder = (overrides = {}): any => ({
+  display_name: 'spotter',
+  first_name: 'Sam',
+  last_name: 'Holder',
+  email: 'sam.holder@example.com',
   ...overrides,
 });
 
@@ -159,7 +176,39 @@ describe('createTicket', () => {
     expect(res.body).toEqual({ message: 'Ticket already exists.' });
   });
 
-  it('creates the ticket with the meetup default entries and emits an update', async () => {
+  it('returns 400 when the meetup has fully ended (past its date + duration)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    // Started 3h ago, ran for 2h -> ended 1h ago.
+    res.locals.meetup = fakeMeetup({
+      date: hoursFromNow(-3),
+      duration_hours: 2,
+    });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+  });
+
+  it('creates the ticket while the meetup is happening (started but not yet ended)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    // Started 1h ago, runs for 2h -> still has 1h left.
+    res.locals.meetup = fakeMeetup({
+      date: hoursFromNow(-1),
+      duration_hours: 2,
+    });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(mockedTicket.create).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it("falls back to the requestor's details when no ticket holder is supplied, then emits an update", async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = fakeMeetup({ default_raffle_entries: 3 });
@@ -173,12 +222,84 @@ describe('createTicket', () => {
         ticket_holder_display_name: 'jane',
         ticket_holder_first_name: 'Jane',
         ticket_holder_last_name: 'Doe',
+        ticket_holder_email: 'jane@example.com',
       })
     );
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: 10,
     });
     expect(res.statusCode).toBe(201);
+  });
+
+  it('accepts an RSVP with no body and falls back to the requestor (Express 5 leaves req.body undefined)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    // Genuinely undefined body — mockRequest()'s default would coerce to {}.
+    const req = { body: undefined, params: {}, query: {} } as unknown as Request;
+    await createTicket(req, res);
+
+    expect(mockedTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_holder_display_name: 'jane',
+        ticket_holder_email: 'jane@example.com',
+      })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('uses the supplied ticket holder details instead of the requestor when provided', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(
+      mockRequest({ ticket_holder: fakeTicketHolder() }),
+      res
+    );
+
+    expect(mockedTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_holder_display_name: 'spotter',
+        ticket_holder_first_name: 'Sam',
+        ticket_holder_last_name: 'Holder',
+        ticket_holder_email: 'sam.holder@example.com',
+      })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('rejects (400) a partial ticket holder that omits some details', async () => {
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    // first_name / last_name / email omitted.
+    await createTicket(
+      mockRequest({ ticket_holder: { display_name: 'spotter' } }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+    expect(mockedTicket.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects (400) a ticket holder with an invalid email', async () => {
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(
+      mockRequest({ ticket_holder: fakeTicketHolder({ email: 'not-an-email' }) }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.create).not.toHaveBeenCalled();
   });
 });
 
@@ -237,14 +358,75 @@ describe('updateTicket', () => {
     });
     expect(res.statusCode).toBe(201);
   });
+
+  it('updates the ticket holder details when a full ticket_holder is provided', async () => {
+    const ticket = {
+      id: 5,
+      ticket_holder_display_name: 'old',
+      ticket_holder_first_name: 'Old',
+      ticket_holder_last_name: 'Name',
+      ticket_holder_email: 'old@example.com',
+      meetup: { id: 10 },
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    const res = mockResponse();
+
+    await updateTicket(
+      mockRequest(
+        { ticket_holder: fakeTicketHolder() },
+        { ticket_id: '5' }
+      ),
+      res
+    );
+
+    expect(ticket.ticket_holder_display_name).toBe('spotter');
+    expect(ticket.ticket_holder_first_name).toBe('Sam');
+    expect(ticket.ticket_holder_last_name).toBe('Holder');
+    expect(ticket.ticket_holder_email).toBe('sam.holder@example.com');
+    expect(ticket.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('rejects (400) a partial ticket_holder without touching the ticket', async () => {
+    const res = mockResponse();
+
+    await updateTicket(
+      mockRequest(
+        { ticket_holder: { display_name: 'spotter' } },
+        { ticket_id: '5' }
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+  });
 });
 
 // ---- deleteTicket ----------------------------------------------------------
 
 describe('deleteTicket', () => {
-  it('removes the ticket from locals and emits with its meetup id', async () => {
+  it('returns 400 when the meetup has fully ended (past its date + duration)', async () => {
     const ticket = {
-      meetup: { id: 10 },
+      // Started 3h ago, ran for 2h -> ended 1h ago.
+      meetup: { id: 10, date: hoursFromNow(-3), duration_hours: 2 },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    const res = mockResponse();
+    res.locals.ticket = ticket;
+
+    await deleteTicket(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup has already occurred.' });
+    expect(ticket.remove).not.toHaveBeenCalled();
+  });
+
+  it('removes the ticket while the meetup is happening (started but not yet ended)', async () => {
+    const ticket = {
+      // Started 1h ago, runs for 2h -> still has 1h left.
+      meetup: { id: 10, date: hoursFromNow(-1), duration_hours: 2 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -263,7 +445,7 @@ describe('deleteTicket', () => {
 // ---- getUserTickets --------------------------------------------------------
 
 describe('getUserTickets', () => {
-  it('maps a user\'s tickets to id + meetup_id', async () => {
+  it("maps a user's tickets to id + meetup_id", async () => {
     mockedTicket.find.mockResolvedValue([
       { id: 1, meetup: { id: 10 } },
       { id: 2, meetup: { id: 11 } },
@@ -446,7 +628,10 @@ describe('updateTicketViaWebhook', () => {
   it('returns 500 when fetching the attendee fails', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     mockedGetAttendee.mockRejectedValue(new Error('eb down'));
     const res = mockResponse();
@@ -463,7 +648,10 @@ describe('updateTicketViaWebhook', () => {
   it('returns 400 when no attendee is resolved', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     mockedGetAttendee.mockResolvedValue(undefined as any);
     const res = mockResponse();
@@ -479,7 +667,10 @@ describe('updateTicketViaWebhook', () => {
   it('syncs the attendee and emits an update on success', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
-      eventbriteRecord: { ticket_class_id: 'tc-1', display_name_question_id: 'q' },
+      eventbriteRecord: {
+        ticket_class_id: 'tc-1',
+        display_name_question_id: 'q',
+      },
     } as any);
     // A different ticket class makes the (separately tested) sync a no-op,
     // isolating the webhook's own control flow.

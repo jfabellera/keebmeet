@@ -25,6 +25,7 @@ import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
 import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
+import MeetupRsvpPage from './pages/MeetupRsvpPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import { store } from './store/store';
@@ -43,6 +44,7 @@ const App = (): ReactNode => {
             element={<DiscordCallbackPage />}
           />
           <Route path="/auth/discord/link" element={<DiscordLinkPage />} />
+          <Route path="/meetup/:meetupId/rsvp" element={<MeetupRsvpPage />} />
           <Route path="/organizer" element={<OrganizerDashboard />} />
           <Route path="/new-meetup" element={<NewMeetupPage />} />
           <Route

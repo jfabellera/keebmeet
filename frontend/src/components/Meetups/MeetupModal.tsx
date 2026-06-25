@@ -1,4 +1,5 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,20 +16,19 @@ import { useEffect, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiClock,
+  FiEdit,
   FiExternalLink,
   FiMapPin,
+  FiSettings,
   FiUser,
   FiUserCheck,
-  FiUserX,
 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
-import {
-  useCreateTicketMutation,
-  useDeleteTicketMutation,
-} from '../../store/ticketSlice';
+import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 
 dayjs.extend(customParseFormat);
@@ -50,12 +50,11 @@ export const MeetupModal = ({
   onClose,
   onOpen,
 }: MeetupModalProps): ReactNode => {
-  const { data: meetup, refetch: refetchMeetup } = useGetMeetupQuery(meetupId, {
+  const { data: meetup } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
   });
-  const [rsvp] = useCreateTicketMutation();
-  const [unrsvp] = useDeleteTicketMutation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   /**
    * Subscribe user to updates for the selected meetup. This will invalidate the
@@ -93,33 +92,12 @@ export const MeetupModal = ({
     }
   }, [meetup]);
 
-  /**
-   * RSVP for meetup and refetch meetup info to update count
-   */
-  const rsvpOnclick = (): void => {
-    // void to match onClick expected type
-    void (async () => {
-      if (meetup != null) {
-        await rsvp(meetup.id);
-        await refetchMeetup();
-      }
-    })();
-  };
-
-  /**
-   * Remove RSVP for meetup and refetch meetup info to update count
-   */
-  const unrsvpOnClick = (): void => {
-    // void to match onClick expected type
-    void (async () => {
-      if (ticket != null) {
-        await unrsvp(ticket.id);
-        await refetchMeetup();
-      }
-    })();
-  };
-
   if (meetup == null) return <></>;
+
+  const isHappeningNow = isMeetupHappeningNow(meetup);
+  const hasEnded = hasMeetupEnded(meetup);
+  // A meetup can be RSVP'd to (or cancelled) right up until it ends.
+  const isRsvpable = !hasEnded;
 
   return (
     <Dialog
@@ -130,10 +108,10 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="gap-0 overflow-hidden p-0 sm:max-h-[90vh]"
+        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
         showCloseButton={false}
       >
-        <div className="overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {meetup.image_url != null && meetup.image_url !== '' ? (
             <AspectRatio ratio={2 / 1}>
               <ImageWithFallback
@@ -146,12 +124,25 @@ export const MeetupModal = ({
             <DialogHeader className="space-y-0 text-left">
               <DialogTitle className="pb-2 text-2xl font-bold">
                 {meetup.name}
+                {isHappeningNow ? (
+                  <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                    <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                    Happening now
+                  </Badge>
+                ) : hasEnded ? (
+                  <Badge
+                    variant="secondary"
+                    className="ml-3 -translate-y-0.5 align-middle"
+                  >
+                    Ended
+                  </Badge>
+                ) : null}
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-1 pb-4 font-semibold">
               {/* Date */}
-              <div className="flex items-center gap-2">
-                <FiCalendar />
+              <div className="flex items-start gap-2">
+                <FiCalendar className="mt-1 shrink-0" />
                 <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                     'MMMM DD, YYYY'
@@ -160,9 +151,8 @@ export const MeetupModal = ({
               </div>
 
               {/* Time */}
-              {/* TODO(jan): Add end time once implemented into API */}
-              <div className="flex items-center gap-2">
-                <FiClock />
+              <div className="flex items-start gap-2">
+                <FiClock className="mt-1 shrink-0" />
                 <p>
                   {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format('h:mm A')}
                   {' - '}
@@ -173,15 +163,26 @@ export const MeetupModal = ({
               </div>
 
               {/* Location */}
-              <div className="flex items-center gap-2">
-                <FiMapPin />
-                <p>{meetup.location.full_address}</p>
+              <div className="flex items-start gap-2">
+                <FiMapPin className="mt-1 shrink-0" />
+                <p>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      meetup.location.full_address ?? ''
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {meetup.location.full_address}
+                  </a>
+                </p>
               </div>
 
               {/* Organizers */}
               {meetup.organizers != null ? (
-                <div className="flex items-center gap-2">
-                  <FiUser />
+                <div className="flex items-start gap-2">
+                  <FiUser className="mt-1 shrink-0" />
                   <p>
                     Organized by{' '}
                     {new Intl.ListFormat().format(meetup.organizers)}
@@ -204,7 +205,7 @@ export const MeetupModal = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-row items-center p-4 sm:justify-between">
+        <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
           {meetup.tickets != null ? (
             <MeetupCapacityStatus
               available={meetup.tickets.available}
@@ -213,33 +214,39 @@ export const MeetupModal = ({
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-3">
-            {meetup.eventbrite_url != null ? (
-              <a href={meetup.eventbrite_url} target="_blank" rel="noreferrer">
-                <Button>
-                  <FiExternalLink />
+          <div className="ml-auto flex items-center gap-3">
+            {isRsvpable ? (
+              meetup.eventbrite_url != null ? (
+                <a
+                  href={meetup.eventbrite_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button>
+                    <FiExternalLink />
+                    RSVP
+                  </Button>
+                </a>
+              ) : ticket != null ? (
+                <Button
+                  variant="outline"
+                  disabled={!isLoggedIn}
+                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
+                >
+                  <FiEdit />
+                  Manage RSVP
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  disabled={!isLoggedIn}
+                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
+                >
+                  <FiUserCheck />
                   RSVP
                 </Button>
-              </a>
-            ) : ticket != null ? (
-              <Button
-                variant="destructive"
-                disabled={!isLoggedIn}
-                onClick={unrsvpOnClick}
-              >
-                <FiUserX />
-                Cancel RSVP
-              </Button>
-            ) : (
-              <Button
-                variant="default"
-                disabled={!isLoggedIn}
-                onClick={rsvpOnclick}
-              >
-                <FiUserCheck />
-                RSVP
-              </Button>
-            )}
+              )
+            ) : null}
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>

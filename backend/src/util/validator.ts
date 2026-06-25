@@ -60,9 +60,17 @@ export const editMeetupSchema = z.object({
 
 export type EditMeetupPayload = z.infer<typeof editMeetupSchema>;
 
+// Shared by create and edit: when a ticket holder is provided, every field is
+// required so we never persist a half-populated holder.
+const ticketHolderSchema = z.object({
+  display_name: z.string(),
+  first_name: z.string(),
+  last_name: z.string(),
+  email: z.email(),
+});
+
 export const createTicketSchema = z.object({
-  meetup_id: z.number(),
-  user_id: z.number(),
+  ticket_holder: ticketHolderSchema.optional(),
 });
 
 export type CreateTicketPayload = z.infer<typeof createTicketSchema>;
@@ -71,12 +79,13 @@ export const editTicketSchema = z.object({
   is_checked_in: z.boolean().optional(),
   raffle_entries: z.number().min(0).optional(),
   raffle_wins: z.number().min(0).optional(),
+  ticket_holder: ticketHolderSchema.optional(),
 });
 
 export type EditTicketPayload = z.infer<typeof editTicketSchema>;
 
 export const createUserSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   first_name: z.string(),
   last_name: z.string(),
   nick_name: z.string(),

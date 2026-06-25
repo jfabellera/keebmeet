@@ -1,7 +1,30 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
+import { type CreateTicketPayload } from '../../../backend/src/util/validator';
 import config from '../config';
 import { type RootState } from './store';
+
+export type TicketHolder = NonNullable<CreateTicketPayload['ticket_holder']>;
+
+export interface CreateTicketOptions {
+  meetupId: number;
+  /** Optional override; when omitted the requestor's own details are used. */
+  ticketHolder?: TicketHolder;
+}
+
+export interface UpdateTicketOptions {
+  ticketId: number;
+  ticketHolder: TicketHolder;
+}
+
+/** Subset of the Ticket entity the RSVP page needs to prefill its form. */
+export interface TicketDetails {
+  id: number;
+  ticket_holder_display_name: string;
+  ticket_holder_first_name: string;
+  ticket_holder_last_name: string;
+  ticket_holder_email: string;
+}
 
 export const ticketSlice = createApi({
   reducerPath: 'ticketSlice',
@@ -25,12 +48,33 @@ export const ticketSlice = createApi({
       }),
       providesTags: ['Tickets'],
     }),
-    createTicket: builder.mutation<void, number>({
-      query: (meetupId) => ({
+    getTicket: builder.query<TicketDetails, number>({
+      query: (ticketId) => ({
+        url: `tickets/${ticketId}`,
+      }),
+      providesTags: (result, error, ticketId) => [
+        { type: 'Tickets', id: ticketId },
+      ],
+    }),
+    createTicket: builder.mutation<void, CreateTicketOptions>({
+      query: ({ meetupId, ticketHolder }) => ({
         url: `meetups/${meetupId}/rsvp`,
         method: 'POST',
+        // Omit the body entirely to fall back to the requestor's details.
+        body: ticketHolder != null ? { ticket_holder: ticketHolder } : undefined,
       }),
       invalidatesTags: ['Tickets'],
+    }),
+    updateTicket: builder.mutation<void, UpdateTicketOptions>({
+      query: ({ ticketId, ticketHolder }) => ({
+        url: `tickets/${ticketId}`,
+        method: 'PUT',
+        body: { ticket_holder: ticketHolder },
+      }),
+      invalidatesTags: (result, error, { ticketId }) => [
+        'Tickets',
+        { type: 'Tickets', id: ticketId },
+      ],
     }),
     deleteTicket: builder.mutation<void, number>({
       query: (ticketId) => ({
@@ -44,6 +88,8 @@ export const ticketSlice = createApi({
 
 export const {
   useGetTicketsQuery,
+  useGetTicketQuery,
   useCreateTicketMutation,
+  useUpdateTicketMutation,
   useDeleteTicketMutation,
 } = ticketSlice;

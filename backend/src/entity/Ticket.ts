@@ -40,6 +40,9 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'varchar', default: '' })
   ticket_holder_last_name: string;
 
+  @Column({ type: 'varchar', default: '' })
+  ticket_holder_email: string;
+
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;
 
