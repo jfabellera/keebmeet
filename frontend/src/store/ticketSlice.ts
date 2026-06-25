@@ -1,7 +1,14 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
+import { type CreateTicketPayload } from '../../../backend/src/util/validator';
 import config from '../config';
 import { type RootState } from './store';
+
+export interface CreateTicketOptions {
+  meetupId: number;
+  /** Optional override; when omitted the requestor's own details are used. */
+  ticketHolder?: CreateTicketPayload['ticket_holder'];
+}
 
 export const ticketSlice = createApi({
   reducerPath: 'ticketSlice',
@@ -25,10 +32,12 @@ export const ticketSlice = createApi({
       }),
       providesTags: ['Tickets'],
     }),
-    createTicket: builder.mutation<void, number>({
-      query: (meetupId) => ({
+    createTicket: builder.mutation<void, CreateTicketOptions>({
+      query: ({ meetupId, ticketHolder }) => ({
         url: `meetups/${meetupId}/rsvp`,
         method: 'POST',
+        // Omit the body entirely to fall back to the requestor's details.
+        body: ticketHolder != null ? { ticket_holder: ticketHolder } : undefined,
       }),
       invalidatesTags: ['Tickets'],
     }),

@@ -1,6 +1,7 @@
+import { cn } from '@/lib/utils';
 import { type FormikProps } from 'formik';
 import { type ReactNode } from 'react';
-import { Field, FieldError, FieldLabel } from './field';
+import { Field, FieldDescription, FieldError, FieldLabel } from './field';
 import { Input } from './input';
 
 interface FormFieldProps<Values> {
@@ -17,6 +18,8 @@ interface FormFieldProps<Values> {
   invalid?: boolean;
   /** Override the default error message (defaults to the formik error). */
   message?: ReactNode;
+  /** Additional description or helper text for the field. */
+  description?: string;
 }
 
 /**
@@ -34,12 +37,13 @@ export const FormField = <Values,>({
   className,
   invalid,
   message,
+  description,
 }: FormFieldProps<Values>): ReactNode => {
   const show =
     invalid ?? (formik.errors[name] != null && formik.touched[name] === true);
 
   return (
-    <Field data-invalid={show} className={className}>
+    <Field data-invalid={show} className={cn(className, 'gap-1.5')}>
       <FieldLabel htmlFor={name}>{label}</FieldLabel>
       <Input
         id={name}
@@ -54,6 +58,7 @@ export const FormField = <Values,>({
       {show ? (
         <FieldError>{message ?? (formik.errors[name] as ReactNode)}</FieldError>
       ) : null}
+      {description && <FieldDescription>{description}</FieldDescription>}
     </Field>
   );
 };

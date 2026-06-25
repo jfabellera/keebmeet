@@ -22,6 +22,7 @@ import {
   FiUserCheck,
   FiUserX,
 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
@@ -58,6 +59,7 @@ export const MeetupModal = ({
   const [rsvp] = useCreateTicketMutation();
   const [unrsvp] = useDeleteTicketMutation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   /**
    * Subscribe user to updates for the selected meetup. This will invalidate the
@@ -102,7 +104,7 @@ export const MeetupModal = ({
     // void to match onClick expected type
     void (async () => {
       if (meetup != null) {
-        await rsvp(meetup.id);
+        await rsvp({ meetupId: meetup.id });
         await refetchMeetup();
       }
     })();
@@ -269,7 +271,7 @@ export const MeetupModal = ({
                 <Button
                   variant="default"
                   disabled={!isLoggedIn}
-                  onClick={rsvpOnclick}
+                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
                 >
                   <FiUserCheck />
                   RSVP
