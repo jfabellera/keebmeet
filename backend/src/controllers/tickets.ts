@@ -129,6 +129,13 @@ export const updateTicket = async (
   ticket.raffle_entries = req.body.raffle_entries ?? ticket.raffle_entries;
   ticket.raffle_wins = req.body.raffle_wins ?? ticket.raffle_wins;
 
+  if (result.data.ticket_holder != null) {
+    ticket.ticket_holder_display_name = result.data.ticket_holder.display_name;
+    ticket.ticket_holder_first_name = result.data.ticket_holder.first_name;
+    ticket.ticket_holder_last_name = result.data.ticket_holder.last_name;
+    ticket.ticket_holder_email = result.data.ticket_holder.email;
+  }
+
   await ticket.save();
 
   socket.emit('meetup:update', { meetupId: ticket.meetup.id });

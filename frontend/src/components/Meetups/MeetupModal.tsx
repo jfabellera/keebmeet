@@ -16,21 +16,18 @@ import { useEffect, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiClock,
+  FiEdit,
   FiExternalLink,
   FiMapPin,
+  FiSettings,
   FiUser,
   FiUserCheck,
-  FiUserX,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
-import {
-  useCreateTicketMutation,
-  useDeleteTicketMutation,
-} from '../../store/ticketSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 
@@ -53,11 +50,9 @@ export const MeetupModal = ({
   onClose,
   onOpen,
 }: MeetupModalProps): ReactNode => {
-  const { data: meetup, refetch: refetchMeetup } = useGetMeetupQuery(meetupId, {
+  const { data: meetup } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
   });
-  const [rsvp] = useCreateTicketMutation();
-  const [unrsvp] = useDeleteTicketMutation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -96,32 +91,6 @@ export const MeetupModal = ({
       onOpen();
     }
   }, [meetup]);
-
-  /**
-   * RSVP for meetup and refetch meetup info to update count
-   */
-  const rsvpOnclick = (): void => {
-    // void to match onClick expected type
-    void (async () => {
-      if (meetup != null) {
-        await rsvp({ meetupId: meetup.id });
-        await refetchMeetup();
-      }
-    })();
-  };
-
-  /**
-   * Remove RSVP for meetup and refetch meetup info to update count
-   */
-  const unrsvpOnClick = (): void => {
-    // void to match onClick expected type
-    void (async () => {
-      if (ticket != null) {
-        await unrsvp(ticket.id);
-        await refetchMeetup();
-      }
-    })();
-  };
 
   if (meetup == null) return <></>;
 
@@ -260,12 +229,12 @@ export const MeetupModal = ({
                 </a>
               ) : ticket != null ? (
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   disabled={!isLoggedIn}
-                  onClick={unrsvpOnClick}
+                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
                 >
-                  <FiUserX />
-                  Cancel RSVP
+                  <FiEdit />
+                  Manage RSVP
                 </Button>
               ) : (
                 <Button

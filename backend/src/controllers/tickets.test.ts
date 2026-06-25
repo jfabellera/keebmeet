@@ -358,6 +358,50 @@ describe('updateTicket', () => {
     });
     expect(res.statusCode).toBe(201);
   });
+
+  it('updates the ticket holder details when a full ticket_holder is provided', async () => {
+    const ticket = {
+      id: 5,
+      ticket_holder_display_name: 'old',
+      ticket_holder_first_name: 'Old',
+      ticket_holder_last_name: 'Name',
+      ticket_holder_email: 'old@example.com',
+      meetup: { id: 10 },
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    const res = mockResponse();
+
+    await updateTicket(
+      mockRequest(
+        { ticket_holder: fakeTicketHolder() },
+        { ticket_id: '5' }
+      ),
+      res
+    );
+
+    expect(ticket.ticket_holder_display_name).toBe('spotter');
+    expect(ticket.ticket_holder_first_name).toBe('Sam');
+    expect(ticket.ticket_holder_last_name).toBe('Holder');
+    expect(ticket.ticket_holder_email).toBe('sam.holder@example.com');
+    expect(ticket.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('rejects (400) a partial ticket_holder without touching the ticket', async () => {
+    const res = mockResponse();
+
+    await updateTicket(
+      mockRequest(
+        { ticket_holder: { display_name: 'spotter' } },
+        { ticket_id: '5' }
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+  });
 });
 
 // ---- deleteTicket ----------------------------------------------------------
