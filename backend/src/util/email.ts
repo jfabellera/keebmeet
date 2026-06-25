@@ -28,3 +28,23 @@ export const sendVerificationEmail = async (
     console.error('Error sending email:', error);
   }
 };
+
+export const sendRsvpConfirmationEmail = async (
+  email: string,
+  meetupName: string,
+  meetupDate: string,
+  meetupLocation: string
+) => {
+  const { error } = await getResendClient().emails.send({
+    from: 'KeebMeet <noreply@keebmeet.com>',
+    to: [email],
+    subject: `RSVP Confirmation for ${meetupName}`,
+    html: `<p>Thank you for RSVPing to ${meetupName}!</p>
+           <p>Date: ${meetupDate}</p>
+           <p>Location: ${meetupLocation}</p>`,
+  });
+
+  if (error) {
+    console.error('Error sending email:', error);
+  }
+};

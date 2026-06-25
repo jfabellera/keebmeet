@@ -4,6 +4,7 @@ import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
+import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import { createTicketSchema, editTicketSchema } from '../util/validator';
 
@@ -96,6 +97,14 @@ export const createTicket = async (
   await newTicket.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
+
+  await sendRsvpConfirmationEmail(
+    newTicket.ticket_holder_email,
+    meetup.name,
+    meetup.date,
+    meetup.address
+  );
+
   return res.status(201).json(newTicket);
 };
 
