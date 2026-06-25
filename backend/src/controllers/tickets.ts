@@ -5,7 +5,7 @@ import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
-import { editTicketSchema } from '../util/validator';
+import { createTicketSchema, editTicketSchema } from '../util/validator';
 
 export interface SimpleTicketInfo {
   id: number;
@@ -51,9 +51,14 @@ export const createTicket = async (
 ): Promise<Response> => {
   const meetup = res.locals.meetup as Meetup;
   const user = res.locals.requestor as User;
+  const result = createTicketSchema.safeParse(req.body);
 
   if (meetup == null || user == null) {
     return res.status(400).end();
+  }
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
   }
 
   // Check if ticket already exists
@@ -80,9 +85,13 @@ export const createTicket = async (
     meetup,
     user,
     raffle_entries: meetup.default_raffle_entries,
-    ticket_holder_display_name: user.nick_name,
-    ticket_holder_first_name: user.first_name,
-    ticket_holder_last_name: user.last_name,
+    ticket_holder_display_name:
+      result.data.ticket_holder?.display_name ?? user.nick_name,
+    ticket_holder_first_name:
+      result.data.ticket_holder?.first_name ?? user.first_name,
+    ticket_holder_last_name:
+      result.data.ticket_holder?.last_name ?? user.last_name,
+    ticket_holder_email: result.data.ticket_holder?.email ?? user.email,
   });
   await newTicket.save();
 

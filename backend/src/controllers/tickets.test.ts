@@ -83,6 +83,17 @@ const fakeRequestor = (overrides = {}): any => ({
   nick_name: 'jane',
   first_name: 'Jane',
   last_name: 'Doe',
+  email: 'jane@example.com',
+  ...overrides,
+});
+
+// createTicketSchema wraps an optional `ticket_holder` object: when present,
+// every field is required; when absent, the requestor's details win.
+const fakeTicketHolder = (overrides = {}): any => ({
+  display_name: 'spotter',
+  first_name: 'Sam',
+  last_name: 'Holder',
+  email: 'sam.holder@example.com',
   ...overrides,
 });
 
@@ -197,7 +208,7 @@ describe('createTicket', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('creates the ticket with the meetup default entries and emits an update', async () => {
+  it("falls back to the requestor's details when no ticket holder is supplied, then emits an update", async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = fakeMeetup({ default_raffle_entries: 3 });
@@ -211,12 +222,65 @@ describe('createTicket', () => {
         ticket_holder_display_name: 'jane',
         ticket_holder_first_name: 'Jane',
         ticket_holder_last_name: 'Doe',
+        ticket_holder_email: 'jane@example.com',
       })
     );
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: 10,
     });
     expect(res.statusCode).toBe(201);
+  });
+
+  it('uses the supplied ticket holder details instead of the requestor when provided', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(
+      mockRequest({ ticket_holder: fakeTicketHolder() }),
+      res
+    );
+
+    expect(mockedTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_holder_display_name: 'spotter',
+        ticket_holder_first_name: 'Sam',
+        ticket_holder_last_name: 'Holder',
+        ticket_holder_email: 'sam.holder@example.com',
+      })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('rejects (400) a partial ticket holder that omits some details', async () => {
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    // first_name / last_name / email omitted.
+    await createTicket(
+      mockRequest({ ticket_holder: { display_name: 'spotter' } }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+    expect(mockedTicket.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects (400) a ticket holder with an invalid email', async () => {
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(
+      mockRequest({ ticket_holder: fakeTicketHolder({ email: 'not-an-email' }) }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedTicket.create).not.toHaveBeenCalled();
   });
 });
 
