@@ -20,6 +20,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useState, type ReactNode } from 'react';
 import {
+  FiArrowLeft,
   FiCalendar,
   FiClock,
   FiLock,
@@ -159,8 +160,17 @@ const MeetupRsvpPage = (): ReactNode => {
 
   return (
     <Page>
-      <div className="flex justify-center p-4">
-        <Card className="w-full max-w-4xl overflow-hidden p-0">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => void navigate(-1)}
+        >
+          <FiArrowLeft />
+          Back
+        </Button>
+        <Card className="w-full overflow-hidden p-0">
           {/* Reverse wrap: side-by-side on wide screens (RSVP left, details
               right); stacked on narrow screens with details on top. */}
           <div className="flex flex-wrap-reverse">
@@ -260,13 +270,6 @@ const MeetupRsvpPage = (): ReactNode => {
                     Cancel RSVP
                   </Button>
                 ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void navigate(-1)}
-                >
-                  Back
-                </Button>
               </div>
 
               <Dialog
