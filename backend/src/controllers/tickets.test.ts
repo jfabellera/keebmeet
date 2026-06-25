@@ -231,6 +231,25 @@ describe('createTicket', () => {
     expect(res.statusCode).toBe(201);
   });
 
+  it('accepts an RSVP with no body and falls back to the requestor (Express 5 leaves req.body undefined)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup();
+    res.locals.requestor = fakeRequestor();
+
+    // Genuinely undefined body — mockRequest()'s default would coerce to {}.
+    const req = { body: undefined, params: {}, query: {} } as unknown as Request;
+    await createTicket(req, res);
+
+    expect(mockedTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ticket_holder_display_name: 'jane',
+        ticket_holder_email: 'jane@example.com',
+      })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
   it('uses the supplied ticket holder details instead of the requestor when provided', async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();

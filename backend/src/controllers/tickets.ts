@@ -51,7 +51,7 @@ export const createTicket = async (
 ): Promise<Response> => {
   const meetup = res.locals.meetup as Meetup;
   const user = res.locals.requestor as User;
-  const result = createTicketSchema.safeParse(req.body);
+  const result = createTicketSchema.safeParse(req.body ?? {});
 
   if (meetup == null || user == null) {
     return res.status(400).end();
