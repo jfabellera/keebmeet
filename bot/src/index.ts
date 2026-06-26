@@ -1,5 +1,13 @@
 // Require the necessary discord.js classes
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  Client,
+  Events,
+  GatewayIntentBits,
+  type ButtonInteraction,
+} from 'discord.js';
 
 // Read the bot token from the environment. Never hard-code it or commit it to
 // source control. Locally it comes from a gitignored `.env` file (loaded via
@@ -21,12 +29,45 @@ if (!backendUrl || !internalApiSecret) {
   );
 }
 
-// Maps the backend's RSVP status to the message shown to the user.
+// Maps a terminal backend RSVP status to the message shown to the user. The
+// 'already' status is handled separately because it offers a confirm button.
 const RSVP_MESSAGES: Record<string, string> = {
   created: "✅ You're RSVP'd!",
   cancelled: 'Your RSVP has been cancelled.',
+  not_found: "You don't have an RSVP to cancel.",
   full: 'Sorry, this meetup is full.',
   ended: 'This meetup has already happened.',
+};
+
+// Calls the backend to record an RSVP action and returns its status string
+// ('created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended'), or
+// 'error' if the call fails.
+const postRsvp = async (
+  meetupId: string,
+  interaction: ButtonInteraction,
+  action: 'rsvp' | 'cancel'
+): Promise<string> => {
+  try {
+    const response = await fetch(`${backendUrl}/discord/rsvp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': internalApiSecret,
+      },
+      body: JSON.stringify({
+        meetup_id: Number(meetupId),
+        discord_id: interaction.user.id,
+        display_name: interaction.user.globalName ?? interaction.user.username,
+        action,
+      }),
+    });
+
+    const data = (await response.json()) as { status?: string };
+    return data.status ?? 'error';
+  } catch (error) {
+    console.error('Failed to record Discord RSVP:', error);
+    return 'error';
+  }
 };
 
 // Create a new client instance
@@ -39,39 +80,48 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
-// Handle RSVP button clicks on meetup announcement embeds.
+// Handle RSVP button clicks on meetup announcement embeds. The embed's primary
+// button uses custom_id `rsvp:<meetupId>`; the confirm-cancel button we send in
+// an ephemeral reply uses `rsvp-cancel:<meetupId>`.
 client.on(Events.InteractionCreate, (interaction) => {
   void (async () => {
     if (!interaction.isButton()) return;
 
     const [action, meetupId] = interaction.customId.split(':');
-    if (action !== 'rsvp') return;
+    if ((action !== 'rsvp' && action !== 'rsvp-cancel') || meetupId == null) {
+      return;
+    }
 
     await interaction.deferReply({ ephemeral: true });
 
-    try {
-      const response = await fetch(`${backendUrl}/discord/rsvp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': internalApiSecret,
-        },
-        body: JSON.stringify({
-          meetup_id: Number(meetupId),
-          discord_id: interaction.user.id,
-          display_name:
-            interaction.user.globalName ?? interaction.user.username,
-        }),
-      });
+    const status = await postRsvp(
+      meetupId,
+      interaction,
+      action === 'rsvp-cancel' ? 'cancel' : 'rsvp'
+    );
 
-      const data = (await response.json()) as { status?: string };
-      await interaction.editReply(
-        RSVP_MESSAGES[data.status ?? ''] ?? 'Something went wrong.'
+    // Already RSVP'd: offer an ephemeral confirm button rather than cancelling.
+    if (status === 'already') {
+      const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`rsvp-cancel:${meetupId}`)
+          .setLabel('Cancel RSVP')
+          .setStyle(ButtonStyle.Danger)
       );
-    } catch (error) {
-      console.error('Failed to record Discord RSVP:', error);
-      await interaction.editReply('Something went wrong. Please try again.');
+
+      await interaction.editReply({
+        content:
+          "You're already RSVP'd to this meetup. Press **Cancel RSVP** to cancel it.",
+        components: [confirmRow],
+      });
+      return;
     }
+
+    // Any terminal status: replace the message and clear the confirm button.
+    await interaction.editReply({
+      content: RSVP_MESSAGES[status] ?? 'Something went wrong. Please try again.',
+      components: [],
+    });
   })();
 });
 

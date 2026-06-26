@@ -22,7 +22,7 @@ jest.mock('../util/rsvp', () => ({
   isMeetupAtCapacity: jest.fn(),
 }));
 
-import { toggleDiscordRsvp } from './discordRsvp';
+import { handleDiscordRsvp } from './discordRsvp';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
@@ -61,7 +61,10 @@ const validBody = {
   meetup_id: 10,
   discord_id: 'd-1',
   display_name: 'Discord Dan',
+  action: 'rsvp',
 };
+
+const cancelBody = { ...validBody, action: 'cancel' };
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   id: 10,
@@ -83,11 +86,11 @@ beforeEach(() => {
   }));
 });
 
-describe('toggleDiscordRsvp', () => {
+describe('handleDiscordRsvp', () => {
   it('returns 400 on an invalid body', async () => {
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest({ meetup_id: 'nope' }), res);
+    await handleDiscordRsvp(mockRequest({ meetup_id: 'nope' }), res);
 
     expect(res.statusCode).toBe(400);
     expect(mockedMeetup.findOneBy).not.toHaveBeenCalled();
@@ -97,7 +100,7 @@ describe('toggleDiscordRsvp', () => {
     mockedMeetup.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
 
     expect(res.statusCode).toBe(404);
   });
@@ -107,7 +110,7 @@ describe('toggleDiscordRsvp', () => {
     mockedGetMeetupEnd.mockReturnValue(new Date('2000-01-01'));
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
 
     expect(res.body).toEqual({ status: 'ended' });
     expect(mockedTicket.create).not.toHaveBeenCalled();
@@ -119,7 +122,7 @@ describe('toggleDiscordRsvp', () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
 
     expect(mockedTicket.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -147,7 +150,7 @@ describe('toggleDiscordRsvp', () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
 
     expect(mockedTicket.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,19 +163,44 @@ describe('toggleDiscordRsvp', () => {
     expect(res.body).toEqual({ status: 'created' });
   });
 
-  it('cancels an existing RSVP (toggle off)', async () => {
+  it('reports "already" on an rsvp action when a ticket exists (no removal)', async () => {
     const ticket = { remove: jest.fn().mockResolvedValue(undefined) };
     mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
     mockedUser.findOneBy.mockResolvedValue(null);
     mockedTicket.findOne.mockResolvedValue(ticket as any);
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
+
+    expect(ticket.remove).not.toHaveBeenCalled();
+    expect(mockedTicket.create).not.toHaveBeenCalled();
+    expect(res.body).toEqual({ status: 'already' });
+  });
+
+  it('cancels an existing RSVP on a cancel action', async () => {
+    const ticket = { remove: jest.fn().mockResolvedValue(undefined) };
+    mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    const res = mockResponse();
+
+    await handleDiscordRsvp(mockRequest(cancelBody), res);
 
     expect(ticket.remove).toHaveBeenCalled();
-    expect(mockedTicket.create).not.toHaveBeenCalled();
     expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.body).toEqual({ status: 'cancelled' });
+  });
+
+  it('reports "not_found" on a cancel action with no ticket', async () => {
+    mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await handleDiscordRsvp(mockRequest(cancelBody), res);
+
+    expect(res.body).toEqual({ status: 'not_found' });
+    expect(mockedRefresh).not.toHaveBeenCalled();
   });
 
   it('returns status "full" at capacity without creating a ticket', async () => {
@@ -182,7 +210,7 @@ describe('toggleDiscordRsvp', () => {
     mockedIsAtCapacity.mockResolvedValue(true);
     const res = mockResponse();
 
-    await toggleDiscordRsvp(mockRequest(validBody), res);
+    await handleDiscordRsvp(mockRequest(validBody), res);
 
     expect(res.body).toEqual({ status: 'full' });
     expect(mockedTicket.create).not.toHaveBeenCalled();

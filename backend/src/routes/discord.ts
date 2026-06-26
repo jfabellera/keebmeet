@@ -1,5 +1,5 @@
 import express, { type RequestHandler } from 'express';
-import { toggleDiscordRsvp } from '../controllers/discordRsvp';
+import { handleDiscordRsvp } from '../controllers/discordRsvp';
 import { internalAuth } from '../middleware/internalAuth';
 
 const router = express.Router();
@@ -7,7 +7,7 @@ const router = express.Router();
 router.post(
   '/rsvp',
   internalAuth as RequestHandler,
-  toggleDiscordRsvp as RequestHandler
+  handleDiscordRsvp as RequestHandler
 );
 
 export default router;

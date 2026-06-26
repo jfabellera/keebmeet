@@ -8,14 +8,15 @@ import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
 import { discordRsvpSchema } from '../util/validator';
 
 /**
- * Toggles a Discord user's RSVP for a meetup, called by the bot when its RSVP
- * button is clicked. Creating ties the ticket to the Discord user (and to their
- * app account if one is linked by discord_id); clicking again cancels it.
+ * Handles a Discord user's RSVP action for a meetup, called by the bot when an
+ * RSVP/cancel button is clicked. RSVPing ties the ticket to the Discord user
+ * (and to their app account if one is linked by discord_id). Cancelling is a
+ * separate action so the bot can confirm with the user first.
  *
- * Responds 200 with a `status` the bot maps to an ephemeral reply:
- * 'created' | 'cancelled' | 'full' | 'ended'.
+ * Responds with a `status` the bot maps to an ephemeral reply:
+ * 'created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended'.
  */
-export const toggleDiscordRsvp = async (
+export const handleDiscordRsvp = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -25,16 +26,12 @@ export const toggleDiscordRsvp = async (
     return res.status(400).json(result.error);
   }
 
-  const { meetup_id, discord_id, display_name } = result.data;
+  const { meetup_id, discord_id, display_name, action } = result.data;
 
   const meetup = await Meetup.findOneBy({ id: meetup_id });
 
   if (meetup == null) {
     return res.status(404).json({ message: 'Invalid meetup ID.' });
-  }
-
-  if (getMeetupEnd(meetup) < new Date()) {
-    return res.json({ status: 'ended' });
   }
 
   // Link to an app account if one is registered with this Discord id.
@@ -50,11 +47,24 @@ export const toggleDiscordRsvp = async (
     ],
   });
 
-  if (existingTicket != null) {
+  if (action === 'cancel') {
+    if (existingTicket == null) {
+      return res.json({ status: 'not_found' });
+    }
+
     await existingTicket.remove();
     socket.emit('meetup:update', { meetupId: meetup_id });
     await refreshMeetupDiscordMessage(meetup_id);
     return res.json({ status: 'cancelled' });
+  }
+
+  // action === 'rsvp'
+  if (existingTicket != null) {
+    return res.json({ status: 'already' });
+  }
+
+  if (getMeetupEnd(meetup) < new Date()) {
+    return res.json({ status: 'ended' });
   }
 
   if (await isMeetupAtCapacity(meetup_id, meetup.capacity)) {

@@ -73,6 +73,9 @@ export const discordRsvpSchema = z.object({
   meetup_id: z.number(),
   discord_id: z.string(),
   display_name: z.string(),
+  // 'rsvp' creates (or reports an existing RSVP); 'cancel' removes it. Cancelling
+  // is a separate, explicit action so the bot can ask the user to confirm.
+  action: z.enum(['rsvp', 'cancel']),
 });
 
 export type DiscordRsvpPayload = z.infer<typeof discordRsvpSchema>;
