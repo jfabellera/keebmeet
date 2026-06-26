@@ -39,6 +39,7 @@ const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   date: '2026-07-01T00:00:00Z',
   address: '123 St',
   image_url: 'http://img',
+  capacity: 100,
   discordMessage: null,
   ...overrides,
 });
@@ -79,7 +80,7 @@ describe('buildMeetupEmbed', () => {
     const embed = buildMeetupEmbed(fakeMeetup(), ['Alice', 'Bob']);
     const field = attendeesField(embed);
 
-    expect(field.name).toBe('Attendees (2)');
+    expect(field.name).toBe('Attendees (2/100)');
     expect(field.value).toBe('Alice\nBob');
   });
 
@@ -87,7 +88,7 @@ describe('buildMeetupEmbed', () => {
     const embed = buildMeetupEmbed(fakeMeetup(), []);
     const field = attendeesField(embed);
 
-    expect(field.name).toBe('Attendees (0)');
+    expect(field.name).toBe('Attendees (0/100)');
     expect(field.value).toBe('No attendees yet.');
   });
 
@@ -100,7 +101,7 @@ describe('buildMeetupEmbed', () => {
     const embed = buildMeetupEmbed(fakeMeetup(), names);
     const field = attendeesField(embed);
 
-    expect(field.name).toBe('Attendees (200)');
+    expect(field.name).toBe('Attendees (200/100)');
     expect(field.value.length).toBeLessThanOrEqual(1024);
     expect(field.value).toMatch(/…and \d+ more$/);
     // The first name is listed; a later one is dropped into the overflow.

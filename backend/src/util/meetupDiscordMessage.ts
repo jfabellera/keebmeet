@@ -96,7 +96,7 @@ export const buildMeetupEmbed = (
     },
     { name: 'Location', value: meetup.address },
     {
-      name: `Attendees (${attendeeNames.length})`,
+      name: `Attendees (${attendeeNames.length}/${meetup.capacity})`,
       value: buildAttendeesValue(attendeeNames),
     },
   ],
