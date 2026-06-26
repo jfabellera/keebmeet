@@ -545,6 +545,7 @@ export const updateMeetup = async (
   await meetup.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
   return res.status(201).json(meetup);
 };
 
