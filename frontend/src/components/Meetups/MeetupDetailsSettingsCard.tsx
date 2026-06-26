@@ -1,3 +1,7 @@
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Input } from '@/components/ui/input';
 import { useBoolean } from '@/hooks/useBoolean';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -177,17 +181,29 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.capacity}
         />
-        <EditableFormField
-          name={'Image URL'}
-          value={meetup?.image_url}
-          editable={isEditable}
-          id={'imageUrl'}
-          type={'text'}
-          isInvalid={formik.errors.imageUrl != null && formik.touched.imageUrl}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          errorMessage={formik.errors.imageUrl}
-        />
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor={'imageUrl'} className="line-clamp-1">
+            Meetup Image
+          </FieldLabel>
+          <AspectRatio ratio={2 / 1}>
+            <div className="size-full border">
+              <ImageWithFallback
+                src={formik.values.imageUrl}
+                className="size-full object-cover"
+              />
+            </div>
+          </AspectRatio>
+          {isEditable ? (
+            <Input
+              id={'imageUrl'}
+              name={'imageUrl'}
+              className="mt-4"
+              value={formik.values.imageUrl}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          ) : null}
+        </Field>
         <EditableFormField
           name={'Description'}
           value={meetup?.description}
