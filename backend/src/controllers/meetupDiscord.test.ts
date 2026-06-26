@@ -27,6 +27,11 @@ jest.mock('../util/discord', () => ({
   isGuildMember: jest.fn(),
 }));
 
+jest.mock('../util/meetupDiscordMessage', () => ({
+  buildMeetupEmbed: jest.fn(() => ({ embed: true })),
+  getMeetupAttendeeDisplayNames: jest.fn(async () => []),
+}));
+
 import {
   createMeetupDiscordMessage,
   deleteMeetupDiscordMessage,
@@ -41,6 +46,10 @@ import {
   editEmbedMessage,
   isGuildMember,
 } from '../util/discord';
+import {
+  buildMeetupEmbed,
+  getMeetupAttendeeDisplayNames,
+} from '../util/meetupDiscordMessage';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedMessage = jest.mocked(MeetupDiscordMessage);
@@ -48,6 +57,8 @@ const mockedCreateEmbed = jest.mocked(createEmbedMessage);
 const mockedEditEmbed = jest.mocked(editEmbedMessage);
 const mockedDeleteEmbed = jest.mocked(deleteEmbedMessage);
 const mockedIsGuildMember = jest.mocked(isGuildMember);
+const mockedBuildEmbed = jest.mocked(buildMeetupEmbed);
+const mockedGetAttendeeNames = jest.mocked(getMeetupAttendeeDisplayNames);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -229,7 +240,9 @@ describe('createMeetupDiscordMessage', () => {
       res
     );
 
-    expect(mockedCreateEmbed).toHaveBeenCalledWith('c1', expect.any(Object));
+    expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
+    expect(mockedBuildEmbed).toHaveBeenCalled();
+    expect(mockedCreateEmbed).toHaveBeenCalledWith('c1', { embed: true });
     expect(saved.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
@@ -274,7 +287,8 @@ describe('updateMeetupDiscordMessage', () => {
 
     await updateMeetupDiscordMessage(mockRequest({ meetup_id: '1' }), res);
 
-    expect(mockedEditEmbed).toHaveBeenCalledWith('c1', 'm1', expect.any(Object));
+    expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
+    expect(mockedEditEmbed).toHaveBeenCalledWith('c1', 'm1', { embed: true });
     expect(res.body).toEqual({
       guild_id: 'g1',
       channel_id: 'c1',

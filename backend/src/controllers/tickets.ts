@@ -6,6 +6,7 @@ import { type User } from '../entity/User';
 import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
 import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
+import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { createTicketSchema, editTicketSchema } from '../util/validator';
 
 export interface SimpleTicketInfo {
@@ -97,6 +98,7 @@ export const createTicket = async (
   await newTicket.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
 
   await sendRsvpConfirmationEmail(
     newTicket.ticket_holder_email,
@@ -148,6 +150,7 @@ export const updateTicket = async (
   await ticket.save();
 
   socket.emit('meetup:update', { meetupId: ticket.meetup.id });
+  await refreshMeetupDiscordMessage(ticket.meetup.id);
   return res.status(201).json(ticket);
 };
 
@@ -165,6 +168,7 @@ export const deleteTicket = async (
   await ticket.remove();
 
   socket.emit('meetup:update', { meetupId });
+  await refreshMeetupDiscordMessage(meetupId);
   return res.status(204).end();
 };
 
@@ -332,6 +336,7 @@ export const updateTicketViaWebhook = async (
     await syncEventbriteAttendee(attendee, meetup);
 
     socket.emit('meetup:update', { meetupId: meetup.id });
+    await refreshMeetupDiscordMessage(meetup.id);
     return res.status(200).end();
   } catch (error: any) {
     return res.status(400).end();

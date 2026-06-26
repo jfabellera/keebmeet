@@ -22,11 +22,15 @@ jest.mock('../util/eventbriteApi', () => ({
 jest.mock('../util/email', () => ({
   sendRsvpConfirmationEmail: jest.fn(),
 }));
+jest.mock('../util/meetupDiscordMessage', () => ({
+  refreshMeetupDiscordMessage: jest.fn(),
+}));
 
 import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
+import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   checkInTicket,
   createTicket,
@@ -43,6 +47,7 @@ const mockedTicket = jest.mocked(Ticket);
 const mockedMeetup = jest.mocked(Meetup);
 const mockedGetAttendee = jest.mocked(getEventbriteAttendeeByUri);
 const mockedSocket = jest.mocked(socket);
+const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -231,6 +236,7 @@ describe('createTicket', () => {
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: 10,
     });
+    expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.statusCode).toBe(201);
   });
 
@@ -441,6 +447,7 @@ describe('deleteTicket', () => {
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: 10,
     });
+    expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.statusCode).toBe(204);
   });
 });

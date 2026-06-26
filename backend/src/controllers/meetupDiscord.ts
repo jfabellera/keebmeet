@@ -1,5 +1,4 @@
 import { type Request, type Response } from 'express';
-import config from '../config';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
 import { User } from '../entity/User';
@@ -8,23 +7,12 @@ import {
   deleteEmbedMessage,
   editEmbedMessage,
   isGuildMember,
-  type DiscordEmbed,
 } from '../util/discord';
+import {
+  buildMeetupEmbed,
+  getMeetupAttendeeDisplayNames,
+} from '../util/meetupDiscordMessage';
 import { createMeetupDiscordMessageSchema } from '../util/validator';
-
-const buildMeetupEmbed = (meetup: Meetup): DiscordEmbed => ({
-  title: meetup.name,
-  description: meetup.description,
-  url: `${config.webUrl}/meetup/${meetup.id}`,
-  image: { url: meetup.image_url },
-  fields: [
-    {
-      name: 'Date',
-      value: `<t:${Math.floor(Date.parse(meetup.date) / 1000)}:F>`,
-    },
-    { name: 'Location', value: meetup.address },
-  ],
-});
 
 const findMeetupWithMessage = async (
   meetupId: string
@@ -89,11 +77,13 @@ export const createMeetupDiscordMessage = async (
       .json({ message: 'You are not a member of this server.' });
   }
 
+  const attendeeNames = await getMeetupAttendeeDisplayNames(meetup.id);
+
   let messageId: string;
   try {
     messageId = await createEmbedMessage(
       result.data.channel_id,
-      buildMeetupEmbed(meetup)
+      buildMeetupEmbed(meetup, attendeeNames)
     );
   } catch (error: any) {
     console.error(
@@ -137,11 +127,13 @@ export const updateMeetupDiscordMessage = async (
       .json({ message: 'This meetup has no Discord message.' });
   }
 
+  const attendeeNames = await getMeetupAttendeeDisplayNames(meetup.id);
+
   try {
     await editEmbedMessage(
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
-      buildMeetupEmbed(meetup)
+      buildMeetupEmbed(meetup, attendeeNames)
     );
   } catch (error: any) {
     console.error(
