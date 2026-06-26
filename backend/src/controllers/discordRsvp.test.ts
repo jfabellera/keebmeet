@@ -14,6 +14,9 @@ jest.mock('../entity/Ticket', () => ({
 jest.mock('../entity/User', () => ({
   User: { findOneBy: jest.fn() },
 }));
+jest.mock('../entity/MeetupDiscordMessage', () => ({
+  MeetupDiscordMessage: { findOneBy: jest.fn() },
+}));
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
@@ -26,12 +29,14 @@ import { handleDiscordRsvp } from './discordRsvp';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
+import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedTicket = jest.mocked(Ticket);
 const mockedUser = jest.mocked(User);
+const mockedDiscordMsg = jest.mocked(MeetupDiscordMessage);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedGetMeetupEnd = jest.mocked(getMeetupEnd);
 const mockedIsAtCapacity = jest.mocked(isMeetupAtCapacity);
@@ -68,6 +73,7 @@ const cancelBody = { ...validBody, action: 'cancel' };
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   id: 10,
+  name: 'Test Meetup',
   capacity: 100,
   default_raffle_entries: 2,
   date: '2026-07-01T00:00:00Z',
@@ -80,6 +86,8 @@ beforeEach(() => {
   // Default: meetup is in the future and not at capacity.
   mockedGetMeetupEnd.mockReturnValue(new Date('2999-01-01'));
   mockedIsAtCapacity.mockResolvedValue(false);
+  // Default: no tracked Discord message (so message_url is null).
+  mockedDiscordMsg.findOneBy.mockResolvedValue(null);
   mockedTicket.create.mockImplementation((attrs: any) => ({
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
@@ -116,10 +124,15 @@ describe('handleDiscordRsvp', () => {
     expect(mockedTicket.create).not.toHaveBeenCalled();
   });
 
-  it('creates an account-less ticket with the Discord display name', async () => {
+  it('creates an account-less ticket with the Discord display name and a message link', async () => {
     mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
     mockedUser.findOneBy.mockResolvedValue(null); // no linked account
     mockedTicket.findOne.mockResolvedValue(null);
+    mockedDiscordMsg.findOneBy.mockResolvedValue({
+      guild_id: 'g',
+      channel_id: 'c',
+      message_id: 'm',
+    } as any);
     const res = mockResponse();
 
     await handleDiscordRsvp(mockRequest(validBody), res);
@@ -134,7 +147,11 @@ describe('handleDiscordRsvp', () => {
     );
     expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.statusCode).toBe(201);
-    expect(res.body).toEqual({ status: 'created' });
+    expect(res.body).toEqual({
+      status: 'created',
+      meetup_name: 'Test Meetup',
+      message_url: 'https://discord.com/channels/g/c/m',
+    });
   });
 
   it('links the ticket to an account when one has the discord id', async () => {
@@ -160,7 +177,11 @@ describe('handleDiscordRsvp', () => {
         ticket_holder_email: 'jane@example.com',
       })
     );
-    expect(res.body).toEqual({ status: 'created' });
+    expect(res.body).toEqual({
+      status: 'created',
+      meetup_name: 'Test Meetup',
+      message_url: null,
+    });
   });
 
   it('reports "already" on an rsvp action when a ticket exists (no removal)', async () => {
@@ -188,7 +209,11 @@ describe('handleDiscordRsvp', () => {
 
     expect(ticket.remove).toHaveBeenCalled();
     expect(mockedRefresh).toHaveBeenCalledWith(10);
-    expect(res.body).toEqual({ status: 'cancelled' });
+    expect(res.body).toEqual({
+      status: 'cancelled',
+      meetup_name: 'Test Meetup',
+      message_url: null,
+    });
   });
 
   it('reports "not_found" on a cancel action with no ticket', async () => {
