@@ -1,8 +1,9 @@
-import { toast } from 'sonner';
+import { useBoolean } from '@/hooks/useBoolean';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useEffect, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import { type EditMeetupPayload } from '../../../../backend/src/util/validator';
 import {
   useEditMeetupMutation,
@@ -10,7 +11,6 @@ import {
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
-import { useBoolean } from '@/hooks/useBoolean';
 
 dayjs.extend(customParseFormat);
 
@@ -95,7 +95,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
 
   return (
     <EditableFormCard
-      title={'Display Settings'}
+      title={'Meetup Details'}
       isEditable={isEditable}
       onEditEnter={setIsEditable.on}
       onEditCancel={onCancel}
