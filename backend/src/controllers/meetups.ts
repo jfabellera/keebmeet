@@ -24,6 +24,7 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
+import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { decrypt } from '../util/security';
 import {
   createMeetupFromEventbriteSchema,
@@ -544,6 +545,7 @@ export const updateMeetup = async (
   await meetup.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
   return res.status(201).json(meetup);
 };
 
@@ -650,13 +652,14 @@ export const syncEventbriteAttendees = async (
     return res.status(500).json('Unable to get Eventbrite details.');
   }
 
-  ebAttendees.forEach((attendee) => {
-    void (async () => {
+  await Promise.all(
+    ebAttendees.map(async (attendee) => {
       await syncEventbriteAttendee(attendee, meetup);
-    })();
-  });
+    })
+  );
 
   socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
   return res.status(200).end();
 };
 

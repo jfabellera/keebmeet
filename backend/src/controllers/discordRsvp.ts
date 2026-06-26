@@ -1,0 +1,106 @@
+import { type Request, type Response } from 'express';
+import { socket } from '../Server';
+import { Meetup } from '../entity/Meetup';
+import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
+import { Ticket } from '../entity/Ticket';
+import { User } from '../entity/User';
+import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
+import { discordRsvpSchema } from '../util/validator';
+
+/**
+ * Handles a Discord user's RSVP action for a meetup, called by the bot when an
+ * RSVP/cancel button is clicked. RSVPing ties the ticket to the Discord user
+ * (and to their app account if one is linked by discord_id). Cancelling is a
+ * separate action so the bot can confirm with the user first.
+ *
+ * Responds with a `status` the bot maps to an ephemeral reply:
+ * 'created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended'.
+ */
+export const handleDiscordRsvp = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = discordRsvpSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const { meetup_id, discord_id, display_name, action } = result.data;
+
+  const meetup = await Meetup.findOneBy({ id: meetup_id });
+
+  if (meetup == null) {
+    return res.status(404).json({ message: 'Invalid meetup ID.' });
+  }
+
+  const discordMsg = await MeetupDiscordMessage.findOneBy({
+    meetup: { id: meetup_id },
+  });
+  const messageUrl = discordMsg
+    ? `https://discord.com/channels/${discordMsg.guild_id}/${discordMsg.channel_id}/${discordMsg.message_id}`
+    : null;
+
+  // Link to an app account if one is registered with this Discord id.
+  const user = await User.findOneBy({ discord_id });
+
+  const existingTicket = await Ticket.findOne({
+    relations: { user: true },
+    where: [
+      { meetup: { id: meetup_id }, discord_id },
+      ...(user != null
+        ? [{ meetup: { id: meetup_id }, user: { id: user.id } }]
+        : []),
+    ],
+  });
+
+  if (action === 'cancel') {
+    if (existingTicket == null) {
+      return res.json({ status: 'not_found' });
+    }
+
+    await existingTicket.remove();
+    socket.emit('meetup:update', { meetupId: meetup_id });
+    await refreshMeetupDiscordMessage(meetup_id);
+    return res.json({
+      status: 'cancelled',
+      meetup_name: meetup.name,
+      message_url: messageUrl,
+    });
+  }
+
+  // action === 'rsvp'
+  if (existingTicket != null) {
+    return res.json({ status: 'already' });
+  }
+
+  if (getMeetupEnd(meetup) < new Date()) {
+    return res.json({ status: 'ended' });
+  }
+
+  if (await isMeetupAtCapacity(meetup_id, meetup.capacity)) {
+    return res.json({ status: 'full' });
+  }
+
+  const ticket = Ticket.create({
+    meetup,
+    user: user ?? null,
+    discord_id,
+    raffle_entries: meetup.default_raffle_entries,
+    ticket_holder_display_name: user?.nick_name ?? display_name,
+    ticket_holder_first_name: user?.first_name ?? '',
+    ticket_holder_last_name: user?.last_name ?? '',
+    ticket_holder_email: user?.email ?? '',
+  });
+  await ticket.save();
+
+  socket.emit('meetup:update', { meetupId: meetup_id });
+  await refreshMeetupDiscordMessage(meetup_id);
+
+  return res.status(201).json({
+    status: 'created',
+    meetup_name: meetup.name,
+    message_url: messageUrl,
+  });
+};

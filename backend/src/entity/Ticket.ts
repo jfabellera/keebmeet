@@ -18,9 +18,14 @@ export class Ticket extends BaseEntity {
   @JoinColumn({ name: 'meetup_id' })
   meetup: Meetup;
 
-  @ManyToOne(() => User, (user) => user.id)
+  @ManyToOne(() => User, (user) => user.id, { nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user?: User | null;
+
+  // Discord user who RSVP'd via the embed button. Null for web/Eventbrite
+  // tickets. Snowflakes are stored as strings.
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  discord_id?: string | null;
 
   @Column({ type: 'boolean', default: false })
   is_checked_in: boolean;

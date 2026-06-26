@@ -46,6 +46,9 @@ jest.mock('../util/security', () => ({
 jest.mock('./tickets', () => ({
   syncEventbriteAttendee: jest.fn(),
 }));
+jest.mock('../util/meetupDiscordMessage', () => ({
+  refreshMeetupDiscordMessage: jest.fn(),
+}));
 
 import {
   createMeetup,
@@ -70,8 +73,10 @@ import {
   getEventbriteVenue,
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
+import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 
 const mockedMeetup = jest.mocked(Meetup);
+const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
@@ -320,6 +325,7 @@ describe('updateMeetup', () => {
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: 10,
     });
+    expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.statusCode).toBe(201);
   });
 

@@ -6,6 +6,7 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
+import { claimDiscordTickets } from '../util/rsvp';
 import { toUserResponse } from '../util/userResponse';
 import {
   buildVerificationLink,
@@ -400,6 +401,7 @@ export const discordLogin = async (
       is_verified: true,
     });
     await user.save();
+    await claimDiscordTickets(user);
   }
 
   return res.status(201).json({ token: signToken(user) });
@@ -476,6 +478,7 @@ export const discordLink = async (
   // the account is now email-verified too.
   existingUser.is_verified = true;
   await existingUser.save();
+  await claimDiscordTickets(existingUser);
 
   return res.status(201).json({ token: signToken(existingUser) });
 };
@@ -525,6 +528,7 @@ export const linkDiscordAccount = async (
 
   user.discord_id = discordId;
   await user.save();
+  await claimDiscordTickets(user);
 
   return res.status(201).json({ token: signToken(user) });
 };

@@ -23,6 +23,7 @@ interface Config {
   discordClientSecret: string;
   discordBotToken: string;
   discordRedirectUri: string;
+  internalApiSecret: string;
   apiUrl: string;
   socketUrl: string;
   webUrl: string;
@@ -51,6 +52,7 @@ const config: Config = {
   discordRedirectUri:
     process.env.DISCORD_REDIRECT_URI ??
     'http://localhost:5173/auth/discord/callback',
+  internalApiSecret: process.env.INTERNAL_API_SECRET ?? '',
   apiUrl: process.env.MMS_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.MMS_SOCKET_URL ?? 'http://localhost:3002',
   webUrl: process.env.MMS_WEB_URL ?? 'http://localhost:5173',

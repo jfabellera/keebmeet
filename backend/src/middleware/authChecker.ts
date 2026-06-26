@@ -139,7 +139,7 @@ export const authChecker =
           return;
         }
 
-        if (user.id !== ticket.user.id) {
+        if (ticket.user == null || user.id !== ticket.user.id) {
           return reject(res);
         }
       }

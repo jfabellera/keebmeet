@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { MeetupInfo } from '../../../backend/src/controllers/meetups';
 import { type MeetupDisplayAssets } from '../../../backend/src/interfaces/meetupInterfaces';
+import { type MeetupDiscordMessageInfo } from '../../../backend/src/interfaces/userInterfaces';
 import {
   type CreateMeetupFromEventbritePayload,
   type CreateMeetupPayload,
@@ -21,7 +22,13 @@ interface EditMeetupOptions {
 
 export const meetupSlice = createApi({
   reducerPath: 'meetupSlice',
-  tagTypes: ['Meetups', 'Meetup', 'Attendees', 'Display Assets'],
+  tagTypes: [
+    'Meetups',
+    'Meetup',
+    'Attendees',
+    'Display Assets',
+    'DiscordMessage',
+  ],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -87,6 +94,51 @@ export const meetupSlice = createApi({
         { type: 'Display Assets', id: arg },
       ],
     }),
+    getMeetupDiscordMessage: builder.query<
+      MeetupDiscordMessageInfo | null,
+      number
+    >({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}/discord/message`,
+      }),
+      providesTags: (result, error, arg) => [
+        { type: 'DiscordMessage', id: arg },
+      ],
+    }),
+    createMeetupDiscordMessage: builder.mutation<
+      MeetupDiscordMessageInfo,
+      { meetupId: number; server_id: string; channel_id: string }
+    >({
+      query: ({ meetupId, server_id, channel_id }) => ({
+        url: `meetups/${meetupId}/discord/message`,
+        method: 'POST',
+        body: { server_id, channel_id },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'DiscordMessage', id: arg.meetupId },
+      ],
+    }),
+    updateMeetupDiscordMessage: builder.mutation<
+      MeetupDiscordMessageInfo,
+      number
+    >({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}/discord/message`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'DiscordMessage', id: arg },
+      ],
+    }),
+    deleteMeetupDiscordMessage: builder.mutation<void, number>({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}/discord/message`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'DiscordMessage', id: arg },
+      ],
+    }),
   }),
 });
 
@@ -97,4 +149,8 @@ export const {
   useCreateMeetupFromEventbriteMutation,
   useEditMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
+  useGetMeetupDiscordMessageQuery,
+  useCreateMeetupDiscordMessageMutation,
+  useUpdateMeetupDiscordMessageMutation,
+  useDeleteMeetupDiscordMessageMutation,
 } = meetupSlice;
