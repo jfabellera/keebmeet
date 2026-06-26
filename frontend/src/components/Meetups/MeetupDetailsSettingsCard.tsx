@@ -31,6 +31,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       duration: 0,
       capacity: 0,
       imageUrl: '',
+      description: '',
     },
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};
@@ -50,6 +51,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         payload.capacity = values.capacity;
       if (formik.initialValues.imageUrl !== values.imageUrl)
         payload.image_url = values.imageUrl;
+      if (formik.initialValues.description !== values.description)
+        payload.description = values.description;
 
       const result = await editMeetup({ meetupId, payload });
 
@@ -78,6 +81,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         duration: meetup?.duration_hours ?? 0,
         capacity: meetup?.tickets?.total ?? 0,
         imageUrl: meetup?.image_url ?? '',
+        description: meetup?.description ?? '',
       },
     });
   }, [meetup]);
@@ -173,8 +177,31 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.capacity}
         />
-        {/* TODO(jan): Add imageURL */}
-        {/* TODO(jan): Add description */}
+        <EditableFormField
+          name={'Image URL'}
+          value={meetup?.image_url}
+          editable={isEditable}
+          id={'imageUrl'}
+          type={'text'}
+          isInvalid={formik.errors.imageUrl != null && formik.touched.imageUrl}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          errorMessage={formik.errors.imageUrl}
+        />
+        <EditableFormField
+          name={'Description'}
+          value={meetup?.description}
+          editable={isEditable}
+          id={'description'}
+          type={'text'}
+          multiline
+          isInvalid={
+            formik.errors.description != null && formik.touched.description
+          }
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          errorMessage={formik.errors.description}
+        />
       </form>
     </EditableFormCard>
   );

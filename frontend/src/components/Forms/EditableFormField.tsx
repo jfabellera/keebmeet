@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 interface FieldDisplayProps {
@@ -8,9 +9,10 @@ interface FieldDisplayProps {
   value: string | number | undefined;
   id: string;
   type?: React.HTMLInputTypeAttribute;
+  multiline?: boolean;
   isInvalid?: boolean;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+  onBlur?: React.FocusEventHandler<HTMLInputElement | HTMLTextAreaElement>;
   errorMessage: string | undefined;
   editable: boolean;
   className?: string;
@@ -21,6 +23,7 @@ const EditableFormField = ({
   value,
   id,
   type,
+  multiline,
   isInvalid,
   onChange,
   onBlur,
@@ -38,15 +41,26 @@ const EditableFormField = ({
       </FieldLabel>
       {editable ? (
         <>
-          <Input
-            id={id}
-            type={type}
-            name={id}
-            aria-invalid={isInvalid}
-            onChange={onChange}
-            onBlur={onBlur}
-            defaultValue={value}
-          />
+          {multiline === true ? (
+            <Textarea
+              id={id}
+              name={id}
+              aria-invalid={isInvalid}
+              onChange={onChange}
+              onBlur={onBlur}
+              defaultValue={value}
+            />
+          ) : (
+            <Input
+              id={id}
+              type={type}
+              name={id}
+              aria-invalid={isInvalid}
+              onChange={onChange}
+              onBlur={onBlur}
+              defaultValue={value}
+            />
+          )}
           {isInvalid === true ? <FieldError>{errorMessage}</FieldError> : null}
         </>
       ) : (
