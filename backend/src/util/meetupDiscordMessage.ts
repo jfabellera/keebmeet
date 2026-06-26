@@ -79,6 +79,15 @@ const buildAttendeesValue = (names: string[]): string => {
 };
 
 /**
+ * Returns a wsrv.nl proxy URL that crops the image to a 2:1 aspect ratio
+ * suitable for Discord embeds
+ */
+const cropImageUrl = (url: string): string => {
+  if (!url) return url;
+  return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=600&fit=cover`;
+};
+
+/**
  * Builds the meetup announcement embed from the meetup and its attendees.
  */
 export const buildMeetupEmbed = (
@@ -88,7 +97,7 @@ export const buildMeetupEmbed = (
   title: meetup.name,
   description: meetup.description,
   url: `${config.webUrl}/meetup/${meetup.id}`,
-  image: { url: meetup.image_url },
+  image: { url: cropImageUrl(meetup.image_url) },
   fields: [
     {
       name: 'Date',
