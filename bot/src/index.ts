@@ -39,14 +39,19 @@ const RSVP_MESSAGES: Record<string, string> = {
   ended: 'This meetup has already happened.',
 };
 
-// Calls the backend to record an RSVP action and returns its status string
-// ('created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended'), or
-// 'error' if the call fails.
+interface RsvpResponse {
+  status?: string;
+  meetup_name?: string;
+  message_url?: string;
+}
+
+// Calls the backend to record an RSVP action and returns the response object,
+// or a fallback with status 'error' if the call fails.
 const postRsvp = async (
   meetupId: string,
   interaction: ButtonInteraction,
   action: 'rsvp' | 'cancel'
-): Promise<string> => {
+): Promise<RsvpResponse> => {
   try {
     const response = await fetch(`${backendUrl}/discord/rsvp`, {
       method: 'POST',
@@ -62,11 +67,10 @@ const postRsvp = async (
       }),
     });
 
-    const data = (await response.json()) as { status?: string };
-    return data.status ?? 'error';
+    return (await response.json()) as RsvpResponse;
   } catch (error) {
     console.error('Failed to record Discord RSVP:', error);
-    return 'error';
+    return { status: 'error' };
   }
 };
 
@@ -94,11 +98,15 @@ client.on(Events.InteractionCreate, (interaction) => {
 
     await interaction.deferReply({ ephemeral: true });
 
-    const status = await postRsvp(
+    const rsvpResponse = await postRsvp(
       meetupId,
       interaction,
       action === 'rsvp-cancel' ? 'cancel' : 'rsvp'
     );
+
+    const status = rsvpResponse.status ?? 'error';
+    const meetupName = rsvpResponse.meetup_name ?? 'the meetup';
+    const messageUrl = rsvpResponse.message_url;
 
     // Already RSVP'd: offer an ephemeral confirm button rather than cancelling.
     if (status === 'already') {
@@ -119,9 +127,43 @@ client.on(Events.InteractionCreate, (interaction) => {
 
     // Any terminal status: replace the message and clear the confirm button.
     await interaction.editReply({
-      content: RSVP_MESSAGES[status] ?? 'Something went wrong. Please try again.',
+      content:
+        RSVP_MESSAGES[status] ?? 'Something went wrong. Please try again.',
       components: [],
     });
+
+    // Send a DM to confirm the RSVP or cancellation.
+    try {
+      const dm = await interaction.user.createDM();
+      const linkText = messageUrl
+        ? `\n\n[View meetup announcement](${messageUrl})`
+        : '';
+
+      if (status === 'created') {
+        const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`rsvp-cancel:${meetupId}`)
+            .setLabel('Cancel RSVP')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        await dm.send({
+          content: `✅ You're RSVP'd for **${meetupName}**! If you need to cancel, use the button below.${linkText}`,
+          components: [cancelRow],
+        });
+      } else if (status === 'cancelled') {
+        const rsvpAgainText = messageUrl
+          ? `You can RSVP again from the [meetup announcement](${messageUrl}).`
+          : 'You can RSVP again from the meetup announcement.';
+
+        await dm.send({
+          content: `Your RSVP for **${meetupName}** has been cancelled. ${rsvpAgainText}`,
+        });
+      }
+    } catch (error) {
+      // DMs may be disabled — don't let that break the flow.
+      console.warn('Could not send RSVP DM:', error);
+    }
   })();
 });
 

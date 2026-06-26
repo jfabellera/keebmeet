@@ -1,6 +1,7 @@
 import { type Request, type Response } from 'express';
 import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
+import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
@@ -34,6 +35,13 @@ export const handleDiscordRsvp = async (
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
+  const discordMsg = await MeetupDiscordMessage.findOneBy({
+    meetup: { id: meetup_id },
+  });
+  const messageUrl = discordMsg
+    ? `https://discord.com/channels/${discordMsg.guild_id}/${discordMsg.channel_id}/${discordMsg.message_id}`
+    : null;
+
   // Link to an app account if one is registered with this Discord id.
   const user = await User.findOneBy({ discord_id });
 
@@ -55,7 +63,11 @@ export const handleDiscordRsvp = async (
     await existingTicket.remove();
     socket.emit('meetup:update', { meetupId: meetup_id });
     await refreshMeetupDiscordMessage(meetup_id);
-    return res.json({ status: 'cancelled' });
+    return res.json({
+      status: 'cancelled',
+      meetup_name: meetup.name,
+      message_url: messageUrl,
+    });
   }
 
   // action === 'rsvp'
@@ -86,5 +98,9 @@ export const handleDiscordRsvp = async (
   socket.emit('meetup:update', { meetupId: meetup_id });
   await refreshMeetupDiscordMessage(meetup_id);
 
-  return res.status(201).json({ status: 'created' });
+  return res.status(201).json({
+    status: 'created',
+    meetup_name: meetup.name,
+    message_url: messageUrl,
+  });
 };
