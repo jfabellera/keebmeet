@@ -1,3 +1,13 @@
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
   Select,
@@ -60,6 +70,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
 
   const [selectedServer, setSelectedServer] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: channels } = useGetUserDiscordServerChannelsQuery(
     { userId: localUser?.id ?? NaN, serverId: selectedServer },
@@ -93,6 +104,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
 
   const onDelete = async (): Promise<void> => {
     const result = await deleteMessage(meetupId);
+    setConfirmDeleteOpen(false);
     if (handleMutationError(result, 'Failed to delete Discord message')) return;
     toast.success('Discord message deleted.');
   };
@@ -115,9 +127,9 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
         <div className="flex flex-col gap-2">
           <p>
             An announcement is posted in{' '}
-            <span className="font-medium">
-              {servers?.find((server) => server.id === message.guild_id)?.name ??
-                'a server'}
+            <span className="font-bold">
+              {servers?.find((server) => server.id === message.guild_id)
+                ?.name ?? 'a server'}
             </span>
             .
           </p>
@@ -139,15 +151,39 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
             >
               Update
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                void onDelete();
-              }}
-              disabled={isDeleting}
+            <Dialog
+              open={confirmDeleteOpen}
+              onOpenChange={setConfirmDeleteOpen}
             >
-              Delete
-            </Button>
+              <DialogTrigger asChild>
+                <Button variant="destructive" disabled={isDeleting}>
+                  Delete
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Discord announcement?</DialogTitle>
+                  <DialogDescription>
+                    This removes the announcement message from Discord. This
+                    action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      void onDelete();
+                    }}
+                    disabled={isDeleting}
+                  >
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       ) : (
