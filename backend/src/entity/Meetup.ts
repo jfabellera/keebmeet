@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { EventbriteRecord } from './EventbriteRecord';
+import { MeetupDiscordMessage } from './MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './MeetupDisplayRecord';
 import { RaffleRecord } from './RaffleRecord';
 import { Ticket } from './Ticket';
@@ -70,6 +71,12 @@ export class Meetup extends BaseEntity {
 
   @OneToOne(() => MeetupDisplayRecord, (displayRecord) => displayRecord.meetup)
   displayRecord?: MeetupDisplayRecord;
+
+  @OneToOne(
+    () => MeetupDiscordMessage,
+    (discordMessage) => discordMessage.meetup
+  )
+  discordMessage?: MeetupDiscordMessage;
 
   @OneToMany(() => RaffleRecord, (raffleRecord) => raffleRecord.meetup)
   raffleRecords: RaffleRecord[];

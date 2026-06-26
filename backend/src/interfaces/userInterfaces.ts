@@ -17,3 +17,14 @@ export interface DiscordServer {
   name: string;
   icon_url: string | null;
 }
+
+export interface DiscordChannel {
+  id: string;
+  name: string;
+}
+
+export interface MeetupDiscordMessageInfo {
+  guild_id: string;
+  channel_id: string;
+  message_id: string;
+}

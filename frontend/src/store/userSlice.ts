@@ -1,5 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type User } from '../../../backend/src/interfaces/userInterfaces';
+import {
+  type DiscordChannel,
+  type DiscordServer,
+  type User,
+} from '../../../backend/src/interfaces/userInterfaces';
 import config from '../config';
 import { type RootState } from './store';
 
@@ -25,6 +29,21 @@ export const userSlice = createApi({
       }),
       providesTags: ['User'],
     }),
+    getUserDiscordServers: builder.query<DiscordServer[], number>({
+      query: (userId) => ({
+        url: `/users/${userId}/discord/servers`,
+      }),
+      providesTags: ['User'],
+    }),
+    getUserDiscordServerChannels: builder.query<
+      DiscordChannel[],
+      { userId: number; serverId: string }
+    >({
+      query: ({ userId, serverId }) => ({
+        url: `/users/${userId}/discord/servers/${serverId}/channels`,
+      }),
+      providesTags: ['User'],
+    }),
     authorizeEventbrite: builder.mutation<void, string>({
       query: (accessCode) => ({
         url: `/oauth2/eventbrite`,
@@ -38,4 +57,9 @@ export const userSlice = createApi({
   }),
 });
 
-export const { useGetUserQuery, useAuthorizeEventbriteMutation } = userSlice;
+export const {
+  useGetUserQuery,
+  useGetUserDiscordServersQuery,
+  useGetUserDiscordServerChannelsQuery,
+  useAuthorizeEventbriteMutation,
+} = userSlice;

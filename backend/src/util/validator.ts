@@ -60,6 +60,15 @@ export const editMeetupSchema = z.object({
 
 export type EditMeetupPayload = z.infer<typeof editMeetupSchema>;
 
+export const createMeetupDiscordMessageSchema = z.object({
+  server_id: z.string(),
+  channel_id: z.string(),
+});
+
+export type CreateMeetupDiscordMessagePayload = z.infer<
+  typeof createMeetupDiscordMessageSchema
+>;
+
 // Shared by create and edit: when a ticket holder is provided, every field is
 // required so we never persist a half-populated holder.
 const ticketHolderSchema = z.object({

@@ -11,14 +11,25 @@ jest.mock('../entity/User', () => ({
 
 jest.mock('../util/discord', () => ({
   fetchUserMutualServers: jest.fn(),
+  fetchGuildTextChannels: jest.fn(),
+  isGuildMember: jest.fn(),
 }));
 
-import { getUserDiscordServers } from './userDiscord';
+import {
+  getUserDiscordServerChannels,
+  getUserDiscordServers,
+} from './userDiscord';
 import { User } from '../entity/User';
-import { fetchUserMutualServers } from '../util/discord';
+import {
+  fetchGuildTextChannels,
+  fetchUserMutualServers,
+  isGuildMember,
+} from '../util/discord';
 
 const mockedUser = jest.mocked(User);
 const mockedFetchUserMutualServers = jest.mocked(fetchUserMutualServers);
+const mockedFetchGuildTextChannels = jest.mocked(fetchGuildTextChannels);
+const mockedIsGuildMember = jest.mocked(isGuildMember);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -112,5 +123,66 @@ describe('getUserDiscordServers', () => {
     await getUserDiscordServers(mockRequest({ user_id: '1' }), res);
 
     expect(res.body).toEqual([]);
+  });
+});
+
+// ---- getUserDiscordServerChannels ------------------------------------------
+
+describe('getUserDiscordServerChannels', () => {
+  it('returns 404 when the user does not exist', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await getUserDiscordServerChannels(
+      mockRequest({ user_id: '99', server_id: 'g1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+    expect(mockedFetchGuildTextChannels).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the user has not linked a Discord account', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ discord_id: null }));
+    const res = mockResponse();
+
+    await getUserDiscordServerChannels(
+      mockRequest({ user_id: '1', server_id: 'g1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect(mockedIsGuildMember).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the user is not a member of the server', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ discord_id: '123' }));
+    mockedIsGuildMember.mockResolvedValue(false);
+    const res = mockResponse();
+
+    await getUserDiscordServerChannels(
+      mockRequest({ user_id: '1', server_id: 'g1' }),
+      res
+    );
+
+    expect(mockedIsGuildMember).toHaveBeenCalledWith('g1', '123');
+    expect(res.statusCode).toBe(403);
+    expect(mockedFetchGuildTextChannels).not.toHaveBeenCalled();
+  });
+
+  it('returns the channels when the user is a member', async () => {
+    const channels = [{ id: 'c1', name: 'general' }];
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ discord_id: '123' }));
+    mockedIsGuildMember.mockResolvedValue(true);
+    mockedFetchGuildTextChannels.mockResolvedValue(channels);
+    const res = mockResponse();
+
+    await getUserDiscordServerChannels(
+      mockRequest({ user_id: '1', server_id: 'g1' }),
+      res
+    );
+
+    expect(mockedFetchGuildTextChannels).toHaveBeenCalledWith('g1');
+    expect(res.body).toEqual(channels);
   });
 });

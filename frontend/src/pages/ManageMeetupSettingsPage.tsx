@@ -10,7 +10,7 @@ const ManageMeetupSettingsPage = (): ReactNode => {
   return (
     <div className="flex flex-col gap-4 p-4">
       <MeetupDetailsSettingsCard meetupId={Number(meetupId)} />
-      <MeetupDiscordCard />
+      <MeetupDiscordCard meetupId={Number(meetupId)} />
       <MeetupDisplaySettingsCard meetupId={Number(meetupId)} />
     </div>
   );

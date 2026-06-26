@@ -10,6 +10,12 @@ import {
   syncEventbriteAttendees,
   updateMeetup,
 } from '../controllers/meetups';
+import {
+  createMeetupDiscordMessage,
+  deleteMeetupDiscordMessage,
+  getMeetupDiscordMessage,
+  updateMeetupDiscordMessage,
+} from '../controllers/meetupDiscord';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
 import { Rule, authChecker } from '../middleware/authChecker';
@@ -82,6 +88,30 @@ router.get(
   '/:meetup_id/raffles',
   authChecker() as RequestHandler,
   getRaffleRecords as RequestHandler
+);
+
+router.get(
+  '/:meetup_id/discord/message',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  getMeetupDiscordMessage as RequestHandler
+);
+
+router.post(
+  '/:meetup_id/discord/message',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  createMeetupDiscordMessage as RequestHandler
+);
+
+router.put(
+  '/:meetup_id/discord/message',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  updateMeetupDiscordMessage as RequestHandler
+);
+
+router.delete(
+  '/:meetup_id/discord/message',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  deleteMeetupDiscordMessage as RequestHandler
 );
 
 export default router;

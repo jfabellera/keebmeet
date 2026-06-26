@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import config from './config';
 import { EventbriteRecord } from './entity/EventbriteRecord';
 import { Meetup } from './entity/Meetup';
+import { MeetupDiscordMessage } from './entity/MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './entity/MeetupDisplayRecord';
 import { RaffleRecord } from './entity/RaffleRecord';
 import { RaffleWinner } from './entity/RaffleWinner';
@@ -22,6 +23,7 @@ export const AppDataSource = new DataSource({
     Ticket,
     EventbriteRecord,
     MeetupDisplayRecord,
+    MeetupDiscordMessage,
     RaffleRecord,
     RaffleWinner,
   ],
