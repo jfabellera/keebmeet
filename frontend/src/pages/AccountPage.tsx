@@ -5,13 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
-import { redirectToDiscordLink } from '../util/discord';
 import * as Yup from 'yup';
 import Page from '../components/Page/Page';
 import config from '../config';
 import { updateProfile } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useGetUserQuery } from '../store/userSlice';
+import { redirectToDiscordLink } from '../util/discord';
 
 const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/;
