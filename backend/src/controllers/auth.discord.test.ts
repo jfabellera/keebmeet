@@ -35,14 +35,20 @@ jest.mock('../util/email', () => ({
   sendVerificationEmail: jest.fn(),
 }));
 
+jest.mock('../util/rsvp', () => ({
+  claimDiscordTickets: jest.fn(),
+}));
+
 import axios from 'axios';
 import bcrypt from 'bcrypt';
 import { discordLink, discordLogin, linkDiscordAccount } from './auth';
 import { User } from '../entity/User';
+import { claimDiscordTickets } from '../util/rsvp';
 
 const mockedAxios = jest.mocked(axios);
 const mockedUser = jest.mocked(User);
 const mockedBcrypt = jest.mocked(bcrypt);
+const mockedClaim = jest.mocked(claimDiscordTickets);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -187,6 +193,8 @@ describe('discordLogin', () => {
     expect(decoded.discord_id).toBe('123456789');
     expect(decoded.purpose).toBe('discord_link');
     expect(mockedUser.create).not.toHaveBeenCalled();
+    // No link happened yet (only a link token was issued), so no claim.
+    expect(mockedClaim).not.toHaveBeenCalled();
   });
 
   it('creates a new account when nothing matches', async () => {
@@ -205,6 +213,7 @@ describe('discordLogin', () => {
         is_verified: true,
       })
     );
+    expect(mockedClaim).toHaveBeenCalledTimes(1);
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
   });
@@ -383,6 +392,7 @@ describe('discordLink', () => {
     expect(existing.discord_id).toBe('123456789');
     expect(existing.is_verified).toBe(true);
     expect(existing.save).toHaveBeenCalled();
+    expect(mockedClaim).toHaveBeenCalledWith(existing);
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
   });
@@ -432,6 +442,7 @@ describe('linkDiscordAccount', () => {
 
     expect(requestor.discord_id).toBe('123456789');
     expect(requestor.save).toHaveBeenCalled();
+    expect(mockedClaim).toHaveBeenCalledWith(requestor);
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
   });
