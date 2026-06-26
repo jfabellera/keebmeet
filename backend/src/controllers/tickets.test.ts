@@ -11,6 +11,7 @@ jest.mock('../entity/Ticket', () => ({
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     create: jest.fn(),
+    count: jest.fn(),
   },
 }));
 jest.mock('../entity/Meetup', () => ({
@@ -124,6 +125,8 @@ beforeEach(() => {
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
   }));
+  // Default: meetup is below capacity.
+  mockedTicket.count.mockResolvedValue(0);
 });
 
 // ---- getAllTickets / getTicket ---------------------------------------------
@@ -213,6 +216,34 @@ describe('createTicket', () => {
     await createTicket(mockRequest(), res);
 
     expect(mockedTicket.create).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 400 when the meetup is at capacity', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    mockedTicket.count.mockResolvedValue(5);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup({ capacity: 5 });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup is full.' });
+    expect(mockedTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("stamps the requestor's linked discord_id on the ticket", async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup({ capacity: 100 });
+    res.locals.requestor = fakeRequestor({ discord_id: 'd-99' });
+
+    await createTicket(mockRequest(), res);
+
+    expect(mockedTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ discord_id: 'd-99' })
+    );
     expect(res.statusCode).toBe(201);
   });
 

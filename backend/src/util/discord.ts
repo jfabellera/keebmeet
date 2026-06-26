@@ -305,18 +305,31 @@ export interface DiscordEmbed {
   fields?: Array<{ name: string; value: string; inline?: boolean }>;
 }
 
+// Message components (action rows + buttons). Loosely typed — the caller builds
+// the exact shape Discord expects.
+export type DiscordComponent = Record<string, unknown>;
+
+const messageBody = (
+  embed: DiscordEmbed,
+  components?: DiscordComponent[]
+): Record<string, unknown> =>
+  components != null
+    ? { embeds: [embed], components }
+    : { embeds: [embed] };
+
 /**
- * Posts an embed to a channel and returns the new message id. Throws on failure
- * (unlike the read helpers) so the caller can surface a real error, e.g. when
- * the bot lacks permission to post in the channel.
+ * Posts an embed (and optional components) to a channel and returns the new
+ * message id. Throws on failure (unlike the read helpers) so the caller can
+ * surface a real error, e.g. when the bot lacks permission to post.
  */
 export const createEmbedMessage = async (
   channelId: string,
-  embed: DiscordEmbed
+  embed: DiscordEmbed,
+  components?: DiscordComponent[]
 ): Promise<string> => {
   const response = await axios.post(
     `${DISCORD_API_BASE}/channels/${channelId}/messages`,
-    { embeds: [embed] },
+    messageBody(embed, components),
     { headers: botAuthHeaders() }
   );
 
@@ -324,16 +337,17 @@ export const createEmbedMessage = async (
 };
 
 /**
- * Replaces the embed of an existing message. Throws on failure.
+ * Replaces the embed (and components) of an existing message. Throws on failure.
  */
 export const editEmbedMessage = async (
   channelId: string,
   messageId: string,
-  embed: DiscordEmbed
+  embed: DiscordEmbed,
+  components?: DiscordComponent[]
 ): Promise<void> => {
   await axios.patch(
     `${DISCORD_API_BASE}/channels/${channelId}/messages/${messageId}`,
-    { embeds: [embed] },
+    messageBody(embed, components),
     { headers: botAuthHeaders() }
   );
 };

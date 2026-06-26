@@ -328,6 +328,19 @@ describe('createEmbedMessage', () => {
     );
   });
 
+  it('includes components in the body when provided', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { id: 'msg-1' } });
+    const components = [{ type: 1, components: [] }];
+
+    await createEmbedMessage('channel-1', { title: 'Hi' }, components);
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://discord.com/api/v10/channels/channel-1/messages',
+      { embeds: [{ title: 'Hi' }], components },
+      { headers: { Authorization: 'Bot bot-token' } }
+    );
+  });
+
   it('throws when Discord rejects the request', async () => {
     mockedAxios.post.mockRejectedValue(new Error('403'));
 
@@ -346,6 +359,19 @@ describe('editEmbedMessage', () => {
     expect(mockedAxios.patch).toHaveBeenCalledWith(
       'https://discord.com/api/v10/channels/channel-1/messages/msg-1',
       { embeds: [{ title: 'Updated' }] },
+      { headers: { Authorization: 'Bot bot-token' } }
+    );
+  });
+
+  it('includes components in the body when provided', async () => {
+    mockedAxios.patch.mockResolvedValue({ data: {} });
+    const components = [{ type: 1, components: [] }];
+
+    await editEmbedMessage('channel-1', 'msg-1', { title: 'Updated' }, components);
+
+    expect(mockedAxios.patch).toHaveBeenCalledWith(
+      'https://discord.com/api/v10/channels/channel-1/messages/msg-1',
+      { embeds: [{ title: 'Updated' }], components },
       { headers: { Authorization: 'Bot bot-token' } }
     );
   });

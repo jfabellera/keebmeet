@@ -2,6 +2,7 @@ import express from 'express';
 import { io } from 'socket.io-client';
 import config from './config';
 import { AppDataSource } from './datasource';
+import discordRoutes from './routes/discord';
 import eventbriteRoutes from './routes/eventbrite';
 import meetupRoutes from './routes/meetups';
 import oauth2Routes from './routes/oauth2';
@@ -45,6 +46,7 @@ class Server {
     this.express.use('/oauth2/', oauth2Routes);
     this.express.use('/eventbrite', eventbriteRoutes);
     this.express.use('/raffles', raffleRoutes);
+    this.express.use('/discord', discordRoutes);
 
     this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');

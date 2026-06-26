@@ -10,6 +10,7 @@ import {
 } from '../util/discord';
 import {
   buildMeetupEmbed,
+  buildRsvpComponents,
   getMeetupAttendeeDisplayNames,
 } from '../util/meetupDiscordMessage';
 import { createMeetupDiscordMessageSchema } from '../util/validator';
@@ -83,7 +84,8 @@ export const createMeetupDiscordMessage = async (
   try {
     messageId = await createEmbedMessage(
       result.data.channel_id,
-      buildMeetupEmbed(meetup, attendeeNames)
+      buildMeetupEmbed(meetup, attendeeNames),
+      buildRsvpComponents(meetup.id)
     );
   } catch (error: any) {
     console.error(
@@ -133,7 +135,8 @@ export const updateMeetupDiscordMessage = async (
     await editEmbedMessage(
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
-      buildMeetupEmbed(meetup, attendeeNames)
+      buildMeetupEmbed(meetup, attendeeNames),
+      buildRsvpComponents(meetup.id)
     );
   } catch (error: any) {
     console.error(

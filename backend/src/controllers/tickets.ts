@@ -7,19 +7,13 @@ import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
 import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
 import { createTicketSchema, editTicketSchema } from '../util/validator';
 
 export interface SimpleTicketInfo {
   id: number;
   meetup_id: number;
 }
-
-// The meetup is still happening until its start date plus its duration.
-const getMeetupEnd = (meetup: Meetup): Date => {
-  const end = new Date(meetup.date);
-  end.setHours(end.getHours() + meetup.duration_hours);
-  return end;
-};
 
 export const getAllTickets = async (
   req: Request,
@@ -83,9 +77,14 @@ export const createTicket = async (
     return res.status(400).json({ message: 'Meetup has already occurred.' });
   }
 
+  if (await isMeetupAtCapacity(meetup.id, meetup.capacity)) {
+    return res.status(400).json({ message: 'Meetup is full.' });
+  }
+
   const newTicket = Ticket.create({
     meetup,
     user,
+    discord_id: user.discord_id ?? null,
     raffle_entries: meetup.default_raffle_entries,
     ticket_holder_display_name:
       result.data.ticket_holder?.display_name ?? user.nick_name,

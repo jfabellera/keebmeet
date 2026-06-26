@@ -1,7 +1,34 @@
 import config from '../config';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
-import { editEmbedMessage, type DiscordEmbed } from './discord';
+import {
+  editEmbedMessage,
+  type DiscordComponent,
+  type DiscordEmbed,
+} from './discord';
+
+// Discord component types.
+const ACTION_ROW = 1;
+const BUTTON = 2;
+const BUTTON_STYLE_PRIMARY = 1;
+
+/**
+ * Builds the action row holding the RSVP button for a meetup. The custom_id
+ * encodes the meetup id so the bot can route the click without an extra lookup.
+ */
+export const buildRsvpComponents = (meetupId: number): DiscordComponent[] => [
+  {
+    type: ACTION_ROW,
+    components: [
+      {
+        type: BUTTON,
+        style: BUTTON_STYLE_PRIMARY,
+        label: 'RSVP',
+        custom_id: `rsvp:${meetupId}`,
+      },
+    ],
+  },
+];
 
 // Discord caps an embed field value at 1024 characters.
 const FIELD_VALUE_LIMIT = 1024;
@@ -99,7 +126,8 @@ export const refreshMeetupDiscordMessage = async (
     await editEmbedMessage(
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
-      buildMeetupEmbed(meetup, attendeeNames)
+      buildMeetupEmbed(meetup, attendeeNames),
+      buildRsvpComponents(meetupId)
     );
   } catch (error: any) {
     console.error(

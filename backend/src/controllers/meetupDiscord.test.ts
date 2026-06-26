@@ -29,6 +29,7 @@ jest.mock('../util/discord', () => ({
 
 jest.mock('../util/meetupDiscordMessage', () => ({
   buildMeetupEmbed: jest.fn(() => ({ embed: true })),
+  buildRsvpComponents: jest.fn(() => [{ row: true }]),
   getMeetupAttendeeDisplayNames: jest.fn(async () => []),
 }));
 
@@ -242,7 +243,9 @@ describe('createMeetupDiscordMessage', () => {
 
     expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
     expect(mockedBuildEmbed).toHaveBeenCalled();
-    expect(mockedCreateEmbed).toHaveBeenCalledWith('c1', { embed: true });
+    expect(mockedCreateEmbed).toHaveBeenCalledWith('c1', { embed: true }, [
+      { row: true },
+    ]);
     expect(saved.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
@@ -288,7 +291,9 @@ describe('updateMeetupDiscordMessage', () => {
     await updateMeetupDiscordMessage(mockRequest({ meetup_id: '1' }), res);
 
     expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
-    expect(mockedEditEmbed).toHaveBeenCalledWith('c1', 'm1', { embed: true });
+    expect(mockedEditEmbed).toHaveBeenCalledWith('c1', 'm1', { embed: true }, [
+      { row: true },
+    ]);
     expect(res.body).toEqual({
       guild_id: 'g1',
       channel_id: 'c1',

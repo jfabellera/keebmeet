@@ -69,6 +69,14 @@ export type CreateMeetupDiscordMessagePayload = z.infer<
   typeof createMeetupDiscordMessageSchema
 >;
 
+export const discordRsvpSchema = z.object({
+  meetup_id: z.number(),
+  discord_id: z.string(),
+  display_name: z.string(),
+});
+
+export type DiscordRsvpPayload = z.infer<typeof discordRsvpSchema>;
+
 // Shared by create and edit: when a ticket holder is provided, every field is
 // required so we never persist a half-populated holder.
 const ticketHolderSchema = z.object({

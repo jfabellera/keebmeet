@@ -314,6 +314,26 @@ describe('authChecker: ticket_id ownership', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('rejects when the ticket has no owning user (e.g. a Discord RSVP)', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedTicket.findOne.mockResolvedValue({
+      id: 5,
+      user: null,
+      meetup: { id: 10 },
+    } as any);
+    const res = mockResponse();
+    const next = jest.fn();
+
+    await authChecker()(
+      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      res,
+      next
+    );
+
+    expect(res.statusCode).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('allows a meetup organizer via overrideMeetupOrganizer even if not the owner', async () => {
     mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
     mockedTicket.findOne.mockResolvedValue({
