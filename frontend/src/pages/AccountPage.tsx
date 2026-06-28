@@ -10,7 +10,10 @@ import Page from '../components/Page/Page';
 import config from '../config';
 import { updateProfile } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { useGetUserQuery } from '../store/userSlice';
+import {
+  useGetUserQuery,
+  useRequestOrganizerMutation,
+} from '../store/userSlice';
 import { redirectToDiscordLink } from '../util/discord';
 
 const PASSWORD_REGEX =
@@ -39,6 +42,21 @@ const AccountPage = (): ReactNode => {
   const { data: user, refetch } = useGetUserQuery(localUser?.id ?? NaN, {
     skip: localUser == null,
   });
+  const [requestOrganizer, { isLoading: isRequestingOrganizer }] =
+    useRequestOrganizerMutation();
+
+  const onRequestOrganizer = (): void => {
+    void (async () => {
+      try {
+        await requestOrganizer().unwrap();
+        toast.success('Organizer request submitted', {
+          description: 'An admin will review your request.',
+        });
+      } catch {
+        toast.error('Could not submit your request. Please try again.');
+      }
+    })();
+  };
 
   const formik = useFormik({
     // Prefilled from the fetched user; reinitialised once it loads.
@@ -185,6 +203,33 @@ const AccountPage = (): ReactNode => {
               </Button>
             </a>
           </div>
+        </div>
+        <div className="bg-card text-card-foreground flex flex-col gap-4 rounded-lg p-8 shadow-lg">
+          <h2 className="text-lg font-medium">Organizer access</h2>
+          {(user?.is_organizer ?? false) ? (
+            <p className="text-sm font-medium text-green-600">
+              You're an organizer.
+            </p>
+          ) : (user?.has_organizer_request ?? false) ? (
+            <p className="text-muted-foreground text-sm">
+              Your organizer request is pending review.
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground text-sm">
+                Want to host meetups? Request organizer access.
+              </span>
+              <Button
+                onClick={onRequestOrganizer}
+                disabled={isRequestingOrganizer || user == null}
+              >
+                {isRequestingOrganizer ? (
+                  <Loader2 className="animate-spin" />
+                ) : null}
+                Request organizer access
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Page>

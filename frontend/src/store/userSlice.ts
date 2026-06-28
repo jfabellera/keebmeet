@@ -9,7 +9,7 @@ import { type RootState } from './store';
 
 export const userSlice = createApi({
   reducerPath: 'userSlice',
-  tagTypes: ['User'],
+  tagTypes: ['User', 'OrganizerRequests'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -54,6 +54,14 @@ export const userSlice = createApi({
       }),
       invalidatesTags: ['User'],
     }),
+    // Request organizer access for the logged-in user.
+    requestOrganizer: builder.mutation<void, void>({
+      query: () => ({
+        url: `/organizer-requests`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['User', 'OrganizerRequests'],
+    }),
   }),
 });
 
@@ -62,4 +70,5 @@ export const {
   useGetUserDiscordServersQuery,
   useGetUserDiscordServerChannelsQuery,
   useAuthorizeEventbriteMutation,
+  useRequestOrganizerMutation,
 } = userSlice;

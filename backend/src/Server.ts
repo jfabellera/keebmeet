@@ -6,6 +6,7 @@ import discordRoutes from './routes/discord';
 import eventbriteRoutes from './routes/eventbrite';
 import meetupRoutes from './routes/meetups';
 import oauth2Routes from './routes/oauth2';
+import organizerRequestRoutes from './routes/organizerRequests';
 import raffleRoutes from './routes/raffles';
 import ticketRoutes from './routes/tickets';
 import userRoutes from './routes/users';
@@ -41,6 +42,7 @@ class Server {
 
   private routes(): void {
     this.express.use('/users', userRoutes);
+    this.express.use('/organizer-requests', organizerRequestRoutes);
     this.express.use('/meetups', meetupRoutes);
     this.express.use('/tickets', ticketRoutes);
     this.express.use('/oauth2/', oauth2Routes);
