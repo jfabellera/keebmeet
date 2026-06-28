@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -40,8 +39,8 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
   const [editAttendee] = useEditAttendeeMutation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [editing, setEditing] = useState<TicketInfo | null>(null);
-  const [displayName, setDisplayName] = useState<string>('');
+  const [viewing, setViewing] = useState<TicketInfo | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [raffleEntries, setRaffleEntries] = useState<string>('');
 
   const sortedAttendees = useMemo(
@@ -52,31 +51,41 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
     [attendees]
   );
 
-  const openEditDialog = (attendee: TicketInfo): void => {
-    setEditing(attendee);
-    setDisplayName(attendee.ticket_holder_display_name);
+  const openDialog = (attendee: TicketInfo): void => {
+    setViewing(attendee);
     setRaffleEntries(String(attendee.raffle_entries));
+    setIsEditing(false);
     onOpen();
   };
 
-  const closeEditDialog = (): void => {
-    setEditing(null);
+  const closeDialog = (): void => {
+    setViewing(null);
+    setIsEditing(false);
     onClose();
   };
 
+  const startEditing = (): void => {
+    if (viewing == null) return;
+    setRaffleEntries(String(viewing.raffle_entries));
+    setIsEditing(true);
+  };
+
+  const cancelEditing = (): void => {
+    if (viewing != null) {
+      setRaffleEntries(String(viewing.raffle_entries));
+    }
+    setIsEditing(false);
+  };
+
   const entries = parseInt(raffleEntries, 10);
-  const canSave =
-    editing != null &&
-    displayName.trim() !== '' &&
-    Number.isInteger(entries) &&
-    entries >= 0;
+  const canSave = Number.isInteger(entries) && entries >= 0;
 
   const handleSave = (): void => {
-    if (editing == null || !canSave) return;
+    if (viewing == null || !canSave) return;
 
     void (async () => {
       const result = await editAttendee({
-        ticketId: editing.id,
+        ticketId: viewing.id,
         payload: {
           raffle_entries: entries,
         },
@@ -84,13 +93,15 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
 
       if ('error' in result) {
         toast.error('Error', {
-          description: `Could not update ${editing.ticket_holder_display_name}`,
+          description: `Could not update ${viewing.ticket_holder_display_name}`,
         });
       } else {
         toast.success('Success', {
-          description: `${displayName.trim()} updated`,
+          description: `${viewing.ticket_holder_display_name} updated`,
         });
-        closeEditDialog();
+        // Reflect the saved value immediately and return to view mode.
+        setViewing({ ...viewing, raffle_entries: entries });
+        setIsEditing(false);
       }
     })();
   };
@@ -111,13 +122,18 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
               Raffle Wins
             </TableHead>
             <TableHead>Signed Up</TableHead>
-            <TableHead className="w-0 text-center">Edit</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAttendees != null
             ? sortedAttendees.map((attendee: TicketInfo) => (
-                <TableRow key={attendee.id}>
+                <TableRow
+                  key={attendee.id}
+                  className="hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                  onClick={() => {
+                    openDialog(attendee);
+                  }}
+                >
                   <TableCell>{attendee.ticket_holder_display_name}</TableCell>
                   <TableCell className="hidden md:table-cell">
                     {attendee.ticket_holder_first_name}
@@ -134,18 +150,6 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
                   <TableCell>
                     {dayjs(attendee.created_at).format('M/D/YY hh:mm A')}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Edit attendee"
-                      onClick={() => {
-                        openEditDialog(attendee);
-                      }}
-                    >
-                      <FiEdit2 />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))
             : null}
@@ -156,35 +160,80 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
         open={isOpen}
         onOpenChange={(open) => {
           if (!open) {
-            closeEditDialog();
+            closeDialog();
           }
         }}
       >
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Edit attendee</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="raffle-entries">Raffle Entries</Label>
-              <Input
-                id="raffle-entries"
-                type="number"
-                min={0}
-                value={raffleEntries}
-                onChange={(e) => {
-                  setRaffleEntries(e.target.value);
-                }}
-              />
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle>Attendee details</DialogTitle>
+              {!isEditing ? (
+                <Button
+                  variant="ghost"
+                  aria-label="Edit attendee"
+                  onClick={startEditing}
+                >
+                  <FiEdit2 />
+                  Edit
+                </Button>
+              ) : null}
             </div>
-          </div>
+          </DialogHeader>
+          {viewing != null ? (
+            <dl className="grid grid-cols-2 items-center gap-x-4 gap-y-3 text-sm">
+              <dt className="text-muted-foreground">Display Name</dt>
+              <dd className="text-right">
+                {viewing.ticket_holder_display_name}
+              </dd>
+
+              <dt className="text-muted-foreground">First Name</dt>
+              <dd className="text-right">{viewing.ticket_holder_first_name}</dd>
+
+              <dt className="text-muted-foreground">Last Name</dt>
+              <dd className="text-right">{viewing.ticket_holder_last_name}</dd>
+
+              <dt className="text-muted-foreground">Raffle Entries</dt>
+              <dd className="text-right">
+                {isEditing ? (
+                  <Input
+                    type="number"
+                    min={0}
+                    className="ml-auto w-24 text-right"
+                    value={raffleEntries}
+                    onChange={(e) => {
+                      setRaffleEntries(e.target.value);
+                    }}
+                  />
+                ) : (
+                  viewing.raffle_entries
+                )}
+              </dd>
+
+              <dt className="text-muted-foreground">Raffle Wins</dt>
+              <dd className="text-right">{viewing.raffle_wins}</dd>
+
+              <dt className="text-muted-foreground">Signed Up</dt>
+              <dd className="text-right">
+                {dayjs(viewing.created_at).format('M/D/YY hh:mm A')}
+              </dd>
+            </dl>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditDialog}>
-              Cancel
-            </Button>
-            <Button disabled={!canSave} onClick={handleSave}>
-              Save
-            </Button>
+            {isEditing ? (
+              <>
+                <Button variant="outline" onClick={cancelEditing}>
+                  Cancel
+                </Button>
+                <Button disabled={!canSave} onClick={handleSave}>
+                  Save
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={closeDialog}>
+                Close
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
