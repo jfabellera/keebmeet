@@ -1,13 +1,3 @@
-import type React from 'react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { FiCheck } from 'react-icons/fi';
-import { toast } from 'sonner';
-import { useParams } from 'react-router-dom';
-import { type TicketInfo } from '../../../backend/src/controllers/meetups';
-import {
-  useCheckInAttendeeMutation,
-  useGetMeetupAttendeesQuery,
-} from '../store/organizerSlice';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,8 +15,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { FiCheck } from 'react-icons/fi';
+import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { type TicketInfo } from '../../../backend/src/controllers/meetups';
+import {
+  useCheckInAttendeeMutation,
+  useEditAttendeeMutation,
+  useGetMeetupAttendeesQuery,
+} from '../store/organizerSlice';
 
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
@@ -42,7 +48,12 @@ const CheckInPage = (): ReactNode => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [ticket, setTicket] = useState<TicketInfo | null>(null);
+  // Tracks the user's intent rather than the ticket's current state: selecting
+  // an attendee always means "check in", and undoing only happens via the
+  // dedicated button in the table.
+  const [action, setAction] = useState<'checkin' | 'uncheckin'>('checkin');
   const [checkInAttendee] = useCheckInAttendeeMutation();
+  const [editAttendee] = useEditAttendeeMutation();
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -94,8 +105,7 @@ const CheckInPage = (): ReactNode => {
       if (event.key === 'Enter') {
         if (!isOpen && searchValue !== '' && focusedIndex != null) {
           event.preventDefault();
-          setTicket(filteredAttendees[focusedIndex]);
-          onOpen();
+          handleSelectAttendee(filteredAttendees[focusedIndex]);
         }
       }
 
@@ -130,7 +140,19 @@ const CheckInPage = (): ReactNode => {
     setSearchValue(event.target.value);
   };
 
-  const handleConfirm = (): void => {
+  const handleSelectAttendee = (attendee: TicketInfo): void => {
+    if (attendee.is_checked_in) {
+      toast.warning('Already checked in', {
+        description: `${attendee.ticket_holder_display_name} is already checked in`,
+      });
+      return;
+    }
+    setTicket(attendee);
+    setAction('checkin');
+    onOpen();
+  };
+
+  const handleCheckIn = (): void => {
     void (async () => {
       if (ticket != null) {
         const result = await checkInAttendee(ticket.id);
@@ -142,6 +164,30 @@ const CheckInPage = (): ReactNode => {
         } else {
           toast.success('Success', {
             description: `${ticket.ticket_holder_display_name} checked in`,
+          });
+        }
+      }
+      setTicket(null);
+      setSearchValue('');
+      onClose();
+    })();
+  };
+
+  const handleUncheckIn = (): void => {
+    void (async () => {
+      if (ticket != null) {
+        const result = await editAttendee({
+          ticketId: ticket.id,
+          payload: { is_checked_in: false },
+        });
+
+        if ('error' in result) {
+          toast.error('Error', {
+            description: `Could not undo check-in for ${ticket.ticket_holder_display_name}`,
+          });
+        } else {
+          toast.success('Success', {
+            description: `Check-in undone for ${ticket.ticket_holder_display_name}`,
           });
         }
       }
@@ -179,22 +225,46 @@ const CheckInPage = (): ReactNode => {
                   <TableRow
                     key={attendee.id}
                     className={cn(
-                      'cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground',
+                      'hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors',
                       focusedIndex != null &&
                         attendee.id === filteredAttendees[focusedIndex].id
                         ? 'bg-accent text-accent-foreground'
                         : ''
                     )}
                     onClick={() => {
-                      setTicket(attendee);
-                      onOpen();
+                      handleSelectAttendee(attendee);
                     }}
                   >
-                    <TableCell>{attendee.ticket_holder_display_name}</TableCell>
-                    <TableCell>{attendee.ticket_holder_first_name}</TableCell>
-                    <TableCell>{attendee.ticket_holder_last_name}</TableCell>
-                    <TableCell>
-                      {attendee.is_checked_in ? <FiCheck /> : null}
+                    <TableCell className="text-left">
+                      {attendee.ticket_holder_display_name}
+                    </TableCell>
+                    <TableCell className="text-left">
+                      {attendee.ticket_holder_first_name}
+                    </TableCell>
+                    <TableCell className="text-left">
+                      {attendee.ticket_holder_last_name}
+                    </TableCell>
+                    <TableCell className="text-left">
+                      {attendee.is_checked_in ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTicket(attendee);
+                                setAction('uncheckin');
+                                onOpen();
+                              }}
+                            >
+                              <FiCheck />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Click to edit</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))
@@ -213,14 +283,23 @@ const CheckInPage = (): ReactNode => {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Confirm check-in</DialogTitle>
+              <DialogTitle>
+                {action === 'uncheckin' ? 'Undo check-in' : 'Confirm check-in'}
+              </DialogTitle>
             </DialogHeader>
             <p>
-              Do you want to check{' '}
-              {ticket?.ticket_holder_display_name ?? 'user'} in?
+              {action === 'uncheckin'
+                ? `Undoing check-in for ${ticket?.ticket_holder_display_name ?? 'user'}`
+                : `Do you want to check ${ticket?.ticket_holder_display_name ?? 'user'} in?`}
             </p>
             <DialogFooter>
-              <Button autoFocus onClick={handleConfirm}>
+              <Button
+                variant={action === 'uncheckin' ? 'destructive' : 'default'}
+                autoFocus
+                onClick={
+                  action === 'uncheckin' ? handleUncheckIn : handleCheckIn
+                }
+              >
                 Confirm
               </Button>
             </DialogFooter>

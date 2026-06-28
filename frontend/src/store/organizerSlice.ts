@@ -132,6 +132,7 @@ export const organizerSlice = createApi({
 export const {
   useGetMeetupAttendeesQuery,
   useCheckInAttendeeMutation,
+  useEditAttendeeMutation,
   useRollRaffleWinnerMutation,
   useClaimRaffleWinnerMutation,
   useUnClaimRaffleWinnerMutation,
