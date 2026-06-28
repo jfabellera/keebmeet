@@ -67,6 +67,9 @@ export interface TicketInfo {
   ticket_holder_display_name: string;
   ticket_holder_first_name: string;
   ticket_holder_last_name: string;
+  ticket_holder_email: string;
+  raffle_entries: number;
+  raffle_wins: number;
 }
 
 enum MeetupInfoDetailLevel {
@@ -590,6 +593,9 @@ export const getMeetupAttendees = async (
         ticket_holder_display_name: true,
         ticket_holder_first_name: true,
         ticket_holder_last_name: true,
+        ticket_holder_email: true,
+        raffle_entries: true,
+        raffle_wins: true,
         eventbrite_attendee_id: true,
       },
     },
@@ -611,6 +617,9 @@ export const getMeetupAttendees = async (
       ticket_holder_display_name: ticket.ticket_holder_display_name,
       ticket_holder_first_name: ticket.ticket_holder_first_name,
       ticket_holder_last_name: ticket.ticket_holder_last_name,
+      ticket_holder_email: ticket.ticket_holder_email,
+      raffle_entries: ticket.raffle_entries,
+      raffle_wins: ticket.raffle_wins,
     };
 
     if (ticket.is_checked_in) {

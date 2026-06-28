@@ -5,6 +5,7 @@ import {
   type RollRaffleWinnerResponse,
 } from '../../../backend/src/interfaces/rafflesInterfaces';
 import {
+  EditTicketPayload,
   type ClaimRaffleWinnerPayload,
   type RollRaffleWinnerPayload,
   type UnclaimRaffleWinnerPayload,
@@ -32,6 +33,11 @@ export interface ClaimRaffleWinnerOptions {
 export interface UnclaimRaffleWinnerOptions {
   raffleRecordId: number;
   payload: UnclaimRaffleWinnerPayload;
+}
+
+export interface UpdateAttendeeOptions {
+  ticketId: number;
+  payload: EditTicketPayload;
 }
 
 export const organizerSlice = createApi({
@@ -63,6 +69,14 @@ export const organizerSlice = createApi({
       query: (ticketId) => ({
         url: `tickets/${ticketId}/checkin`,
         method: 'POST',
+      }),
+      invalidatesTags: ['Attendees'],
+    }),
+    editAttendee: builder.mutation<void, UpdateAttendeeOptions>({
+      query: (options) => ({
+        url: `tickets/${options.ticketId}`,
+        method: 'PUT',
+        body: options.payload,
       }),
       invalidatesTags: ['Attendees'],
     }),
@@ -118,6 +132,7 @@ export const organizerSlice = createApi({
 export const {
   useGetMeetupAttendeesQuery,
   useCheckInAttendeeMutation,
+  useEditAttendeeMutation,
   useRollRaffleWinnerMutation,
   useClaimRaffleWinnerMutation,
   useUnClaimRaffleWinnerMutation,

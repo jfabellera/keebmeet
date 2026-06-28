@@ -278,7 +278,11 @@ describe('createTicket', () => {
     res.locals.requestor = fakeRequestor();
 
     // Genuinely undefined body — mockRequest()'s default would coerce to {}.
-    const req = { body: undefined, params: {}, query: {} } as unknown as Request;
+    const req = {
+      body: undefined,
+      params: {},
+      query: {},
+    } as unknown as Request;
     await createTicket(req, res);
 
     expect(mockedTicket.create).toHaveBeenCalledWith(
@@ -296,10 +300,7 @@ describe('createTicket', () => {
     res.locals.meetup = fakeMeetup();
     res.locals.requestor = fakeRequestor();
 
-    await createTicket(
-      mockRequest({ ticket_holder: fakeTicketHolder() }),
-      res
-    );
+    await createTicket(mockRequest({ ticket_holder: fakeTicketHolder() }), res);
 
     expect(mockedTicket.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -334,7 +335,9 @@ describe('createTicket', () => {
     res.locals.requestor = fakeRequestor();
 
     await createTicket(
-      mockRequest({ ticket_holder: fakeTicketHolder({ email: 'not-an-email' }) }),
+      mockRequest({
+        ticket_holder: fakeTicketHolder({ email: 'not-an-email' }),
+      }),
       res
     );
 
@@ -375,11 +378,13 @@ describe('updateTicket', () => {
       is_checked_in: false,
       raffle_entries: 1,
       raffle_wins: 0,
-      meetup: { id: 10 },
+      meetup: { id: 10, organizers: [{ id: 13 }] },
       save: jest.fn().mockResolvedValue(undefined),
     };
     mockedTicket.findOne.mockResolvedValue(ticket as any);
     const res = mockResponse();
+    // An organizer of the meetup is allowed to change check-in status and raffle data.
+    res.locals.requestor = fakeRequestor({ id: 13, is_organizer: true });
 
     await updateTicket(
       mockRequest(
@@ -399,6 +404,39 @@ describe('updateTicket', () => {
     expect(res.statusCode).toBe(201);
   });
 
+  it('does not let a non-organizer modify their own check-in status, raffle wins, or raffle entries', async () => {
+    const ticket = {
+      id: 5,
+      is_checked_in: false,
+      raffle_entries: 1,
+      raffle_wins: 0,
+      user: { id: 1 },
+      meetup: { id: 10 },
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    const res = mockResponse();
+    // A regular attendee editing their own ticket.
+    res.locals.requestor = fakeRequestor({
+      id: 1,
+      is_organizer: false,
+      is_admin: false,
+    });
+
+    await updateTicket(
+      mockRequest(
+        { is_checked_in: true, raffle_entries: 99, raffle_wins: 5 },
+        { ticket_id: '5' }
+      ),
+      res
+    );
+
+    // These privileged fields must be untouched for a non-organizer.
+    expect(ticket.is_checked_in).toBe(false);
+    expect(ticket.raffle_entries).toBe(1);
+    expect(ticket.raffle_wins).toBe(0);
+  });
+
   it('updates the ticket holder details when a full ticket_holder is provided', async () => {
     const ticket = {
       id: 5,
@@ -413,10 +451,7 @@ describe('updateTicket', () => {
     const res = mockResponse();
 
     await updateTicket(
-      mockRequest(
-        { ticket_holder: fakeTicketHolder() },
-        { ticket_id: '5' }
-      ),
+      mockRequest({ ticket_holder: fakeTicketHolder() }, { ticket_id: '5' }),
       res
     );
 
