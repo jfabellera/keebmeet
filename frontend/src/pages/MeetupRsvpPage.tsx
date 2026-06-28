@@ -123,7 +123,7 @@ const MeetupRsvpPage = (): ReactNode => {
             await rsvp({ meetupId: meetup.id, ticketHolder }).unwrap();
             toast.success(`You're going to ${meetup.name}!`);
           }
-          void navigate('/');
+          void navigate('/meetup/' + meetup.id);
         } catch {
           toast.error('Something went wrong. Please try again.');
         }
@@ -134,11 +134,12 @@ const MeetupRsvpPage = (): ReactNode => {
   const onCancelRsvp = (): void => {
     void (async () => {
       if (existingTicket == null) return;
+      if (meetup == null) return;
       try {
         await deleteTicket(existingTicket.id).unwrap();
         setCancelConfirmOpen(false);
         toast.success('Your RSVP was cancelled.');
-        void navigate('/');
+        void navigate('/meetup/' + meetup.id);
       } catch {
         toast.error('Could not cancel your RSVP. Please try again.');
       }
