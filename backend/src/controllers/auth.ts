@@ -12,6 +12,7 @@ import {
   generateVerificationToken,
   verifyVerificationToken,
 } from '../util/emailVerification';
+import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
 import { claimDiscordTickets } from '../util/rsvp';
 import { toUserResponse } from '../util/userResponse';
 import {
@@ -81,6 +82,7 @@ export const createUser = async (
   // for an admin to review. This never grants organizer access on its own.
   if (result.data.is_organizer_requested) {
     await OrganizerRequest.create({ user: newUser }).save();
+    await notifyAdminsOfOrganizerRequest(newUser);
   }
 
   const token = generateVerificationToken(newUser.id);

@@ -1,7 +1,13 @@
 import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { type User } from '../entity/User';
+import config from '../config';
 import { type OrganizerRequestInfo } from '../interfaces/userInterfaces';
+import {
+  sendOrganizerApprovedEmail,
+  sendOrganizerDeniedEmail,
+} from '../util/email';
+import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
 import { toUserResponse } from '../util/userResponse';
 
 /**
@@ -32,6 +38,8 @@ export const createOrganizerRequest = async (
   }
 
   await OrganizerRequest.create({ user: requestor }).save();
+
+  await notifyAdminsOfOrganizerRequest(requestor);
 
   return res.status(201).json({ message: 'Organizer request submitted.' });
 };
@@ -80,6 +88,12 @@ export const approveOrganizerRequest = async (
   await request.user.save();
   await request.remove();
 
+  // Let the user know they've been approved. Rejections are silent by design.
+  await sendOrganizerApprovedEmail(
+    request.user.email,
+    `${config.webUrl}/organizer`
+  );
+
   return res.status(200).json(toUserResponse(request.user));
 };
 
@@ -94,6 +108,7 @@ export const denyOrganizerRequest = async (
   const { request_id } = req.params as Record<string, string>;
 
   const request = await OrganizerRequest.findOne({
+    relations: { user: true },
     where: { id: parseInt(request_id) },
   });
 
@@ -101,7 +116,11 @@ export const denyOrganizerRequest = async (
     return res.status(404).json({ message: 'Invalid request ID.' });
   }
 
+  const requesterEmail = request.user.email;
   await request.remove();
+
+  // Let the user know their request was reviewed and not approved.
+  await sendOrganizerDeniedEmail(requesterEmail);
 
   return res.status(204).end();
 };
