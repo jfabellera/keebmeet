@@ -57,7 +57,7 @@ const Homepage = (): ReactNode => {
   const getTicketForMeetup = (meetupId: number): SimpleTicketInfo | null => {
     if (user != null && tickets != null) {
       const ticket = tickets.filter(
-        (ticket) => ticket.meetup_id === meetupId
+        (ticket) => String(ticket.meetup_id) === String(meetupId)
       )[0];
       return ticket ?? null;
     }
