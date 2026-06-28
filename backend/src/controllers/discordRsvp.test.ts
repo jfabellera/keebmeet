@@ -228,6 +228,21 @@ describe('handleDiscordRsvp', () => {
     expect(mockedRefresh).not.toHaveBeenCalled();
   });
 
+  it('returns status "ended" on a cancel action after the meetup has happened', async () => {
+    const ticket = { remove: jest.fn().mockResolvedValue(undefined) };
+    mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    mockedGetMeetupEnd.mockReturnValue(new Date('2000-01-01'));
+    const res = mockResponse();
+
+    await handleDiscordRsvp(mockRequest(cancelBody), res);
+
+    expect(res.body).toEqual({ status: 'ended' });
+    expect(ticket.remove).not.toHaveBeenCalled();
+    expect(mockedRefresh).not.toHaveBeenCalled();
+  });
+
   it('returns status "full" at capacity without creating a ticket', async () => {
     mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
     mockedUser.findOneBy.mockResolvedValue(null);

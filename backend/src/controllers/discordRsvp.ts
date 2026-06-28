@@ -60,6 +60,10 @@ export const handleDiscordRsvp = async (
       return res.json({ status: 'not_found' });
     }
 
+    if (getMeetupEnd(meetup) < new Date()) {
+      return res.json({ status: 'ended' });
+    }
+
     await existingTicket.remove();
     socket.emit('meetup:update', { meetupId: meetup_id });
     await refreshMeetupDiscordMessage(meetup_id);
