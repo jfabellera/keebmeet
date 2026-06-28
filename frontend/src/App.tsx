@@ -36,6 +36,7 @@ const App = (): ReactNode => {
       <Router>
         <Routes>
           <Route path="/" element={<Homepage />} />
+          <Route path="/meetup/:meetupId" element={<Homepage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />

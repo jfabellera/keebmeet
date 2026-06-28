@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
 import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
@@ -13,17 +14,21 @@ import {
   hasMeetupStarted,
   isMeetupHappeningNow,
 } from '../util/timeUtil';
-import { useDisclosure } from '@/hooks/useDisclosure';
 
 const Homepage = (): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
-  const [meetupId, setMeetupId] = useState<number>(0);
+  const { meetupId: meetupIdParam } = useParams();
+  const navigate = useNavigate();
+  // The selected meetup is driven by the URL so meetups can be linked to.
+  const meetupId = Number(meetupIdParam) || 0;
   const { data: meetups, isLoading } = useGetMeetupsQuery({});
   // TODO(jan): figure out how to remove this ugly ternary without getting linting errors
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : 0, {
     skip: user == null,
   });
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  // The modal is open whenever a meetup is selected via the URL. The modal
+  // itself renders nothing until its data has loaded, so there is no empty flash.
+  const isOpen = meetupId !== 0;
 
   const currentMeetups = useMemo(
     () => meetups?.filter((meetup) => isMeetupHappeningNow(meetup)),
@@ -43,13 +48,6 @@ const Homepage = (): ReactNode => {
     [meetups]
   );
 
-  // Reset meetupID when modal is closed
-  useEffect(() => {
-    if (!isOpen) {
-      setMeetupId(0);
-    }
-  }, [isOpen]);
-
   /**
    * Get ticket for a meetup if the logged in user is attending the meetup. Otherwise, return null.
    *
@@ -59,7 +57,7 @@ const Homepage = (): ReactNode => {
   const getTicketForMeetup = (meetupId: number): SimpleTicketInfo | null => {
     if (user != null && tickets != null) {
       const ticket = tickets.filter(
-        (ticket) => ticket.meetup_id === meetupId
+        (ticket) => String(ticket.meetup_id) === String(meetupId)
       )[0];
       return ticket ?? null;
     }
@@ -67,12 +65,13 @@ const Homepage = (): ReactNode => {
   };
 
   const meetupCardOnClick = (selectedMeetupId: number): void => {
-    setMeetupId(selectedMeetupId);
+    void navigate('/meetup/' + selectedMeetupId);
+  };
 
-    // Only open modal immediately if the selected meetup is already loaded
-    if (selectedMeetupId === meetupId) {
-      onOpen();
-    }
+  // Return to the homepage URL when the modal is closed. Clearing the meetup
+  // from the URL closes the modal (see isOpen above).
+  const handleClose = (): void => {
+    void navigate('/');
   };
 
   const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
@@ -120,8 +119,7 @@ const Homepage = (): ReactNode => {
             ticket={getTicketForMeetup(meetupId)}
             isLoggedIn={isLoggedIn}
             isOpen={isOpen}
-            onClose={onClose}
-            onOpen={onOpen}
+            onClose={handleClose}
           />
         </div>
       )}

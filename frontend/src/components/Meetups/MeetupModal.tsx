@@ -18,12 +18,14 @@ import {
   FiClock,
   FiEdit,
   FiExternalLink,
+  FiLink,
   FiMapPin,
   FiSettings,
   FiUser,
   FiUserCheck,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
@@ -39,7 +41,6 @@ export interface MeetupModalProps {
   ticket: SimpleTicketInfo | null;
   isOpen: boolean;
   onClose: () => void;
-  onOpen: () => void;
 }
 
 export const MeetupModal = ({
@@ -48,7 +49,6 @@ export const MeetupModal = ({
   ticket,
   isOpen,
   onClose,
-  onOpen,
 }: MeetupModalProps): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
@@ -85,14 +85,13 @@ export const MeetupModal = ({
     // Stay subscribed to updates in case user comes back to page
   }, [meetup]);
 
-  // Open modal once meetup is loaded
-  useEffect(() => {
-    if (meetupId !== 0) {
-      onOpen();
-    }
-  }, [meetup]);
-
   if (meetup == null) return <></>;
+
+  const handleCopyLink = (): void => {
+    const url = `${window.location.origin}/meetup/${meetupId}`;
+    void navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+  };
 
   const isHappeningNow = isMeetupHappeningNow(meetup);
   const hasEnded = hasMeetupEnded(meetup);
@@ -122,21 +121,33 @@ export const MeetupModal = ({
           ) : null}
           <div className="flex flex-col p-4 pb-0">
             <DialogHeader className="space-y-0 text-left">
-              <DialogTitle className="pb-2 text-2xl font-bold">
-                {meetup.name}
-                {isHappeningNow ? (
-                  <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
-                    <span className="size-1.5 animate-pulse rounded-full bg-white" />
-                    Happening now
-                  </Badge>
-                ) : hasEnded ? (
-                  <Badge
-                    variant="secondary"
-                    className="ml-3 -translate-y-0.5 align-middle"
-                  >
-                    Ended
-                  </Badge>
-                ) : null}
+              <DialogTitle className="flex flex-row justify-between pb-2 text-2xl font-bold">
+                <div>
+                  {meetup.name}
+                  {isHappeningNow ? (
+                    <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                      <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                      Happening now
+                    </Badge>
+                  ) : hasEnded ? (
+                    <Badge
+                      variant="secondary"
+                      className="ml-3 -translate-y-0.5 align-middle"
+                    >
+                      Ended
+                    </Badge>
+                  ) : null}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Copy link"
+                  aria-label="Copy link"
+                  onClick={handleCopyLink}
+                  className="ml-auto"
+                >
+                  <FiLink />
+                </Button>
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-1 pb-4 font-semibold">
