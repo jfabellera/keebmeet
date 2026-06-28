@@ -16,7 +16,7 @@ interface DiscordLinkState {
 
 /**
  * Reached from {@link DiscordCallbackPage} when a Discord login's email already
- * belongs to an existing MMS account. The user confirms by signing in, which
+ * belongs to an existing KeebMeet account. The user confirms by signing in, which
  * links Discord to that account.
  */
 const DiscordLinkPage = (): ReactNode => {

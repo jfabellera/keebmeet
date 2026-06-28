@@ -21,11 +21,11 @@ if (!token) {
 
 // The backend the bot calls to record RSVPs, and the shared secret that
 // authenticates those calls. Both come from the environment.
-const backendUrl = process.env.MMS_API_URL;
+const backendUrl = process.env.KEEBMEET_API_URL;
 const internalApiSecret = process.env.INTERNAL_API_SECRET;
 if (!backendUrl || !internalApiSecret) {
   throw new Error(
-    'MMS_API_URL and INTERNAL_API_SECRET must be set. See bot/.env.example.'
+    'KEEBMEET_API_URL and INTERNAL_API_SECRET must be set. See bot/.env.example.'
   );
 }
 

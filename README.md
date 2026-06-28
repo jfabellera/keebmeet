@@ -46,21 +46,21 @@ This project is split into two portions:
 2. Create a `.env` file in `backend/` in the following format (Ports may change depending on database used/personal preference):
 
    ```bash
-   MMS_API_SERVER_HOSTNAME=localhost
-   MMS_API_SERVER_PORT=3000
-   MMS_AUTH_SERVER_HOSTNAME=localhost
-   MMS_AUTH_SERVER_PORT=3001
-   MMS_SOCKET_SERVER_HOSTNAME=localhost
-   MMS_SOCKET_SERVER_PORT=3002
+   KEEBMEET_API_SERVER_HOSTNAME=localhost
+   KEEBMEET_API_SERVER_PORT=3000
+   KEEBMEET_AUTH_SERVER_HOSTNAME=localhost
+   KEEBMEET_AUTH_SERVER_PORT=3001
+   KEEBMEET_SOCKET_SERVER_HOSTNAME=localhost
+   KEEBMEET_SOCKET_SERVER_PORT=3002
 
-   MMS_API_URL=http://localhost:3000
-   MMS_SOCKET_URL=http://localhost:3002
+   KEEBMEET_API_URL=http://localhost:3000
+   KEEBMEET_SOCKET_URL=http://localhost:3002
 
-   MMS_DATABASE_HOST=localhost
-   MMS_DATABASE_PORT=5432
-   MMS_DATABASE_NAME=
-   MMS_DATABASE_USER=
-   MMS_DATABASE_PASSWORD=
+   KEEBMEET_DATABASE_HOST=localhost
+   KEEBMEET_DATABASE_PORT=5432
+   KEEBMEET_DATABASE_NAME=
+   KEEBMEET_DATABASE_USER=
+   KEEBMEET_DATABASE_PASSWORD=
 
    JWT_ACCESS_SECRET=
    AES_ENCRYPTION_KEY=
@@ -95,10 +95,10 @@ This project is split into two portions:
    **Make sure your API URL matches the API Server URL and port you specified in your backend .env file above.**
 
    ```bash
-   VITE_MMS_API_SERVER_URL=http://localhost:3000
-   VITE_MMS_AUTH_SERVER_URL=http://localhost:3001
-   VITE_MMS_SOCKET_SERVER_URL=http://localhost:3002
-   VITE_MMS_APP_URL=http://localhost:5173
+   VITE_KEEBMEET_API_SERVER_URL=http://localhost:3000
+   VITE_KEEBMEET_AUTH_SERVER_URL=http://localhost:3001
+   VITE_KEEBMEET_SOCKET_SERVER_URL=http://localhost:3002
+   VITE_KEEBMEET_APP_URL=http://localhost:5173
    ```
 
 3. Run the app.

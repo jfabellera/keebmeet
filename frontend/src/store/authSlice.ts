@@ -38,7 +38,7 @@ export interface UpdateProfilePayload {
 
 /**
  * Returned by {@link discordLogin} when the Discord account's email matches an
- * existing, unlinked MMS account. The user must confirm and sign in (via
+ * existing, unlinked KeebMeet account. The user must confirm and sign in (via
  * {@link discordLink}) before the accounts are linked.
  */
 export interface DiscordLinkRequired {
@@ -82,37 +82,34 @@ export const login = createAsyncThunk<
   User | null,
   LoginPayload,
   { rejectValue: number | UnverifiedEmailError }
->(
-  'auth/login',
-  async (payload: LoginPayload, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(`${config.authUrl}/login`, payload);
-      const { data } = response;
+>('auth/login', async (payload: LoginPayload, { rejectWithValue }) => {
+  try {
+    const response = await axios.post(`${config.authUrl}/login`, payload);
+    const { data } = response;
 
-      localStorage.setItem('token', data.token);
+    localStorage.setItem('token', data.token);
 
-      return getUserFromToken(data.token);
-    } catch (err) {
-      if (err instanceof AxiosError && err.response != null) {
-        // Unverified email: surface it distinctly so the user can resend.
-        if (err.response.status === 403 && err.response.data?.user_id != null) {
-          return rejectWithValue({
-            unverified: true,
-            userId: err.response.data.user_id,
-          } satisfies UnverifiedEmailError);
-        }
-        return rejectWithValue(err.response.status);
-      } else {
-        return rejectWithValue(500);
+    return getUserFromToken(data.token);
+  } catch (err) {
+    if (err instanceof AxiosError && err.response != null) {
+      // Unverified email: surface it distinctly so the user can resend.
+      if (err.response.status === 403 && err.response.data?.user_id != null) {
+        return rejectWithValue({
+          unverified: true,
+          userId: err.response.data.user_id,
+        } satisfies UnverifiedEmailError);
       }
+      return rejectWithValue(err.response.status);
+    } else {
+      return rejectWithValue(500);
     }
   }
-);
+});
 
 /**
  * Thunk for logging in via Discord SSO.
  *
- * Exchanges the Discord authorization code (from the OAuth2 redirect) for an MMS
+ * Exchanges the Discord authorization code (from the OAuth2 redirect) for a KeebMeet
  * token. This will set the authentication token in local storage on success.
  */
 export const discordLogin = createAsyncThunk(
@@ -148,7 +145,7 @@ export const discordLogin = createAsyncThunk(
 );
 
 /**
- * Thunk for linking a Discord account to an existing MMS account.
+ * Thunk for linking a Discord account to an existing KeebMeet account.
  *
  * Called after the user confirms linking and signs in. Sends the credentials
  * along with the link token from {@link discordLogin}; on success the accounts

@@ -3,7 +3,7 @@ import config from '../config';
 /**
  * Redirects the browser to Discord's OAuth2 authorization page. Once the user
  * authorizes, Discord redirects back to {@link config.discordRedirectUri} with a
- * `code` query parameter that the callback page exchanges for an MMS session.
+ * `code` query parameter that the callback page exchanges for a KeebMeet session.
  */
 export const redirectToDiscordLogin = (): void => {
   const params = new URLSearchParams({
