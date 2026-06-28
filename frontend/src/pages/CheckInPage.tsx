@@ -52,6 +52,9 @@ const CheckInPage = (): ReactNode => {
   // an attendee always means "check in", and undoing only happens via the
   // dedicated button in the table.
   const [action, setAction] = useState<'checkin' | 'uncheckin'>('checkin');
+  // Undoing a check-in is destructive, so we require the organizer to type the
+  // attendee's display name to confirm.
+  const [confirmText, setConfirmText] = useState<string>('');
   const [checkInAttendee] = useCheckInAttendeeMutation();
   const [editAttendee] = useEditAttendeeMutation();
 
@@ -143,7 +146,15 @@ const CheckInPage = (): ReactNode => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [focusedIndex, isOpen, searchValue, filteredAttendees, action, ticket]);
+  }, [
+    focusedIndex,
+    isOpen,
+    searchValue,
+    filteredAttendees,
+    action,
+    ticket,
+    confirmText,
+  ]);
 
   const handleSearchChange = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -181,11 +192,20 @@ const CheckInPage = (): ReactNode => {
       }
       setTicket(null);
       setSearchValue('');
+      setConfirmText('');
       onClose();
     })();
   };
 
+  // Whether the undo confirmation requirement (typing the display name) is met.
+  // Check-in has no such requirement.
+  const canConfirm =
+    action === 'checkin' ||
+    (ticket != null &&
+      confirmText.trim() === ticket.ticket_holder_display_name.trim());
+
   const handleUncheckIn = (): void => {
+    if (!canConfirm) return;
     void (async () => {
       if (ticket != null) {
         const result = await editAttendee({
@@ -205,6 +225,7 @@ const CheckInPage = (): ReactNode => {
       }
       setTicket(null);
       setSearchValue('');
+      setConfirmText('');
       onClose();
     })();
   };
@@ -266,6 +287,7 @@ const CheckInPage = (): ReactNode => {
                                 e.stopPropagation();
                                 setTicket(attendee);
                                 setAction('uncheckin');
+                                setConfirmText('');
                                 onOpen();
                               }}
                             >
@@ -289,6 +311,7 @@ const CheckInPage = (): ReactNode => {
           onOpenChange={(open) => {
             if (!open) {
               setTicket(null);
+              setConfirmText('');
               onClose();
             }
           }}
@@ -296,18 +319,40 @@ const CheckInPage = (): ReactNode => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {action === 'uncheckin' ? 'Undo check-in' : 'Confirm check-in'}
+                {action === 'uncheckin'
+                  ? 'Confirm undo check-in'
+                  : 'Confirm check-in'}
               </DialogTitle>
             </DialogHeader>
             <p>
               {action === 'uncheckin'
-                ? `Undoing check-in for ${ticket?.ticket_holder_display_name ?? 'user'}`
+                ? `Do you want to undo check-in for ${ticket?.ticket_holder_display_name ?? 'user'}?`
                 : `Do you want to check ${ticket?.ticket_holder_display_name ?? 'user'} in?`}
             </p>
+            {action === 'uncheckin' ? (
+              <div className="flex flex-col gap-2 text-left">
+                <p className="text-muted-foreground text-sm">
+                  Type{' '}
+                  <span className="text-foreground font-medium">
+                    {ticket?.ticket_holder_display_name}
+                  </span>{' '}
+                  to confirm.
+                </p>
+                <Input
+                  autoFocus
+                  value={confirmText}
+                  onChange={(e) => {
+                    setConfirmText(e.target.value);
+                  }}
+                  placeholder={ticket?.ticket_holder_display_name}
+                />
+              </div>
+            ) : null}
             <DialogFooter>
               <Button
                 variant={action === 'uncheckin' ? 'destructive' : 'default'}
-                autoFocus
+                autoFocus={action === 'checkin'}
+                disabled={!canConfirm}
                 onClick={
                   action === 'uncheckin' ? handleUncheckIn : handleCheckIn
                 }
