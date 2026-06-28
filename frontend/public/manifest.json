@@ -1,6 +1,6 @@
 {
-  "name": "Meetup Management System",
-  "short_name": "MMS",
+  "name": "KeebMeet",
+  "short_name": "KM",
   "icons": [],
   "start_url": "/",
   "display": "standalone",

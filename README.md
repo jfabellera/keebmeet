@@ -1,4 +1,4 @@
-# Meetup Management System
+# KeebMeet
 
 A way to manage large-scale meetups for Tex Mechs.
 

@@ -1,11 +1,11 @@
 {
-  "name": "meetup-management-system",
+  "name": "keebmeet",
   "author": "Jan-Felix Abellera",
   "version": "0.0.0",
   "description": "A way to manage large-scale meetups for Tex Mechs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jfabellera/meetup-management-system.git"
+    "url": "git+https://github.com/jfabellera/keebmeet.git"
   },
   "scripts": {
     "install:backend": "cd ./backend && npm install",
