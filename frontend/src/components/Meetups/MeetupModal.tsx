@@ -121,21 +121,33 @@ export const MeetupModal = ({
           ) : null}
           <div className="flex flex-col p-4 pb-0">
             <DialogHeader className="space-y-0 text-left">
-              <DialogTitle className="pb-2 text-2xl font-bold">
-                {meetup.name}
-                {isHappeningNow ? (
-                  <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
-                    <span className="size-1.5 animate-pulse rounded-full bg-white" />
-                    Happening now
-                  </Badge>
-                ) : hasEnded ? (
-                  <Badge
-                    variant="secondary"
-                    className="ml-3 -translate-y-0.5 align-middle"
-                  >
-                    Ended
-                  </Badge>
-                ) : null}
+              <DialogTitle className="flex flex-row justify-between pb-2 text-2xl font-bold">
+                <div>
+                  {meetup.name}
+                  {isHappeningNow ? (
+                    <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                      <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                      Happening now
+                    </Badge>
+                  ) : hasEnded ? (
+                    <Badge
+                      variant="secondary"
+                      className="ml-3 -translate-y-0.5 align-middle"
+                    >
+                      Ended
+                    </Badge>
+                  ) : null}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Copy link"
+                  aria-label="Copy link"
+                  onClick={handleCopyLink}
+                  className="ml-auto"
+                >
+                  <FiLink />
+                </Button>
               </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-1 pb-4 font-semibold">
@@ -214,15 +226,6 @@ export const MeetupModal = ({
             <span />
           )}
           <div className="ml-auto flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Copy link"
-              aria-label="Copy link"
-              onClick={handleCopyLink}
-            >
-              <FiLink />
-            </Button>
             {isRsvpable ? (
               meetup.eventbrite_url != null ? (
                 <a
