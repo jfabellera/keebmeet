@@ -18,12 +18,14 @@ import {
   FiClock,
   FiEdit,
   FiExternalLink,
+  FiLink,
   FiMapPin,
   FiSettings,
   FiUser,
   FiUserCheck,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
@@ -39,7 +41,6 @@ export interface MeetupModalProps {
   ticket: SimpleTicketInfo | null;
   isOpen: boolean;
   onClose: () => void;
-  onOpen: () => void;
 }
 
 export const MeetupModal = ({
@@ -48,7 +49,6 @@ export const MeetupModal = ({
   ticket,
   isOpen,
   onClose,
-  onOpen,
 }: MeetupModalProps): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
@@ -85,14 +85,13 @@ export const MeetupModal = ({
     // Stay subscribed to updates in case user comes back to page
   }, [meetup]);
 
-  // Open modal once meetup is loaded
-  useEffect(() => {
-    if (meetupId !== 0) {
-      onOpen();
-    }
-  }, [meetup]);
-
   if (meetup == null) return <></>;
+
+  const handleCopyLink = (): void => {
+    const url = `${window.location.origin}/meetup/${meetupId}`;
+    void navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+  };
 
   const isHappeningNow = isMeetupHappeningNow(meetup);
   const hasEnded = hasMeetupEnded(meetup);
@@ -215,6 +214,15 @@ export const MeetupModal = ({
             <span />
           )}
           <div className="ml-auto flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Copy link"
+              aria-label="Copy link"
+              onClick={handleCopyLink}
+            >
+              <FiLink />
+            </Button>
             {isRsvpable ? (
               meetup.eventbrite_url != null ? (
                 <a
