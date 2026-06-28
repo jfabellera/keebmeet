@@ -31,6 +31,7 @@ import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
+import { isNotFoundError } from '../Guards/Guards';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 
 dayjs.extend(customParseFormat);
@@ -50,11 +51,19 @@ export const MeetupModal = ({
   isOpen,
   onClose,
 }: MeetupModalProps): ReactNode => {
-  const { data: meetup } = useGetMeetupQuery(meetupId, {
+  const { data: meetup, error } = useGetMeetupQuery(meetupId, {
     skip: meetupId < 1,
   });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+
+  // A meetup id in the URL that doesn't resolve to a real meetup sends the
+  // visitor back to the homepage rather than leaving a dead modal open.
+  useEffect(() => {
+    if (isNotFoundError(error)) {
+      void navigate('/', { replace: true });
+    }
+  }, [error, navigate]);
 
   /**
    * Subscribe user to updates for the selected meetup. This will invalidate the
