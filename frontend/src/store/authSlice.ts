@@ -19,6 +19,7 @@ export interface RegisterPayload {
   lastName: string;
   nickName: string;
   password: string;
+  requestOrganizer: boolean;
 }
 
 export interface DiscordLinkPayload {
@@ -187,6 +188,7 @@ export const register = createAsyncThunk(
         last_name: payload.lastName,
         nick_name: payload.nickName,
         password: payload.password,
+        is_organizer_requested: payload.requestOrganizer,
       });
     } catch (err: any) {
       if (err instanceof AxiosError && err.response != null) {

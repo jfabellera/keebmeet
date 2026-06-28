@@ -47,6 +47,7 @@ const RegisterPage = (): ReactNode => {
       nickName: '',
       password: '',
       confirmPassword: '',
+      requestOrganizer: false,
     },
     onSubmit: (values) => {
       dispatch(register(values))
@@ -128,7 +129,13 @@ const RegisterPage = (): ReactNode => {
                   <Label htmlFor="requestOrganizer" className="pr-4">
                     Are you an organizer?
                   </Label>
-                  <Checkbox id="requestOrganizer" />
+                  <Checkbox
+                    id="requestOrganizer"
+                    checked={formik.values.requestOrganizer}
+                    onCheckedChange={(checked) =>
+                      formik.setFieldValue('requestOrganizer', checked === true)
+                    }
+                  />
                   <span>Yes</span>
                 </div>
                 <div className="flex flex-col gap-10 pt-2">

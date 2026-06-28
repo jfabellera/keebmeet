@@ -110,6 +110,7 @@ export const createUserSchema = z.object({
   last_name: z.string(),
   nick_name: z.string(),
   password: z.string(), // TODO(jan): check for password strength?
+  is_organizer_requested: z.boolean().optional().default(false),
 });
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;

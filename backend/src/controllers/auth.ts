@@ -4,6 +4,7 @@ import { type Request, type Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { ILike } from 'typeorm';
 import config from '../config';
+import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
 import {
@@ -75,6 +76,12 @@ export const createUser = async (
     password_hash,
   });
   await newUser.save();
+
+  // If the registrant asked to become an organizer, record a pending request
+  // for an admin to review. This never grants organizer access on its own.
+  if (result.data.is_organizer_requested) {
+    await OrganizerRequest.create({ user: newUser }).save();
+  }
 
   const token = generateVerificationToken(newUser.id);
   await sendVerificationEmail(newUser.email, buildVerificationLink(token));
