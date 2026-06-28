@@ -25,6 +25,18 @@ jest.mock('../entity/User', () => ({
   },
 }));
 
+jest.mock('../entity/OrganizerRequest', () => ({
+  OrganizerRequest: {
+    create: jest.fn(),
+  },
+}));
+
+// Admin notification is covered by its own tests; here we just assert it fires.
+jest.mock('../util/organizerRequestNotification', () => ({
+  __esModule: true,
+  notifyAdminsOfOrganizerRequest: jest.fn(),
+}));
+
 jest.mock('bcrypt');
 
 // Stub the email module so importing the controller doesn't construct a real
@@ -54,6 +66,7 @@ import {
   updateUser,
   verifyUser,
 } from './auth';
+import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
 import {
@@ -61,8 +74,11 @@ import {
   generateVerificationToken,
   verifyVerificationToken,
 } from '../util/emailVerification';
+import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
 
 const mockedUser = jest.mocked(User);
+const mockedOrganizerRequest = jest.mocked(OrganizerRequest);
+const mockedNotifyAdmins = jest.mocked(notifyAdminsOfOrganizerRequest);
 const mockedBcrypt = jest.mocked(bcrypt);
 const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
 const mockedGenerateVerificationToken = jest.mocked(generateVerificationToken);
@@ -123,6 +139,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   // create() echoes its input back as a saveable row by default.
   mockedUser.create.mockImplementation((attrs: any) => fakeUser(attrs) as never);
+  mockedOrganizerRequest.create.mockReturnValue({
+    save: jest.fn().mockResolvedValue(undefined),
+  } as never);
   (mockedBcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
   mockedGenerateVerificationToken.mockReturnValue('verify-token');
   mockedBuildVerificationLink.mockImplementation(
@@ -186,6 +205,34 @@ describe('createUser', () => {
       'new@example.com',
       'https://app.test/verify-email?token=verify-token'
     );
+  });
+
+  it('does not create an organizer request by default', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    expect(mockedOrganizerRequest.create).not.toHaveBeenCalled();
+    expect(mockedNotifyAdmins).not.toHaveBeenCalled();
+  });
+
+  it('records a pending organizer request and notifies admins when requested', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(
+      mockRequest(validCreateBody({ is_organizer_requested: true })),
+      res
+    );
+
+    const created = res.body as any;
+    expect(mockedOrganizerRequest.create).toHaveBeenCalledWith({
+      user: expect.objectContaining({ id: created.id }),
+    });
+    expect(mockedNotifyAdmins).toHaveBeenCalledTimes(1);
+    // The account is still created as a non-organizer; requesting never grants.
+    expect(created.is_organizer).toBe(false);
   });
 });
 
