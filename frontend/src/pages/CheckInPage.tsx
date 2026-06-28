@@ -96,6 +96,18 @@ const CheckInPage = (): ReactNode => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
+      if (isOpen) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          if (action === 'uncheckin') {
+            handleUncheckIn();
+          } else {
+            handleCheckIn();
+          }
+        }
+        return;
+      }
+
       searchRef.current?.focus();
 
       if (event.key === 'Escape') {
@@ -103,7 +115,7 @@ const CheckInPage = (): ReactNode => {
       }
 
       if (event.key === 'Enter') {
-        if (!isOpen && searchValue !== '' && focusedIndex != null) {
+        if (searchValue !== '' && focusedIndex != null) {
           event.preventDefault();
           handleSelectAttendee(filteredAttendees[focusedIndex]);
         }
@@ -131,7 +143,7 @@ const CheckInPage = (): ReactNode => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [focusedIndex, isOpen, searchValue, filteredAttendees]);
+  }, [focusedIndex, isOpen, searchValue, filteredAttendees, action, ticket]);
 
   const handleSearchChange = (
     event: React.ChangeEvent<HTMLInputElement>
