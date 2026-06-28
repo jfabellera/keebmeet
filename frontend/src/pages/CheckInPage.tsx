@@ -97,72 +97,6 @@ const CheckInPage = (): ReactNode => {
     return filtered;
   }, [attendees, searchValue]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (isOpen) {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          if (action === 'uncheckin') {
-            handleUncheckIn();
-          } else {
-            handleCheckIn();
-          }
-        }
-        return;
-      }
-
-      searchRef.current?.focus();
-
-      if (event.key === 'Escape') {
-        setSearchValue('');
-      }
-
-      if (event.key === 'Enter') {
-        if (searchValue !== '' && focusedIndex != null) {
-          event.preventDefault();
-          handleSelectAttendee(filteredAttendees[focusedIndex]);
-        }
-      }
-
-      if (event.key === 'ArrowDown') {
-        if (focusedIndex != null) {
-          event.preventDefault();
-          setFocusedIndex(
-            Math.min(filteredAttendees.length - 1, focusedIndex + 1)
-          );
-        }
-      }
-
-      if (event.key === 'ArrowUp') {
-        if (focusedIndex != null) {
-          event.preventDefault();
-          setFocusedIndex(Math.max(0, focusedIndex - 1));
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [
-    focusedIndex,
-    isOpen,
-    searchValue,
-    filteredAttendees,
-    action,
-    ticket,
-    confirmText,
-  ]);
-
-  const handleSearchChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setFocusedIndex(null);
-    setSearchValue(event.target.value);
-  };
-
   const handleSelectAttendee = (attendee: TicketInfo): void => {
     if (attendee.is_checked_in) {
       toast.warning('Already checked in', {
@@ -228,6 +162,72 @@ const CheckInPage = (): ReactNode => {
       setConfirmText('');
       onClose();
     })();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (isOpen) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          if (action === 'uncheckin') {
+            handleUncheckIn();
+          } else {
+            handleCheckIn();
+          }
+        }
+        return;
+      }
+
+      searchRef.current?.focus();
+
+      if (event.key === 'Escape') {
+        setSearchValue('');
+      }
+
+      if (event.key === 'Enter') {
+        if (searchValue !== '' && focusedIndex != null) {
+          event.preventDefault();
+          handleSelectAttendee(filteredAttendees[focusedIndex]);
+        }
+      }
+
+      if (event.key === 'ArrowDown') {
+        if (focusedIndex != null) {
+          event.preventDefault();
+          setFocusedIndex(
+            Math.min(filteredAttendees.length - 1, focusedIndex + 1)
+          );
+        }
+      }
+
+      if (event.key === 'ArrowUp') {
+        if (focusedIndex != null) {
+          event.preventDefault();
+          setFocusedIndex(Math.max(0, focusedIndex - 1));
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    focusedIndex,
+    isOpen,
+    searchValue,
+    filteredAttendees,
+    action,
+    ticket,
+    confirmText,
+  ]);
+
+  const handleSearchChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void => {
+    setFocusedIndex(null);
+    setSearchValue(event.target.value);
   };
 
   return (
