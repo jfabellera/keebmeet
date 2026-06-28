@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import {
   type DiscordChannel,
   type DiscordServer,
+  type OrganizerRequestInfo,
   type User,
 } from '../../../backend/src/interfaces/userInterfaces';
 import config from '../config';
@@ -62,6 +63,26 @@ export const userSlice = createApi({
       }),
       invalidatesTags: ['User', 'OrganizerRequests'],
     }),
+    getOrganizerRequests: builder.query<OrganizerRequestInfo[], void>({
+      query: () => ({
+        url: `/organizer-requests`,
+      }),
+      providesTags: ['OrganizerRequests'],
+    }),
+    approveOrganizerRequest: builder.mutation<void, number>({
+      query: (requestId) => ({
+        url: `/organizer-requests/${requestId}/approve`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['OrganizerRequests', 'User'],
+    }),
+    denyOrganizerRequest: builder.mutation<void, number>({
+      query: (requestId) => ({
+        url: `/organizer-requests/${requestId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['OrganizerRequests'],
+    }),
   }),
 });
 
@@ -71,4 +92,7 @@ export const {
   useGetUserDiscordServerChannelsQuery,
   useAuthorizeEventbriteMutation,
   useRequestOrganizerMutation,
+  useGetOrganizerRequestsQuery,
+  useApproveOrganizerRequestMutation,
+  useDenyOrganizerRequestMutation,
 } = userSlice;

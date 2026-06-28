@@ -21,6 +21,7 @@ import RegisterPage from './pages/RegisterPage';
 
 import { Provider } from 'react-redux';
 import {
+  RequireAdmin,
   RequireAuth,
   RequireGuest,
   RequireMeetup,
@@ -29,6 +30,7 @@ import {
 } from './components/Guards/Guards';
 import { TooltipProvider } from './components/ui/tooltip';
 import AccountPage from './pages/AccountPage';
+import AdminPage from './pages/AdminPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
 import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
@@ -138,6 +140,14 @@ const App = (): ReactNode => {
                 <RequireAuth>
                   <AccountPage />
                 </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireAdmin>
+                  <AdminPage />
+                </RequireAdmin>
               }
             />
           </Routes>

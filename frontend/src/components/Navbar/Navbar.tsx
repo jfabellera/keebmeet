@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { type ReactNode } from 'react';
 import { type IconType } from 'react-icons';
-import { FiLogOut, FiMenu, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiMenu, FiShield, FiUser } from 'react-icons/fi';
 import { MdDashboardCustomize } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/authSlice';
@@ -25,6 +25,7 @@ interface LinkItemProps {
   url: string;
   icon: IconType;
   organizerOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 /**
@@ -37,6 +38,12 @@ const LinkItems: LinkItemProps[] = [
     url: '/organizer',
     icon: MdDashboardCustomize,
     organizerOnly: true,
+  },
+  {
+    name: 'Admin',
+    url: '/admin',
+    icon: FiShield,
+    adminOnly: true,
   },
   {
     name: 'Account',
@@ -83,6 +90,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
           <NavbarDropdown
             nickname={user.displayName}
             isOrganizer={user.isOrganizer}
+            isAdmin={user.isAdmin}
           />
         ) : (
           <GuestButtons />
@@ -123,11 +131,13 @@ const GuestButtons = (): ReactNode => {
 interface NavbarDropdownProps {
   nickname: string;
   isOrganizer: boolean;
+  isAdmin: boolean;
 }
 
 const NavbarDropdown = ({
   nickname,
   isOrganizer,
+  isAdmin,
 }: NavbarDropdownProps): ReactNode => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -156,19 +166,21 @@ const NavbarDropdown = ({
           <p>{nickname}</p>
         </div>
         <DropdownMenuSeparator />
-        {LinkItems.map((link) =>
-          link.organizerOnly == null || (link.organizerOnly && isOrganizer) ? (
-            <NavItem
-              key={link.name}
-              icon={link.icon}
-              onClick={() => {
-                void navigate(link.url);
-              }}
-            >
-              {link.name}
-            </NavItem>
-          ) : null
-        )}
+        {LinkItems.filter(
+          (link) =>
+            (link.organizerOnly !== true || isOrganizer) &&
+            (link.adminOnly !== true || isAdmin)
+        ).map((link) => (
+          <NavItem
+            key={link.name}
+            icon={link.icon}
+            onClick={() => {
+              void navigate(link.url);
+            }}
+          >
+            {link.name}
+          </NavItem>
+        ))}
         <NavItem
           key="logout"
           icon={FiLogOut}

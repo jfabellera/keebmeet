@@ -10,6 +10,14 @@ export interface User {
   is_discord_linked: boolean;
   // Resolved from the Discord API at request time; only populated by getUser.
   discord_username?: string | null;
+  // Whether the user has a pending organizer request; only populated by getUser.
+  has_organizer_request?: boolean;
+}
+
+export interface OrganizerRequestInfo {
+  id: number;
+  created_at: string;
+  user: User;
 }
 
 export interface DiscordServer {
