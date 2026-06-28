@@ -114,6 +114,7 @@ export const updateTicket = async (
   res: Response
 ): Promise<Response> => {
   const { ticket_id } = req.params as Record<string, string>;
+  const requestor = res.locals.requestor as User | undefined;
 
   const result = editTicketSchema.safeParse(req.body);
 
@@ -123,7 +124,7 @@ export const updateTicket = async (
 
   const ticket = await Ticket.findOne({
     relations: {
-      meetup: true,
+      meetup: { organizers: true },
     },
     where: {
       id: parseInt(ticket_id),
@@ -134,10 +135,18 @@ export const updateTicket = async (
     return res.status(404).json({ message: 'Invalid ticket ID.' });
   }
 
-  // TODO(jan): Do we want to throw an error when meetup_id or user_id is found in req.body?
-  ticket.is_checked_in = req.body.is_checked_in ?? ticket.is_checked_in;
-  ticket.raffle_entries = req.body.raffle_entries ?? ticket.raffle_entries;
-  ticket.raffle_wins = req.body.raffle_wins ?? ticket.raffle_wins;
+  const isOrganizer =
+    requestor != null &&
+    (ticket.meetup.organizers?.some(
+      (organizer) => organizer.id === requestor.id
+    ) ??
+      false);
+
+  if (isOrganizer) {
+    ticket.is_checked_in = req.body.is_checked_in ?? ticket.is_checked_in;
+    ticket.raffle_entries = req.body.raffle_entries ?? ticket.raffle_entries;
+    ticket.raffle_wins = req.body.raffle_wins ?? ticket.raffle_wins;
+  }
 
   if (result.data.ticket_holder != null) {
     ticket.ticket_holder_display_name = result.data.ticket_holder.display_name;

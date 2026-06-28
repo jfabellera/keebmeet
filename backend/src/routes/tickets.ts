@@ -25,7 +25,7 @@ router.get(
 
 router.put(
   '/:ticket_id',
-  authChecker() as RequestHandler,
+  authChecker([Rule.overrideMeetupOrganizer]) as RequestHandler,
   updateTicket as RequestHandler
 );
 
