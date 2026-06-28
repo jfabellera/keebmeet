@@ -75,7 +75,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
           void navigate('/');
         }}
       >
-        Meetup Management System
+        KeebMeet
       </span>
       <div className="ml-auto flex items-center gap-2">
         <ModeToggle />

@@ -6,13 +6,13 @@ import { ILike } from 'typeorm';
 import config from '../config';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
-import { claimDiscordTickets } from '../util/rsvp';
-import { toUserResponse } from '../util/userResponse';
 import {
   buildVerificationLink,
   generateVerificationToken,
   verifyVerificationToken,
 } from '../util/emailVerification';
+import { claimDiscordTickets } from '../util/rsvp';
+import { toUserResponse } from '../util/userResponse';
 import {
   createUserSchema,
   editUserSchema,
@@ -310,7 +310,7 @@ const exchangeCodeForDiscordUser = async (
 
 /**
  * Exchanges a Discord OAuth2 authorization code for the user's Discord profile,
- * then logs them in by issuing an MMS JWT.
+ * then logs them in by issuing a KeebMeet JWT.
  *
  * The user is resolved in priority order:
  *   1. An existing account already linked to this Discord ID.

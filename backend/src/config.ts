@@ -30,17 +30,17 @@ interface Config {
 }
 
 const config: Config = {
-  apiHostname: process.env.MMS_API_SERVER_HOSTNAME ?? 'localhost',
-  apiPort: process.env.MMS_API_SERVER_PORT ?? '3000',
-  authHostname: process.env.MMS_AUTH_SERVER_HOSTNAME ?? 'localhost',
-  authPort: process.env.MMS_AUTH_SERVER_PORT ?? '3001',
-  socketHostname: process.env.MMS_SOCKET_SERVER_HOSTNAME ?? 'localhost',
-  socketPort: process.env.MMS_SOCKET_SERVER_PORT ?? '3002',
-  databaseHost: process.env.MMS_DATABASE_HOST ?? 'localhost',
-  databasePort: process.env.MMS_DATABASE_PORT ?? '5432',
-  databaseName: process.env.MMS_DATABASE_NAME ?? '',
-  databaseUser: process.env.MMS_DATABASE_USER ?? '',
-  databasePassword: process.env.MMS_DATABASE_PASSWORD ?? '',
+  apiHostname: process.env.KEEBMEET_API_SERVER_HOSTNAME ?? 'localhost',
+  apiPort: process.env.KEEBMEET_API_SERVER_PORT ?? '3000',
+  authHostname: process.env.KEEBMEET_AUTH_SERVER_HOSTNAME ?? 'localhost',
+  authPort: process.env.KEEBMEET_AUTH_SERVER_PORT ?? '3001',
+  socketHostname: process.env.KEEBMEET_SOCKET_SERVER_HOSTNAME ?? 'localhost',
+  socketPort: process.env.KEEBMEET_SOCKET_SERVER_PORT ?? '3002',
+  databaseHost: process.env.KEEBMEET_DATABASE_HOST ?? 'localhost',
+  databasePort: process.env.KEEBMEET_DATABASE_PORT ?? '5432',
+  databaseName: process.env.KEEBMEET_DATABASE_NAME ?? '',
+  databaseUser: process.env.KEEBMEET_DATABASE_USER ?? '',
+  databasePassword: process.env.KEEBMEET_DATABASE_PASSWORD ?? '',
   jwtSecret: process.env.JWT_ACCESS_SECRET ?? '',
   aesKey: process.env.AES_ENCRYPTION_KEY ?? '',
   gcpApiKey: process.env.GCP_API_KEY ?? '',
@@ -53,9 +53,9 @@ const config: Config = {
     process.env.DISCORD_REDIRECT_URI ??
     'http://localhost:5173/auth/discord/callback',
   internalApiSecret: process.env.INTERNAL_API_SECRET ?? '',
-  apiUrl: process.env.MMS_API_URL ?? 'http://localhost:3000',
-  socketUrl: process.env.MMS_SOCKET_URL ?? 'http://localhost:3002',
-  webUrl: process.env.MMS_WEB_URL ?? 'http://localhost:5173',
+  apiUrl: process.env.KEEBMEET_API_URL ?? 'http://localhost:3000',
+  socketUrl: process.env.KEEBMEET_SOCKET_URL ?? 'http://localhost:3002',
+  webUrl: process.env.KEEBMEET_WEB_URL ?? 'http://localhost:5173',
 };
 
 export default config;
