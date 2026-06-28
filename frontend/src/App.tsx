@@ -20,6 +20,13 @@ import RafflePage from './pages/RafflePage';
 import RegisterPage from './pages/RegisterPage';
 
 import { Provider } from 'react-redux';
+import {
+  RequireAuth,
+  RequireGuest,
+  RequireMeetup,
+  RequireMeetupOrganizer,
+  RequireOrganizer,
+} from './components/Guards/Guards';
 import { TooltipProvider } from './components/ui/tooltip';
 import AccountPage from './pages/AccountPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
@@ -39,27 +46,68 @@ const App = (): ReactNode => {
           <Routes>
             <Route path="/" element={<Homepage />} />
             <Route path="/meetup/:meetupId" element={<Homepage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/login"
+              element={
+                <RequireGuest>
+                  <LoginPage />
+                </RequireGuest>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <RequireGuest>
+                  <RegisterPage />
+                </RequireGuest>
+              }
+            />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route
               path="/auth/discord/callback"
               element={<DiscordCallbackPage />}
             />
             <Route path="/auth/discord/link" element={<DiscordLinkPage />} />
-            <Route path="/meetup/:meetupId/rsvp" element={<MeetupRsvpPage />} />
-            <Route path="/organizer" element={<OrganizerDashboard />} />
-            <Route path="/new-meetup" element={<NewMeetupPage />} />
+            <Route
+              path="/meetup/:meetupId/rsvp"
+              element={
+                <RequireMeetup>
+                  <MeetupRsvpPage />
+                </RequireMeetup>
+              }
+            />
+            <Route
+              path="/organizer"
+              element={
+                <RequireOrganizer>
+                  <OrganizerDashboard />
+                </RequireOrganizer>
+              }
+            />
+            <Route
+              path="/new-meetup"
+              element={
+                <RequireOrganizer>
+                  <NewMeetupPage />
+                </RequireOrganizer>
+              }
+            />
             <Route
               path="/new-meetup/eventbrite"
-              element={<NewMeetupFromEventbritePage />}
+              element={
+                <RequireOrganizer>
+                  <NewMeetupFromEventbritePage />
+                </RequireOrganizer>
+              }
             />
             <Route
               path="/meetup/:meetupId/manage/"
               element={
-                <ManageMeetupPage>
-                  <Outlet />
-                </ManageMeetupPage>
+                <RequireMeetupOrganizer>
+                  <ManageMeetupPage>
+                    <Outlet />
+                  </ManageMeetupPage>
+                </RequireMeetupOrganizer>
               }
             >
               <Route path="" element={<ManageMeetupHomePage />} />
@@ -70,13 +118,28 @@ const App = (): ReactNode => {
             </Route>
             <Route
               path="/meetup/:meetupId/display"
-              element={<MeetupDisplayPage />}
+              element={
+                <RequireMeetup>
+                  <MeetupDisplayPage />
+                </RequireMeetup>
+              }
             />
             <Route
               path="/account/authorize-eventbrite"
-              element={<AuthorizeEventbritePage />}
+              element={
+                <RequireAuth>
+                  <AuthorizeEventbritePage />
+                </RequireAuth>
+              }
             />
-            <Route path="/account" element={<AccountPage />} />
+            <Route
+              path="/account"
+              element={
+                <RequireAuth>
+                  <AccountPage />
+                </RequireAuth>
+              }
+            />
           </Routes>
         </Router>
       </Provider>
