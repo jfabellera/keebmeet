@@ -108,6 +108,31 @@ describe('rollRaffleWinner', () => {
     expect(res.body).toBeUndefined();
   });
 
+  it('only considers checked-in attendees by default', async () => {
+    mockedTicket.find.mockResolvedValue([]);
+    const res = mockResponse();
+    res.locals.meetup = { id: 10 };
+
+    await rollRaffleWinner(mockRequest({ quantity: 1 }), res);
+
+    const whereArg = (mockedTicket.find.mock.calls[0][0] as any).where;
+    expect(whereArg.is_checked_in).toBe(true);
+  });
+
+  it('includes not-checked-in attendees when includeNotCheckedIn is set', async () => {
+    mockedTicket.find.mockResolvedValue([]);
+    const res = mockResponse();
+    res.locals.meetup = { id: 10 };
+
+    await rollRaffleWinner(
+      mockRequest({ quantity: 1, includeNotCheckedIn: true }),
+      res
+    );
+
+    const whereArg = (mockedTicket.find.mock.calls[0][0] as any).where;
+    expect(whereArg.is_checked_in).toBeUndefined();
+  });
+
   it('rolls a winner, persists the record, and emits an update', async () => {
     const tickets = [
       fakeTicket(1, 'alice'),

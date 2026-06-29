@@ -21,6 +21,7 @@ import {
   useCreateMeetupDiscordMessageMutation,
   useDeleteMeetupDiscordMessageMutation,
   useGetMeetupDiscordMessageQuery,
+  useGetMeetupQuery,
   useUpdateMeetupDiscordMessageMutation,
 } from '@/store/meetupSlice';
 import {
@@ -31,6 +32,7 @@ import {
 import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { hasMeetupEnded } from '../../util/timeUtil';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 
@@ -63,10 +65,13 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
     localUser?.id ?? NaN,
     { skip: localUser == null || !isLinked }
   );
+  const { data: meetup } = useGetMeetupQuery(meetupId);
   const { data: message, isLoading: isLoadingMessage } =
     useGetMeetupDiscordMessageQuery(meetupId, {
       skip: localUser == null || !isLinked,
     });
+
+  const hasEnded = meetup != null ? hasMeetupEnded(meetup) : false;
 
   const [selectedServer, setSelectedServer] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -186,6 +191,10 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
             </Dialog>
           </div>
         </div>
+      ) : hasEnded ? (
+        <p className="text-muted-foreground">
+          This meetup has ended. Discord announcements can no longer be created.
+        </p>
       ) : (
         <div className="flex flex-col gap-2">
           <p>Post an announcement for this meetup to a Discord channel.</p>

@@ -49,7 +49,9 @@ export const rollRaffleWinner = async (
     return res.status(400).json(result.error);
   }
 
-  // Get checked in tickets with raffle entries
+  // Get eligible tickets with raffle entries. By default only checked-in
+  // attendees are eligible; organizers can opt to include those who haven't
+  // checked in.
   const tickets = await Ticket.find({
     relations: {
       user: true,
@@ -58,7 +60,7 @@ export const rollRaffleWinner = async (
       meetup: {
         id: meetup.id,
       },
-      is_checked_in: true,
+      ...(!result.data.includeNotCheckedIn ? { is_checked_in: true } : null),
       ...(!result.data.allIn
         ? {
             raffle_entries: MoreThan(0),

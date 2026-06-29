@@ -94,6 +94,7 @@ const RafflePage = (): ReactNode => {
       rollQuantity: 1,
       displayOnRoll: false,
       clearOnClaim: false,
+      includeNotCheckedIn: false,
     },
     onSubmit: () => {},
   });
@@ -102,7 +103,10 @@ const RafflePage = (): ReactNode => {
     void (async () => {
       await rollRaffleWinner({
         meetupId,
-        payload: { quantity: formik.values.rollQuantity },
+        payload: {
+          quantity: formik.values.rollQuantity,
+          includeNotCheckedIn: formik.values.includeNotCheckedIn,
+        },
       });
     })();
     setIsAllIn(false);
@@ -110,7 +114,13 @@ const RafflePage = (): ReactNode => {
 
   const handleRollAllIn = (): void => {
     void (async () => {
-      await rollRaffleWinner({ meetupId, payload: { allIn: true } });
+      await rollRaffleWinner({
+        meetupId,
+        payload: {
+          allIn: true,
+          includeNotCheckedIn: formik.values.includeNotCheckedIn,
+        },
+      });
       onClose();
       setIsAllIn(true);
     })();
@@ -187,7 +197,10 @@ const RafflePage = (): ReactNode => {
   useEffect(() => {
     if (isRollSuccess) {
       if (rollResult == null) {
-        toast.warning('Roll failed', { description: 'No eligible attendees' });
+        toast.warning('Roll failed', {
+          description: 'No eligible attendees',
+          position: 'top-center',
+        });
       } else {
         setRaffleRecordId(Number(rollResult.raffleRecord.id)); // TODO(jan): shouldn't have to cast
         setRaffleRecord(rollResult.raffleRecord);
@@ -200,7 +213,10 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isClaimSuccess && raffleRecord != null) {
-      toast.success('Success', { description: 'Raffle claimed' }); // TODO(jan): Include claimer's name
+      toast.success('Success', {
+        description: 'Raffle claimed',
+        position: 'top-center',
+      }); // TODO(jan): Include claimer's name
 
       if (formik.values.clearOnClaim) {
         handleClear();
@@ -213,13 +229,19 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isUnClaimSuccess) {
-      toast.success('Success', { description: 'Raffle unclaimed' });
+      toast.success('Success', {
+        description: 'Raffle unclaimed',
+        position: 'top-center',
+      });
     }
   }, [isUnClaimSuccess]);
 
   useEffect(() => {
     if (isRollError || isClaimError || isUnClaimError) {
-      toast.error('Error', { description: 'Action failed' });
+      toast.error('Error', {
+        description: 'Action failed',
+        position: 'top-center',
+      });
     }
   }, [isRollError, isClaimError, isUnClaimError]);
 
@@ -436,6 +458,19 @@ const RafflePage = (): ReactNode => {
                 checked={formik.values.clearOnClaim}
                 onCheckedChange={(checked) => {
                   void formik.setFieldValue('clearOnClaim', checked);
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Label htmlFor="includeNotCheckedIn" className="mb-0">
+                Include not checked-in
+              </Label>
+              <Switch
+                id="includeNotCheckedIn"
+                checked={formik.values.includeNotCheckedIn}
+                onCheckedChange={(checked) => {
+                  void formik.setFieldValue('includeNotCheckedIn', checked);
                 }}
               />
             </div>
