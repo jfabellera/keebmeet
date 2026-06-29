@@ -13,6 +13,7 @@ export const toUserResponse = (user: User): UserInterface => {
     first_name: user.first_name,
     last_name: user.last_name,
     is_admin: user.is_admin,
+    is_owner: user.is_owner,
     is_organizer: user.is_organizer,
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
     is_discord_linked: user.discord_id != null,

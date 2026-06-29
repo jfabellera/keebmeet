@@ -56,6 +56,7 @@ class AuthServer {
     );
     this.express.put(
       '/:user_id',
+      loginLimiter,
       authChecker([Rule.overrideAdmin]) as RequestHandler,
       updateUser as RequestHandler
     );

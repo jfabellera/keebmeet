@@ -1,4 +1,5 @@
 import { type Request, type Response } from 'express';
+import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { type User as UserInterface } from '../interfaces/userInterfaces';
 import { fetchDiscordUsername } from '../util/discord';
@@ -35,6 +36,12 @@ export const getUser = async (
   if (user.discord_id != null) {
     response.discord_username = await fetchDiscordUsername(user.discord_id);
   }
+
+  // Surface whether the user has a pending organizer request so the account
+  // page can reflect the right state.
+  response.has_organizer_request =
+    (await OrganizerRequest.findOne({ where: { user: { id: user.id } } })) !=
+    null;
 
   return res.json(response);
 };

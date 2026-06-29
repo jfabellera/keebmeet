@@ -30,6 +30,9 @@ export class User extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   is_admin: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_owner: boolean;
+
   @Column({ type: 'varchar', length: 60, nullable: true })
   password_hash?: string;
 

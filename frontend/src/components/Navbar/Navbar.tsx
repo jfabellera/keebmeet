@@ -1,5 +1,6 @@
 import { ModeToggle } from '@/components/mode-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,11 +11,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { type ReactNode } from 'react';
 import { type IconType } from 'react-icons';
-import { FiLogOut, FiMenu, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiMenu, FiShield, FiUser } from 'react-icons/fi';
 import { MdDashboardCustomize } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useGetOrganizerRequestsQuery } from '../../store/userSlice';
 
 /**
  * Adapted from https://chakra-templates.dev/navigation/navbar
@@ -25,6 +27,7 @@ interface LinkItemProps {
   url: string;
   icon: IconType;
   organizerOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 /**
@@ -37,6 +40,12 @@ const LinkItems: LinkItemProps[] = [
     url: '/organizer',
     icon: MdDashboardCustomize,
     organizerOnly: true,
+  },
+  {
+    name: 'Admin',
+    url: '/admin',
+    icon: FiShield,
+    adminOnly: true,
   },
   {
     name: 'Account',
@@ -83,6 +92,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
           <NavbarDropdown
             nickname={user.displayName}
             isOrganizer={user.isOrganizer}
+            isAdmin={user.isAdmin || user.isOwner}
           />
         ) : (
           <GuestButtons />
@@ -123,26 +133,42 @@ const GuestButtons = (): ReactNode => {
 interface NavbarDropdownProps {
   nickname: string;
   isOrganizer: boolean;
+  isAdmin: boolean;
 }
 
 const NavbarDropdown = ({
   nickname,
   isOrganizer,
+  isAdmin,
 }: NavbarDropdownProps): ReactNode => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const avatarSrc = ''; // TODO: add user avatar url when available
 
+  // Surface pending organizer requests to admins. The endpoint is admin-only,
+  // so skip the query for everyone else.
+  const { data: organizerRequests } = useGetOrganizerRequestsQuery(undefined, {
+    skip: !isAdmin,
+  });
+  const pendingRequestCount = organizerRequests?.length ?? 0;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="rounded-full" aria-label="account menu">
+        <button className="relative rounded-full" aria-label="account menu">
           <Avatar className="size-8">
             <AvatarImage src={avatarSrc} />
             <AvatarFallback>
               <FiUser />
             </AvatarFallback>
           </Avatar>
+          {/* Notify admins of pending requests without opening the menu. */}
+          {pendingRequestCount > 0 ? (
+            <span
+              className="border-background absolute -top-0.5 -right-0.5 size-3 rounded-full border-2 bg-red-500"
+              aria-label={`${pendingRequestCount} pending organizer requests`}
+            />
+          ) : null}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -156,19 +182,22 @@ const NavbarDropdown = ({
           <p>{nickname}</p>
         </div>
         <DropdownMenuSeparator />
-        {LinkItems.map((link) =>
-          link.organizerOnly == null || (link.organizerOnly && isOrganizer) ? (
-            <NavItem
-              key={link.name}
-              icon={link.icon}
-              onClick={() => {
-                void navigate(link.url);
-              }}
-            >
-              {link.name}
-            </NavItem>
-          ) : null
-        )}
+        {LinkItems.filter(
+          (link) =>
+            (link.organizerOnly !== true || isOrganizer) &&
+            (link.adminOnly !== true || isAdmin)
+        ).map((link) => (
+          <NavItem
+            key={link.name}
+            icon={link.icon}
+            badge={link.url === '/admin' ? pendingRequestCount : undefined}
+            onClick={() => {
+              void navigate(link.url);
+            }}
+          >
+            {link.name}
+          </NavItem>
+        ))}
         <NavItem
           key="logout"
           icon={FiLogOut}
@@ -187,17 +216,23 @@ interface NavItemProps {
   icon: IconType;
   children: ReactNode;
   onClick: () => void;
+  /** Optional count shown as a badge (hidden when 0 or undefined). */
+  badge?: number;
 }
 
 const NavItem = ({
   icon: IconComponent,
   children,
   onClick,
+  badge,
 }: NavItemProps): ReactNode => {
   return (
     <DropdownMenuItem onClick={onClick} className="cursor-pointer">
       <IconComponent className="mr-2 size-4" />
       {children}
+      {badge != null && badge > 0 ? (
+        <Badge className="ml-auto bg-red-500 text-white">{badge}</Badge>
+      ) : null}
     </DropdownMenuItem>
   );
 };

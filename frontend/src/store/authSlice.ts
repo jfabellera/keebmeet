@@ -19,12 +19,21 @@ export interface RegisterPayload {
   lastName: string;
   nickName: string;
   password: string;
+  requestOrganizer: boolean;
 }
 
 export interface DiscordLinkPayload {
   email: string;
   password: string;
   linkToken: string;
+}
+
+export interface SetUserAccessPayload {
+  userId: number;
+  isAdmin: boolean;
+  isOrganizer: boolean;
+  /** The requestor's own password, required to confirm a change to admin status. */
+  currentPassword?: string;
 }
 
 export interface UpdateProfilePayload {
@@ -53,6 +62,7 @@ interface User {
   displayName: string;
   isOrganizer: boolean;
   isAdmin: boolean;
+  isOwner: boolean;
 }
 
 interface AuthState {
@@ -187,6 +197,7 @@ export const register = createAsyncThunk(
         last_name: payload.lastName,
         nick_name: payload.nickName,
         password: payload.password,
+        is_organizer_requested: payload.requestOrganizer,
       });
     } catch (err: any) {
       if (err instanceof AxiosError && err.response != null) {
@@ -231,6 +242,41 @@ export const resendVerification = createAsyncThunk(
   async (userId: number, { rejectWithValue }) => {
     try {
       await axios.post(`${config.authUrl}/${userId}/resend-verification`);
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
+ * Thunk for an admin to change another user's access (admin/organizer flags).
+ *
+ * Sends the role flags to the auth server, which only honours them for an admin
+ * requestor. The affected user's own session token keeps its old flags until
+ * they next sign in.
+ */
+export const setUserAccess = createAsyncThunk(
+  'auth/setUserAccess',
+  async (payload: SetUserAccessPayload, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as { user: AuthState }).user.user?.token;
+
+      await axios.put(
+        `${config.authUrl}/${payload.userId}`,
+        {
+          is_admin: payload.isAdmin,
+          is_organizer: payload.isOrganizer,
+          // Only sent when confirming a sensitive admin-status change.
+          ...(payload.currentPassword != null
+            ? { current_password: payload.currentPassword }
+            : {}),
+        },
+        { headers: { Authorization: `Bearer ${token ?? ''}` } }
+      );
     } catch (err) {
       if (err instanceof AxiosError && err.response != null) {
         return rejectWithValue(err.response?.status);
@@ -325,6 +371,7 @@ const getUserFromToken = (token: string): User | null => {
       displayName: decoded.nick_name,
       isOrganizer: decoded.is_organizer,
       isAdmin: decoded.is_admin,
+      isOwner: decoded.is_owner ?? false,
     };
 
     return user;

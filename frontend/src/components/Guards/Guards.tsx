@@ -45,6 +45,20 @@ export const RequireGuest = ({ children }: GuardProps): ReactNode => {
 };
 
 /**
+ * Restricts a route to admins. Non-admins (and logged-out visitors) are sent to
+ * the homepage.
+ */
+export const RequireAdmin = ({ children }: GuardProps): ReactNode => {
+  const { user } = useAppSelector((state) => state.user);
+
+  // Owners outrank admins and may use any admin-gated page.
+  if (user == null || !(user.isAdmin || user.isOwner))
+    return <Navigate to="/" replace />;
+
+  return <>{children}</>;
+};
+
+/**
  * Restricts a route to organizers. Non-organizers (and logged-out visitors)
  * are sent to the homepage.
  */

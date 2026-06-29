@@ -25,6 +25,18 @@ jest.mock('../entity/User', () => ({
   },
 }));
 
+jest.mock('../entity/OrganizerRequest', () => ({
+  OrganizerRequest: {
+    create: jest.fn(),
+  },
+}));
+
+// Admin notification is covered by its own tests; here we just assert it fires.
+jest.mock('../util/organizerRequestNotification', () => ({
+  __esModule: true,
+  notifyAdminsOfOrganizerRequest: jest.fn(),
+}));
+
 jest.mock('bcrypt');
 
 // Stub the email module so importing the controller doesn't construct a real
@@ -54,6 +66,7 @@ import {
   updateUser,
   verifyUser,
 } from './auth';
+import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
 import {
@@ -61,8 +74,11 @@ import {
   generateVerificationToken,
   verifyVerificationToken,
 } from '../util/emailVerification';
+import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
 
 const mockedUser = jest.mocked(User);
+const mockedOrganizerRequest = jest.mocked(OrganizerRequest);
+const mockedNotifyAdmins = jest.mocked(notifyAdminsOfOrganizerRequest);
 const mockedBcrypt = jest.mocked(bcrypt);
 const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
 const mockedGenerateVerificationToken = jest.mocked(generateVerificationToken);
@@ -104,6 +120,7 @@ const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
   password_hash: 'hashed',
   discord_id: null,
   is_admin: false,
+  is_owner: false,
   is_organizer: false,
   save: jest.fn().mockResolvedValue(undefined),
   remove: jest.fn().mockResolvedValue(undefined),
@@ -123,6 +140,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   // create() echoes its input back as a saveable row by default.
   mockedUser.create.mockImplementation((attrs: any) => fakeUser(attrs) as never);
+  mockedOrganizerRequest.create.mockReturnValue({
+    save: jest.fn().mockResolvedValue(undefined),
+  } as never);
   (mockedBcrypt.hash as unknown as jest.Mock).mockResolvedValue('hashed');
   mockedGenerateVerificationToken.mockReturnValue('verify-token');
   mockedBuildVerificationLink.mockImplementation(
@@ -186,6 +206,34 @@ describe('createUser', () => {
       'new@example.com',
       'https://app.test/verify-email?token=verify-token'
     );
+  });
+
+  it('does not create an organizer request by default', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    expect(mockedOrganizerRequest.create).not.toHaveBeenCalled();
+    expect(mockedNotifyAdmins).not.toHaveBeenCalled();
+  });
+
+  it('records a pending organizer request and notifies admins when requested', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(
+      mockRequest(validCreateBody({ is_organizer_requested: true })),
+      res
+    );
+
+    const created = res.body as any;
+    expect(mockedOrganizerRequest.create).toHaveBeenCalledWith({
+      user: expect.objectContaining({ id: created.id }),
+    });
+    expect(mockedNotifyAdmins).toHaveBeenCalledTimes(1);
+    // The account is still created as a non-organizer; requesting never grants.
+    expect(created.is_organizer).toBe(false);
   });
 });
 
@@ -268,20 +316,146 @@ describe('updateUser', () => {
     expect(target.is_organizer).toBe(false);
   });
 
-  it('applies admin-only fields for an admin requestor', async () => {
+  it('skips the email-taken check when no email is provided (partial update)', async () => {
+    const target = fakeUser({ id: 1, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest({ is_organizer: true }, { user_id: '1' }),
+      res
+    );
+
+    // findOne is the email-taken lookup; it must not run for a partial update.
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
+    expect(target.is_organizer).toBe(true);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('applies admin-only fields for an admin requestor with a valid password', async () => {
+    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest(
+        { is_admin: true, is_organizer: true, current_password: 'pw' },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(target.is_admin).toBe(true);
+    expect(target.is_organizer).toBe(true);
+  });
+
+  it('requires the requestor password to change admin status', async () => {
     const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.requestor = fakeUser({ is_admin: true });
 
+    // No current_password supplied.
     await updateUser(
-      mockRequest({ is_admin: true, is_organizer: true }, { user_id: '1' }),
+      mockRequest({ is_admin: true }, { user_id: '1' }),
       res
     );
 
-    expect(target.is_admin).toBe(true);
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ message: 'Incorrect password.' });
+    expect(target.is_admin).toBe(false);
+    expect(target.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects an incorrect password when changing admin status', async () => {
+    const target = fakeUser({ id: 1, is_admin: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest(
+        { is_admin: true, current_password: 'wrong' },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(401);
+    expect(target.is_admin).toBe(false);
+  });
+
+  it('does not require a password to change only organizer status', async () => {
+    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    // is_admin is sent unchanged (matches current), so no password is needed.
+    await updateUser(
+      mockRequest(
+        { is_admin: false, is_organizer: true },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(mockedBcrypt.compare).not.toHaveBeenCalled();
     expect(target.is_organizer).toBe(true);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not let an admin change the admin status of an owner', async () => {
+    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_admin: true, is_owner: false });
+
+    await updateUser(
+      mockRequest({ is_admin: false }, { user_id: '1' }),
+      res
+    );
+
+    // The owner keeps their admin status.
+    expect(target.is_admin).toBe(true);
+  });
+
+  it('lets an owner change the admin status of an owner', async () => {
+    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+
+    await updateUser(
+      mockRequest({ is_admin: false, current_password: 'pw' }, { user_id: '1' }),
+      res
+    );
+
+    expect(target.is_admin).toBe(false);
+  });
+
+  it('never changes owner status via the API, even for an owner requestor', async () => {
+    const target = fakeUser({ id: 1, is_owner: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+
+    await updateUser(mockRequest({ is_owner: true }, { user_id: '1' }), res);
+
+    // Owner status is managed only via direct DB access.
+    expect(target.is_owner).toBe(false);
   });
 
   it('rehashes the password when one is provided', async () => {

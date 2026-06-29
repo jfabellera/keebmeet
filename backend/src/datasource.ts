@@ -5,6 +5,7 @@ import { EventbriteRecord } from './entity/EventbriteRecord';
 import { Meetup } from './entity/Meetup';
 import { MeetupDiscordMessage } from './entity/MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './entity/MeetupDisplayRecord';
+import { OrganizerRequest } from './entity/OrganizerRequest';
 import { RaffleRecord } from './entity/RaffleRecord';
 import { RaffleWinner } from './entity/RaffleWinner';
 import { Ticket } from './entity/Ticket';
@@ -24,6 +25,7 @@ export const AppDataSource = new DataSource({
     EventbriteRecord,
     MeetupDisplayRecord,
     MeetupDiscordMessage,
+    OrganizerRequest,
     RaffleRecord,
     RaffleWinner,
   ],

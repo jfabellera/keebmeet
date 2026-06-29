@@ -86,12 +86,15 @@ export const authChecker =
       res.locals.requestor = user;
 
       if (rules != null) {
+        // Owners outrank admins, so they satisfy any admin-level check.
+        const isAdmin = user.is_admin || user.is_owner;
+
         // Account type overrides
         if (rules.includes(Rule.overrideOrganizer) && user.is_organizer) {
           next();
           return;
         }
-        if (rules.includes(Rule.overrideAdmin) && user.is_admin) {
+        if (rules.includes(Rule.overrideAdmin) && isAdmin) {
           next();
           return;
         }
@@ -99,7 +102,7 @@ export const authChecker =
         // Account type requires
         if (rules.includes(Rule.requireOrganizer) && !user.is_organizer)
           return reject(res);
-        if (rules.includes(Rule.requireAdmin) && !user.is_admin)
+        if (rules.includes(Rule.requireAdmin) && !isAdmin)
           return reject(res);
       }
 

@@ -4,6 +4,7 @@ import { type Request, type Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { ILike } from 'typeorm';
 import config from '../config';
+import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { sendVerificationEmail } from '../util/email';
 import {
@@ -11,6 +12,7 @@ import {
   generateVerificationToken,
   verifyVerificationToken,
 } from '../util/emailVerification';
+import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
 import { claimDiscordTickets } from '../util/rsvp';
 import { toUserResponse } from '../util/userResponse';
 import {
@@ -24,6 +26,7 @@ export interface TokenData {
   nick_name: string;
   is_organizer: boolean;
   is_admin: boolean;
+  is_owner: boolean;
 }
 
 const hashPassword = async (password: string): Promise<string> => {
@@ -38,6 +41,7 @@ const signToken = (user: User): string => {
     nick_name: user.nick_name,
     is_organizer: user.is_organizer,
     is_admin: user.is_admin,
+    is_owner: user.is_owner,
   };
 
   return jwt.sign(data, config.jwtSecret);
@@ -75,6 +79,13 @@ export const createUser = async (
     password_hash,
   });
   await newUser.save();
+
+  // If the registrant asked to become an organizer, record a pending request
+  // for an admin to review. This never grants organizer access on its own.
+  if (result.data.is_organizer_requested) {
+    await OrganizerRequest.create({ user: newUser }).save();
+    await notifyAdminsOfOrganizerRequest(newUser);
+  }
 
   const token = generateVerificationToken(newUser.id);
   await sendVerificationEmail(newUser.email, buildVerificationLink(token));
@@ -174,15 +185,16 @@ export const updateUser = async (
     return res.status(404).json({ message: 'Invalid user ID.' });
   }
 
-  // Check if email is taken
-  const existingUser = await User.findOne({
-    where: {
-      email: ILike(req.body.email),
-    },
-  });
+  if (req.body.email != null) {
+    const existingUser = await User.findOne({
+      where: {
+        email: ILike(req.body.email),
+      },
+    });
 
-  if (existingUser != null) {
-    return res.status(409).json({ message: 'Email is taken.' });
+    if (existingUser != null && Number(existingUser.id) !== user.id) {
+      return res.status(409).json({ message: 'Email is taken.' });
+    }
   }
 
   user.email = req.body.email ?? user.email;
@@ -190,10 +202,34 @@ export const updateUser = async (
   user.last_name = req.body.last_name ?? user.last_name;
   user.nick_name = req.body.nick_name ?? user.nick_name;
 
-  // Require admin
-  if ((res.locals.requestor as User).is_admin) {
+  // Role changes require admin (or owner). The hierarchy is owner > admin >
+  // organizer, so owners outrank admins.
+  const requestor = res.locals.requestor as User;
+  if (requestor.is_admin || requestor.is_owner) {
+    // Any admin/owner may grant or revoke organizer.
     user.is_organizer = req.body.is_organizer ?? user.is_organizer;
-    user.is_admin = req.body.is_admin ?? user.is_admin;
+
+    // Admins may not change the admin status of an owner — only owners can.
+    const wantsAdminChange =
+      req.body.is_admin != null && req.body.is_admin !== user.is_admin;
+    const mayChangeAdmin = !user.is_owner || requestor.is_owner;
+
+    if (wantsAdminChange && mayChangeAdmin) {
+      // Changing admin status is sensitive: the acting user must re-enter their
+      // own password to confirm.
+      const password = req.body.current_password;
+      if (
+        password == null ||
+        requestor.password_hash == null ||
+        !(await bcrypt.compare(password, requestor.password_hash))
+      ) {
+        return res.status(401).json({ message: 'Incorrect password.' });
+      }
+      user.is_admin = req.body.is_admin;
+    }
+
+    // Owner status is intentionally not editable here — it's managed directly
+    // in the database.
   }
 
   if (req.body.password != null) {
