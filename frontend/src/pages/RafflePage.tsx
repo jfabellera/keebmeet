@@ -187,7 +187,10 @@ const RafflePage = (): ReactNode => {
   useEffect(() => {
     if (isRollSuccess) {
       if (rollResult == null) {
-        toast.warning('Roll failed', { description: 'No eligible attendees' });
+        toast.warning('Roll failed', {
+          description: 'No eligible attendees',
+          position: 'top-center',
+        });
       } else {
         setRaffleRecordId(Number(rollResult.raffleRecord.id)); // TODO(jan): shouldn't have to cast
         setRaffleRecord(rollResult.raffleRecord);
@@ -200,7 +203,10 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isClaimSuccess && raffleRecord != null) {
-      toast.success('Success', { description: 'Raffle claimed' }); // TODO(jan): Include claimer's name
+      toast.success('Success', {
+        description: 'Raffle claimed',
+        position: 'top-center',
+      }); // TODO(jan): Include claimer's name
 
       if (formik.values.clearOnClaim) {
         handleClear();
@@ -213,13 +219,19 @@ const RafflePage = (): ReactNode => {
 
   useEffect(() => {
     if (isUnClaimSuccess) {
-      toast.success('Success', { description: 'Raffle unclaimed' });
+      toast.success('Success', {
+        description: 'Raffle unclaimed',
+        position: 'top-center',
+      });
     }
   }, [isUnClaimSuccess]);
 
   useEffect(() => {
     if (isRollError || isClaimError || isUnClaimError) {
-      toast.error('Error', { description: 'Action failed' });
+      toast.error('Error', {
+        description: 'Action failed',
+        position: 'top-center',
+      });
     }
   }, [isRollError, isClaimError, isUnClaimError]);
 
