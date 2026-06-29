@@ -32,6 +32,8 @@ export interface SetUserAccessPayload {
   userId: number;
   isAdmin: boolean;
   isOrganizer: boolean;
+  /** The requestor's own password, required to confirm a change to admin status. */
+  currentPassword?: string;
 }
 
 export interface UpdateProfilePayload {
@@ -268,6 +270,10 @@ export const setUserAccess = createAsyncThunk(
         {
           is_admin: payload.isAdmin,
           is_organizer: payload.isOrganizer,
+          // Only sent when confirming a sensitive admin-status change.
+          ...(payload.currentPassword != null
+            ? { current_password: payload.currentPassword }
+            : {}),
         },
         { headers: { Authorization: `Bearer ${token ?? ''}` } }
       );

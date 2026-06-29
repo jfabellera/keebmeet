@@ -129,6 +129,8 @@ export const editUserSchema = z.object({
   password: z.string().optional(), // TODO(jan): check for password strength?
   is_organizer: z.boolean().optional(),
   is_admin: z.boolean().optional(),
+  // The requestor's own password, required to confirm a change to is_admin.
+  current_password: z.string().optional(),
 });
 
 export type EditUserPayload = z.infer<typeof editUserSchema>;

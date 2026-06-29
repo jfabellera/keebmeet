@@ -1,4 +1,12 @@
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -27,6 +35,12 @@ const AdminUsersPage = (): ReactNode => {
   >('all');
   // The user id currently being saved, so we can disable its row while in flight.
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
+  // An in-progress admin-status change awaiting password confirmation.
+  const [pendingAdminChange, setPendingAdminChange] = useState<{
+    user: User;
+    nextValue: boolean;
+  } | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -61,28 +75,58 @@ const AdminUsersPage = (): ReactNode => {
     { value: 'owners', label: 'Owners' },
   ];
 
-  const updateAccess = (
+  const updateAccess = async (
     user: User,
-    changes: { isAdmin?: boolean; isOrganizer?: boolean }
-  ): void => {
-    void (async () => {
-      setSavingUserId(user.id);
-      try {
-        await dispatch(
-          setUserAccess({
-            userId: user.id,
-            isAdmin: changes.isAdmin ?? user.is_admin,
-            isOrganizer: changes.isOrganizer ?? user.is_organizer,
-          })
-        ).unwrap();
-        await refetch();
-        toast.success(`Updated ${user.display_name}.`);
-      } catch {
+    changes: { isAdmin?: boolean; isOrganizer?: boolean },
+    currentPassword?: string
+  ): Promise<boolean> => {
+    setSavingUserId(user.id);
+    try {
+      await dispatch(
+        setUserAccess({
+          userId: user.id,
+          isAdmin: changes.isAdmin ?? user.is_admin,
+          isOrganizer: changes.isOrganizer ?? user.is_organizer,
+          currentPassword,
+        })
+      ).unwrap();
+      await refetch();
+      toast.success(`Updated ${user.display_name}.`);
+      return true;
+    } catch (err) {
+      // The auth server rejects a wrong/missing password with a 401.
+      if (currentPassword != null && err === 401) {
+        toast.error('Incorrect password.');
+      } else {
         toast.error(`Could not update ${user.display_name}. Please try again.`);
-      } finally {
-        setSavingUserId(null);
       }
+      return false;
+    } finally {
+      setSavingUserId(null);
+    }
+  };
+
+  // Toggling admin status requires the acting user to confirm with their own
+  // password, so it goes through a confirmation dialog rather than firing
+  // immediately.
+  const confirmAdminChange = (): void => {
+    if (pendingAdminChange == null) return;
+    void (async () => {
+      const succeeded = await updateAccess(
+        pendingAdminChange.user,
+        { isAdmin: pendingAdminChange.nextValue },
+        confirmPassword
+      );
+      if (succeeded) {
+        setPendingAdminChange(null);
+      }
+      setConfirmPassword('');
     })();
+  };
+
+  const closeAdminDialog = (): void => {
+    setPendingAdminChange(null);
+    setConfirmPassword('');
   };
 
   return (
@@ -140,9 +184,9 @@ const AdminUsersPage = (): ReactNode => {
                     <Switch
                       checked={user.is_organizer}
                       disabled={isSaving}
-                      onCheckedChange={(checked) =>
-                        updateAccess(user, { isOrganizer: checked })
-                      }
+                      onCheckedChange={(checked) => {
+                        void updateAccess(user, { isOrganizer: checked });
+                      }}
                       aria-label={`Toggle organizer for ${user.display_name}`}
                     />
                   </TableCell>
@@ -150,9 +194,10 @@ const AdminUsersPage = (): ReactNode => {
                     <Switch
                       checked={user.is_admin}
                       disabled={isSaving || isSelf || !canEditAdmin}
-                      onCheckedChange={(checked) =>
-                        updateAccess(user, { isAdmin: checked })
-                      }
+                      onCheckedChange={(checked) => {
+                        setConfirmPassword('');
+                        setPendingAdminChange({ user, nextValue: checked });
+                      }}
                       aria-label={`Toggle admin for ${user.display_name}`}
                     />
                   </TableCell>
@@ -181,6 +226,50 @@ const AdminUsersPage = (): ReactNode => {
           </p>
         ) : null}
       </div>
+
+      <Dialog
+        open={pendingAdminChange != null}
+        onOpenChange={(open) => {
+          if (!open) closeAdminDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm your password</DialogTitle>
+            <DialogDescription>
+              {pendingAdminChange != null
+                ? `Enter your password to ${
+                    pendingAdminChange.nextValue ? 'grant' : 'revoke'
+                  } admin access for ${pendingAdminChange.user.display_name}.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="password"
+            autoFocus
+            placeholder="Your password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') confirmAdminChange();
+            }}
+          />
+          <DialogFooter>
+            <Button variant="secondary" onClick={closeAdminDialog}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAdminChange}
+              disabled={
+                confirmPassword === '' ||
+                savingUserId === pendingAdminChange?.user.id
+              }
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

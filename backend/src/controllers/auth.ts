@@ -210,7 +210,21 @@ export const updateUser = async (
     user.is_organizer = req.body.is_organizer ?? user.is_organizer;
 
     // Admins may not change the admin status of an owner — only owners can.
-    if (req.body.is_admin != null && (!user.is_owner || requestor.is_owner)) {
+    const wantsAdminChange =
+      req.body.is_admin != null && req.body.is_admin !== user.is_admin;
+    const mayChangeAdmin = !user.is_owner || requestor.is_owner;
+
+    if (wantsAdminChange && mayChangeAdmin) {
+      // Changing admin status is sensitive: the acting user must re-enter their
+      // own password to confirm.
+      const password = req.body.current_password;
+      if (
+        password == null ||
+        requestor.password_hash == null ||
+        !(await bcrypt.compare(password, requestor.password_hash))
+      ) {
+        return res.status(401).json({ message: 'Incorrect password.' });
+      }
       user.is_admin = req.body.is_admin;
     }
 

@@ -333,20 +333,84 @@ describe('updateUser', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('applies admin-only fields for an admin requestor', async () => {
+  it('applies admin-only fields for an admin requestor with a valid password', async () => {
+    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest(
+        { is_admin: true, is_organizer: true, current_password: 'pw' },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(target.is_admin).toBe(true);
+    expect(target.is_organizer).toBe(true);
+  });
+
+  it('requires the requestor password to change admin status', async () => {
     const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.requestor = fakeUser({ is_admin: true });
 
+    // No current_password supplied.
     await updateUser(
-      mockRequest({ is_admin: true, is_organizer: true }, { user_id: '1' }),
+      mockRequest({ is_admin: true }, { user_id: '1' }),
       res
     );
 
-    expect(target.is_admin).toBe(true);
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ message: 'Incorrect password.' });
+    expect(target.is_admin).toBe(false);
+    expect(target.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects an incorrect password when changing admin status', async () => {
+    const target = fakeUser({ id: 1, is_admin: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest(
+        { is_admin: true, current_password: 'wrong' },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(401);
+    expect(target.is_admin).toBe(false);
+  });
+
+  it('does not require a password to change only organizer status', async () => {
+    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    // is_admin is sent unchanged (matches current), so no password is needed.
+    await updateUser(
+      mockRequest(
+        { is_admin: false, is_organizer: true },
+        { user_id: '1' }
+      ),
+      res
+    );
+
+    expect(mockedBcrypt.compare).not.toHaveBeenCalled();
     expect(target.is_organizer).toBe(true);
+    expect(res.statusCode).toBe(201);
   });
 
   it('does not let an admin change the admin status of an owner', async () => {
@@ -369,11 +433,12 @@ describe('updateUser', () => {
     const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
+    (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     const res = mockResponse();
     res.locals.requestor = fakeUser({ id: 2, is_owner: true });
 
     await updateUser(
-      mockRequest({ is_admin: false }, { user_id: '1' }),
+      mockRequest({ is_admin: false, current_password: 'pw' }, { user_id: '1' }),
       res
     );
 
