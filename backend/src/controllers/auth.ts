@@ -26,6 +26,7 @@ export interface TokenData {
   nick_name: string;
   is_organizer: boolean;
   is_admin: boolean;
+  is_owner: boolean;
 }
 
 const hashPassword = async (password: string): Promise<string> => {
@@ -40,6 +41,7 @@ const signToken = (user: User): string => {
     nick_name: user.nick_name,
     is_organizer: user.is_organizer,
     is_admin: user.is_admin,
+    is_owner: user.is_owner,
   };
 
   return jwt.sign(data, config.jwtSecret);
@@ -200,10 +202,20 @@ export const updateUser = async (
   user.last_name = req.body.last_name ?? user.last_name;
   user.nick_name = req.body.nick_name ?? user.nick_name;
 
-  // Require admin
-  if ((res.locals.requestor as User).is_admin) {
+  // Role changes require admin (or owner). The hierarchy is owner > admin >
+  // organizer, so owners outrank admins.
+  const requestor = res.locals.requestor as User;
+  if (requestor.is_admin || requestor.is_owner) {
+    // Any admin/owner may grant or revoke organizer.
     user.is_organizer = req.body.is_organizer ?? user.is_organizer;
-    user.is_admin = req.body.is_admin ?? user.is_admin;
+
+    // Admins may not change the admin status of an owner — only owners can.
+    if (req.body.is_admin != null && (!user.is_owner || requestor.is_owner)) {
+      user.is_admin = req.body.is_admin;
+    }
+
+    // Owner status is intentionally not editable here — it's managed directly
+    // in the database.
   }
 
   if (req.body.password != null) {

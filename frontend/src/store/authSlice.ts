@@ -60,6 +60,7 @@ interface User {
   displayName: string;
   isOrganizer: boolean;
   isAdmin: boolean;
+  isOwner: boolean;
 }
 
 interface AuthState {
@@ -364,6 +365,7 @@ const getUserFromToken = (token: string): User | null => {
       displayName: decoded.nick_name,
       isOrganizer: decoded.is_organizer,
       isAdmin: decoded.is_admin,
+      isOwner: decoded.is_owner ?? false,
     };
 
     return user;

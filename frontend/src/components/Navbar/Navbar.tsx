@@ -92,7 +92,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
           <NavbarDropdown
             nickname={user.displayName}
             isOrganizer={user.isOrganizer}
-            isAdmin={user.isAdmin}
+            isAdmin={user.isAdmin || user.isOwner}
           />
         ) : (
           <GuestButtons />

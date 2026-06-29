@@ -120,6 +120,7 @@ const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
   password_hash: 'hashed',
   discord_id: null,
   is_admin: false,
+  is_owner: false,
   is_organizer: false,
   save: jest.fn().mockResolvedValue(undefined),
   remove: jest.fn().mockResolvedValue(undefined),
@@ -346,6 +347,50 @@ describe('updateUser', () => {
 
     expect(target.is_admin).toBe(true);
     expect(target.is_organizer).toBe(true);
+  });
+
+  it('does not let an admin change the admin status of an owner', async () => {
+    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_admin: true, is_owner: false });
+
+    await updateUser(
+      mockRequest({ is_admin: false }, { user_id: '1' }),
+      res
+    );
+
+    // The owner keeps their admin status.
+    expect(target.is_admin).toBe(true);
+  });
+
+  it('lets an owner change the admin status of an owner', async () => {
+    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+
+    await updateUser(
+      mockRequest({ is_admin: false }, { user_id: '1' }),
+      res
+    );
+
+    expect(target.is_admin).toBe(false);
+  });
+
+  it('never changes owner status via the API, even for an owner requestor', async () => {
+    const target = fakeUser({ id: 1, is_owner: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+
+    await updateUser(mockRequest({ is_owner: true }, { user_id: '1' }), res);
+
+    // Owner status is managed only via direct DB access.
+    expect(target.is_owner).toBe(false);
   });
 
   it('rehashes the password when one is provided', async () => {

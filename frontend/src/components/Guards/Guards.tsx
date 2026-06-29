@@ -51,7 +51,9 @@ export const RequireGuest = ({ children }: GuardProps): ReactNode => {
 export const RequireAdmin = ({ children }: GuardProps): ReactNode => {
   const { user } = useAppSelector((state) => state.user);
 
-  if (user == null || !user.isAdmin) return <Navigate to="/" replace />;
+  // Owners outrank admins and may use any admin-gated page.
+  if (user == null || !(user.isAdmin || user.isOwner))
+    return <Navigate to="/" replace />;
 
   return <>{children}</>;
 };
