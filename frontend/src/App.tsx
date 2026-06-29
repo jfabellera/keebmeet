@@ -31,6 +31,8 @@ import {
 import { TooltipProvider } from './components/ui/tooltip';
 import AccountPage from './pages/AccountPage';
 import AdminPage from './pages/AdminPage';
+import AdminRequestsPage from './pages/AdminRequestsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
 import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
@@ -146,10 +148,15 @@ const App = (): ReactNode => {
               path="/admin"
               element={
                 <RequireAdmin>
-                  <AdminPage />
+                  <AdminPage>
+                    <Outlet />
+                  </AdminPage>
                 </RequireAdmin>
               }
-            />
+            >
+              <Route path="" element={<AdminRequestsPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+            </Route>
           </Routes>
         </Router>
       </Provider>

@@ -28,6 +28,12 @@ export interface DiscordLinkPayload {
   linkToken: string;
 }
 
+export interface SetUserAccessPayload {
+  userId: number;
+  isAdmin: boolean;
+  isOrganizer: boolean;
+}
+
 export interface UpdateProfilePayload {
   userId: number;
   firstName: string;
@@ -233,6 +239,37 @@ export const resendVerification = createAsyncThunk(
   async (userId: number, { rejectWithValue }) => {
     try {
       await axios.post(`${config.authUrl}/${userId}/resend-verification`);
+    } catch (err) {
+      if (err instanceof AxiosError && err.response != null) {
+        return rejectWithValue(err.response?.status);
+      } else {
+        return rejectWithValue(500);
+      }
+    }
+  }
+);
+
+/**
+ * Thunk for an admin to change another user's access (admin/organizer flags).
+ *
+ * Sends the role flags to the auth server, which only honours them for an admin
+ * requestor. The affected user's own session token keeps its old flags until
+ * they next sign in.
+ */
+export const setUserAccess = createAsyncThunk(
+  'auth/setUserAccess',
+  async (payload: SetUserAccessPayload, { getState, rejectWithValue }) => {
+    try {
+      const token = (getState() as { user: AuthState }).user.user?.token;
+
+      await axios.put(
+        `${config.authUrl}/${payload.userId}`,
+        {
+          is_admin: payload.isAdmin,
+          is_organizer: payload.isOrganizer,
+        },
+        { headers: { Authorization: `Bearer ${token ?? ''}` } }
+      );
     } catch (err) {
       if (err instanceof AxiosError && err.response != null) {
         return rejectWithValue(err.response?.status);

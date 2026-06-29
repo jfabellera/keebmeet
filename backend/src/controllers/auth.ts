@@ -183,15 +183,16 @@ export const updateUser = async (
     return res.status(404).json({ message: 'Invalid user ID.' });
   }
 
-  // Check if email is taken
-  const existingUser = await User.findOne({
-    where: {
-      email: ILike(req.body.email),
-    },
-  });
+  if (req.body.email != null) {
+    const existingUser = await User.findOne({
+      where: {
+        email: ILike(req.body.email),
+      },
+    });
 
-  if (existingUser != null) {
-    return res.status(409).json({ message: 'Email is taken.' });
+    if (existingUser != null && Number(existingUser.id) !== user.id) {
+      return res.status(409).json({ message: 'Email is taken.' });
+    }
   }
 
   user.email = req.body.email ?? user.email;

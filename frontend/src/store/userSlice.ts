@@ -10,7 +10,7 @@ import { type RootState } from './store';
 
 export const userSlice = createApi({
   reducerPath: 'userSlice',
-  tagTypes: ['User', 'OrganizerRequests'],
+  tagTypes: ['User', 'Users', 'OrganizerRequests'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -29,6 +29,12 @@ export const userSlice = createApi({
         url: `/users/${userId}`,
       }),
       providesTags: ['User'],
+    }),
+    getAllUsers: builder.query<User[], void>({
+      query: () => ({
+        url: `/users`,
+      }),
+      providesTags: ['Users'],
     }),
     getUserDiscordServers: builder.query<DiscordServer[], number>({
       query: (userId) => ({
@@ -88,6 +94,7 @@ export const userSlice = createApi({
 
 export const {
   useGetUserQuery,
+  useGetAllUsersQuery,
   useGetUserDiscordServersQuery,
   useGetUserDiscordServerChannelsQuery,
   useAuthorizeEventbriteMutation,

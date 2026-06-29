@@ -315,6 +315,23 @@ describe('updateUser', () => {
     expect(target.is_organizer).toBe(false);
   });
 
+  it('skips the email-taken check when no email is provided (partial update)', async () => {
+    const target = fakeUser({ id: 1, is_organizer: false });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ is_admin: true });
+
+    await updateUser(
+      mockRequest({ is_organizer: true }, { user_id: '1' }),
+      res
+    );
+
+    // findOne is the email-taken lookup; it must not run for a partial update.
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
+    expect(target.is_organizer).toBe(true);
+    expect(res.statusCode).toBe(201);
+  });
+
   it('applies admin-only fields for an admin requestor', async () => {
     const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
