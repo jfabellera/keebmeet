@@ -94,6 +94,7 @@ const RafflePage = (): ReactNode => {
       rollQuantity: 1,
       displayOnRoll: false,
       clearOnClaim: false,
+      includeNotCheckedIn: false,
     },
     onSubmit: () => {},
   });
@@ -102,7 +103,10 @@ const RafflePage = (): ReactNode => {
     void (async () => {
       await rollRaffleWinner({
         meetupId,
-        payload: { quantity: formik.values.rollQuantity },
+        payload: {
+          quantity: formik.values.rollQuantity,
+          includeNotCheckedIn: formik.values.includeNotCheckedIn,
+        },
       });
     })();
     setIsAllIn(false);
@@ -110,7 +114,13 @@ const RafflePage = (): ReactNode => {
 
   const handleRollAllIn = (): void => {
     void (async () => {
-      await rollRaffleWinner({ meetupId, payload: { allIn: true } });
+      await rollRaffleWinner({
+        meetupId,
+        payload: {
+          allIn: true,
+          includeNotCheckedIn: formik.values.includeNotCheckedIn,
+        },
+      });
       onClose();
       setIsAllIn(true);
     })();
@@ -448,6 +458,19 @@ const RafflePage = (): ReactNode => {
                 checked={formik.values.clearOnClaim}
                 onCheckedChange={(checked) => {
                   void formik.setFieldValue('clearOnClaim', checked);
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Label htmlFor="includeNotCheckedIn" className="mb-0">
+                Include not checked-in
+              </Label>
+              <Switch
+                id="includeNotCheckedIn"
+                checked={formik.values.includeNotCheckedIn}
+                onCheckedChange={(checked) => {
+                  void formik.setFieldValue('includeNotCheckedIn', checked);
                 }}
               />
             </div>

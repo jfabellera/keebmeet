@@ -138,6 +138,7 @@ export type EditUserPayload = z.infer<typeof editUserSchema>;
 export const rollRaffleWinnerSchema = z.object({
   quantity: z.number().gt(0).optional().default(1),
   allIn: z.boolean().optional().default(false),
+  includeNotCheckedIn: z.boolean().optional().default(false),
 });
 
 export type RollRaffleWinnerPayload = z.input<typeof rollRaffleWinnerSchema>;
