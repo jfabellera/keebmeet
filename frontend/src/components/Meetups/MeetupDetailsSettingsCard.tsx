@@ -13,6 +13,7 @@ import {
   useEditMeetupMutation,
   useGetMeetupQuery,
 } from '../../store/meetupSlice';
+import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 
@@ -24,6 +25,7 @@ interface Props {
 
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
+  const hasStarted = meetup != null ? hasMeetupStarted(meetup) : false;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup] = useEditMeetupMutation();
   const formik = useFormik({
@@ -105,6 +107,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
     <EditableFormCard
       title={'Meetup Details'}
       isEditable={isEditable}
+      editDisabled={hasStarted}
+      editDisabledReason="This meetup has already started"
       onEditEnter={setIsEditable.on}
       onEditCancel={onCancel}
       onEditSubmit={onSubmit}
