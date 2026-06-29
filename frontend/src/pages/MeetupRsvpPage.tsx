@@ -195,6 +195,7 @@ const MeetupRsvpPage = (): ReactNode => {
                 <MeetupCapacityStatus
                   available={meetup.tickets.available}
                   total={meetup.tickets.total}
+                  ended={hasEnded}
                 />
               ) : null}
 

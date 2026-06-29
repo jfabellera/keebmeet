@@ -230,6 +230,7 @@ export const MeetupModal = ({
             <MeetupCapacityStatus
               available={meetup.tickets.available}
               total={meetup.tickets.total}
+              ended={hasEnded}
             />
           ) : (
             <span />

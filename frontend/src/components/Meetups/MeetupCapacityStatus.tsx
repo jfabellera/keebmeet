@@ -1,16 +1,29 @@
+import { cn } from '@/lib/utils';
 import { type ReactNode } from 'react';
 import { FaCircle } from 'react-icons/fa';
-import { cn } from '@/lib/utils';
 
 export interface MeetupCapacityStatusProps {
   available: number;
   total: number;
+  ended?: boolean;
 }
 
 export const MeetupCapacityStatus = ({
   available,
   total,
+  ended,
 }: MeetupCapacityStatusProps): ReactNode => {
+  if (ended === true) {
+    const attended = total - available;
+    return (
+      <div className="flex items-center gap-2">
+        <p>
+          {attended} of {total} attended
+        </p>
+      </div>
+    );
+  }
+
   let statusColor: string;
   const capacityRatio = available / total;
 
