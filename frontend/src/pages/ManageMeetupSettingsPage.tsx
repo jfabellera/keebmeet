@@ -1,3 +1,4 @@
+import { DeleteMeetupCard } from '@/components/Meetups/DeleteMeetupCard';
 import { MeetupDiscordCard } from '@/components/Meetups/MeetupDiscordCard';
 import { type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
@@ -12,6 +13,7 @@ const ManageMeetupSettingsPage = (): ReactNode => {
       <MeetupDetailsSettingsCard meetupId={Number(meetupId)} />
       <MeetupDiscordCard meetupId={Number(meetupId)} />
       <MeetupDisplaySettingsCard meetupId={Number(meetupId)} />
+      <DeleteMeetupCard meetupId={Number(meetupId)} />
     </div>
   );
 };

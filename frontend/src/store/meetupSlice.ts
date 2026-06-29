@@ -86,6 +86,16 @@ export const meetupSlice = createApi({
         { type: 'Display Assets', id: arg.meetupId },
       ],
     }),
+    deleteMeetup: builder.mutation<void, number>({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, arg) => [
+        'Meetups',
+        { type: 'Meetup', id: arg },
+      ],
+    }),
     getMeetupDisplayAssets: builder.query<MeetupDisplayAssets, number>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/display-assets`,
@@ -148,6 +158,7 @@ export const {
   useCreateMeetupMutation,
   useCreateMeetupFromEventbriteMutation,
   useEditMeetupMutation,
+  useDeleteMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
   useGetMeetupDiscordMessageQuery,
   useCreateMeetupDiscordMessageMutation,

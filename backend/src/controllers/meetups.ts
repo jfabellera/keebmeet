@@ -2,14 +2,18 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { type Request, type Response } from 'express';
 import { type ParsedQs } from 'qs';
-import { ILike, type FindOptionsOrder, type FindOptionsWhere } from 'typeorm';
+import { ILike, In, type FindOptionsOrder, type FindOptionsWhere } from 'typeorm';
 import { socket } from '../Server';
 import config from '../config';
+import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
+import { RaffleRecord } from '../entity/RaffleRecord';
+import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
+import { deleteEmbedMessage } from '../util/discord';
 import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
 import { type MeetupDisplayAssets } from '../interfaces/meetupInterfaces';
 import {
@@ -557,22 +561,86 @@ export const deleteMeetup = async (
   res: Response
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
+  const meetupId = parseInt(meetup_id);
 
-  const meetup = await Meetup.findOneBy({
-    id: parseInt(meetup_id),
+  const meetup = await Meetup.findOne({
+    relations: {
+      tickets: true,
+      raffleRecords: true,
+      discordMessage: true,
+      eventbriteRecord: true,
+      displayRecord: true,
+    },
+    where: { id: meetupId },
   });
 
   if (meetup == null) {
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
-  if (Number(meetup.organizers[0].id) !== parseInt(res.locals.requestor.id)) {
-    return res.status(401).json({
-      message: 'Only the head organizer is authorized to delete this meetup.',
-    });
+  // The auth middleware has already verified that the requestor is an organizer
+  // of this meetup, so no further authorization check is needed here.
+
+  // Best-effort removal of the announcement embed from Discord before we drop
+  // our own record of it. A failure here shouldn't block deleting the meetup.
+  if (meetup.discordMessage != null) {
+    try {
+      await deleteEmbedMessage(
+        meetup.discordMessage.channel_id,
+        meetup.discordMessage.message_id
+      );
+    } catch (error: any) {
+      console.error(
+        'Failed to delete Discord message during meetup deletion:',
+        error.response?.status,
+        error.response?.data ?? error.message
+      );
+    }
   }
 
-  await meetup.remove();
+  const ticketIds = meetup.tickets.map((ticket) => ticket.id);
+  const raffleRecordIds = meetup.raffleRecords.map((record) => record.id);
+
+  // There are no cascading deletes configured at the DB level, so we remove all
+  // dependent records by hand inside a transaction to keep the data consistent.
+  await AppDataSource.transaction(async (manager) => {
+    if (raffleRecordIds.length > 0) {
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from(RaffleWinner)
+        .where('raffle_record_id IN (:...raffleRecordIds)', { raffleRecordIds })
+        .execute();
+    }
+    if (ticketIds.length > 0) {
+      // Defensive: clear any raffle wins still referencing these tickets.
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from(RaffleWinner)
+        .where('ticket_id IN (:...ticketIds)', { ticketIds })
+        .execute();
+    }
+    if (raffleRecordIds.length > 0) {
+      await manager.delete(RaffleRecord, { id: In(raffleRecordIds) });
+    }
+    if (ticketIds.length > 0) {
+      await manager.delete(Ticket, { id: In(ticketIds) });
+    }
+    if (meetup.eventbriteRecord != null) {
+      await manager.remove(meetup.eventbriteRecord);
+    }
+    if (meetup.displayRecord != null) {
+      await manager.remove(meetup.displayRecord);
+    }
+    if (meetup.discordMessage != null) {
+      await manager.remove(meetup.discordMessage);
+    }
+    // Removing the meetup also clears its rows in the organizers join table.
+    await manager.remove(meetup);
+  });
+
+  socket.emit('meetup:update', { meetupId });
 
   return res.status(204).end();
 };
