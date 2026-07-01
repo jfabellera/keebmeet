@@ -22,7 +22,7 @@ ENV VITE_KEEBMEET_API_SERVER_URL=$VITE_KEEBMEET_API_SERVER_URL \
     VITE_KEEBMEET_APP_URL=$VITE_KEEBMEET_APP_URL \
     VITE_DISCORD_CLIENT_ID=$VITE_DISCORD_CLIENT_ID \
     VITE_DISCORD_REDIRECT_URI=$VITE_DISCORD_REDIRECT_URI
-RUN npm run build
+RUN npx vite build
 
 # ---- runtime stage: Caddy serves the SPA + reverse-proxies the backends ----
 FROM caddy:2-alpine AS runtime
