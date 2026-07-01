@@ -12,27 +12,24 @@ const AuthorizeEventbritePage = (): ReactNode => {
   const isMount = useRef(false);
 
   useEffect(() => {
-    if (isMount.current) {
-      void (async () => {
-        const accessCode = params.get('code');
-        try {
-          if (accessCode != null)
-            await authorizeEventbrite(accessCode).unwrap();
-          toast.success('Success', {
-            description: 'Eventbrite account successfully linked.',
-          });
-        } catch (error: any) {
-          toast.error('Error', {
-            description: 'Unable to authorize Eventbrite account.',
-          });
-        }
+    if (isMount.current) return;
+    isMount.current = true;
 
-        void navigate('/account');
-      })();
-    }
-    return () => {
-      isMount.current = true;
-    };
+    void (async () => {
+      const accessCode = params.get('code');
+      try {
+        if (accessCode != null) await authorizeEventbrite(accessCode).unwrap();
+        toast.success('Success', {
+          description: 'Eventbrite account successfully linked.',
+        });
+      } catch (error: any) {
+        toast.error('Error', {
+          description: 'Unable to authorize Eventbrite account.',
+        });
+      }
+
+      void navigate('/account');
+    })();
   }, []);
 
   return (
