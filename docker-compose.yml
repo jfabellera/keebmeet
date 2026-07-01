@@ -28,8 +28,6 @@ services:
       POSTGRES_PASSWORD: ${KEEBMEET_DATABASE_PASSWORD}
       POSTGRES_DB: ${KEEBMEET_DATABASE_NAME}
     volumes:
-      # This named volume is your data. It lives on the VPS disk, NOT in any
-      # image, and survives `docker compose down` and redeploys.
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test:
@@ -42,15 +40,11 @@ services:
       retries: 5
 
   api:
-    build:
-      context: ./backend
-    image: keebmeet-backend:latest
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
     restart: unless-stopped
     command: ['node', 'build/Server.js']
     environment:
       <<: *backend-env
-      # Bind to 0.0.0.0 (not the code's localhost default) so other containers
-      # and the reverse proxy can reach it across the compose network.
       KEEBMEET_API_SERVER_HOSTNAME: 0.0.0.0
       KEEBMEET_API_SERVER_PORT: '3000'
     depends_on:
@@ -58,7 +52,7 @@ services:
         condition: service_healthy
 
   auth:
-    image: keebmeet-backend:latest
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
     restart: unless-stopped
     command: ['node', 'build/AuthServer.js']
     environment:
@@ -68,12 +62,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      api:
-        # Ensures the backend image is built before this reuses it.
-        condition: service_started
 
   socket:
-    image: keebmeet-backend:latest
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
     restart: unless-stopped
     command: ['node', 'build/SocketServer.js']
     environment:
@@ -81,33 +72,22 @@ services:
       KEEBMEET_SOCKET_SERVER_HOSTNAME: 0.0.0.0
       KEEBMEET_SOCKET_SERVER_PORT: '3002'
     depends_on:
-      api:
-        condition: service_started
+      db:
+        condition: service_healthy
 
   bot:
-    build:
-      context: ./bot
+    image: ghcr.io/jfabellera/keebmeet-bot:latest
     restart: unless-stopped
     environment:
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      # Talks to the API container directly over the internal network.
       KEEBMEET_API_URL: http://api:3000
     depends_on:
       api:
         condition: service_started
 
   web:
-    build:
-      context: ./frontend
-      args:
-        # Public URLs, baked into the SPA at build time (see frontend/Dockerfile).
-        VITE_KEEBMEET_API_SERVER_URL: ${PUBLIC_API_URL}
-        VITE_KEEBMEET_AUTH_SERVER_URL: ${PUBLIC_AUTH_URL}
-        VITE_KEEBMEET_SOCKET_SERVER_URL: ${PUBLIC_SOCKET_URL}
-        VITE_KEEBMEET_APP_URL: ${PUBLIC_WEB_URL}
-        VITE_DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
-        VITE_DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+    image: ghcr.io/jfabellera/keebmeet-web:latest
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN}
@@ -115,7 +95,6 @@ services:
       - '80:80'
       - '443:443'
     volumes:
-      # Persist provisioned TLS certs so they aren't re-issued on every restart.
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
