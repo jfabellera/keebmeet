@@ -1,0 +1,34 @@
+# DOMAIN is injected from the environment (see docker-compose.yml).
+# Everything is served from a single origin, so Caddy needs one cert and you
+# need one DNS record. Caddy proxies each path prefix to the right backend
+# container and serves the SPA for everything else.
+
+{$DOMAIN} {
+	encode gzip
+	root * /srv
+
+	# Auth backend. `handle_path` strips the matched prefix before proxying,
+	# so /api/auth/login -> /login on the auth container. Listed before /api/*
+	# so it wins for auth routes (Caddy orders handlers by specificity).
+	handle_path /api/auth/* {
+		reverse_proxy auth:3001
+	}
+
+	# API backend. /api/users -> /users on the api container.
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Socket.IO. The path is NOT stripped — both the browser client and the
+	# server use the fixed /socket.io/ path. WebSocket upgrades pass through.
+	handle /socket.io/* {
+		reverse_proxy socket:3002
+	}
+
+	# Everything else: serve the SPA, falling back to index.html for client
+	# routes like /auth/discord/callback.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

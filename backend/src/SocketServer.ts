@@ -5,7 +5,7 @@ import config from './config';
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+const io = new Server(httpServer, { cors: { origin: config.webUrl } });
 
 io.on('connection', (socket) => {
   const { meetupId } = socket.handshake.query;
