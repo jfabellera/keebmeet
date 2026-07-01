@@ -18,65 +18,63 @@ const DiscordCallbackPage = (): ReactNode => {
   const isLinking = params.get('state') === 'link';
 
   useEffect(() => {
-    if (isMount.current) {
-      void (async () => {
-        const code = params.get('code');
+    if (isMount.current) return;
+    isMount.current = true;
 
-        if (code == null) {
-          toast.error('Error', {
-            description: isLinking
-              ? 'Discord linking was cancelled.'
-              : 'Discord sign in was cancelled.',
+    void (async () => {
+      const code = params.get('code');
+
+      if (code == null) {
+        toast.error('Error', {
+          description: isLinking
+            ? 'Discord linking was cancelled.'
+            : 'Discord sign in was cancelled.',
+        });
+        void navigate(isLinking ? '/account' : '/login');
+        return;
+      }
+
+      // Linking flow: attach Discord to the already-authenticated account.
+      if (isLinking) {
+        const action = await dispatch(linkDiscord(code));
+
+        if (linkDiscord.fulfilled.match(action)) {
+          dispatch(userSlice.util.invalidateTags(['User']));
+          toast.success('Success', {
+            description: 'Your Discord account has been linked.',
           });
-          void navigate(isLinking ? '/account' : '/login');
-          return;
-        }
-
-        // Linking flow: attach Discord to the already-authenticated account.
-        if (isLinking) {
-          const action = await dispatch(linkDiscord(code));
-
-          if (linkDiscord.fulfilled.match(action)) {
-            dispatch(userSlice.util.invalidateTags(['User']));
-            toast.success('Success', {
-              description: 'Your Discord account has been linked.',
-            });
-          } else {
-            toast.error('Error', {
-              description: 'Unable to link your Discord account.',
-            });
-          }
-          void navigate('/account');
-          return;
-        }
-
-        const action = await dispatch(discordLogin(code));
-
-        if (discordLogin.fulfilled.match(action)) {
-          const payload = action.payload;
-          // An account with this email already exists; ask the user to confirm
-          // and sign in before linking.
-          if (payload != null && 'requiresLink' in payload) {
-            void navigate('/auth/discord/link', {
-              state: {
-                email: payload.email,
-                linkToken: payload.linkToken,
-              },
-            });
-            return;
-          }
-          void navigate('/');
         } else {
           toast.error('Error', {
-            description: 'Unable to sign in with Discord.',
+            description: 'Unable to link your Discord account.',
           });
-          void navigate('/login');
         }
-      })();
-    }
-    return () => {
-      isMount.current = true;
-    };
+        void navigate('/account');
+        return;
+      }
+
+      const action = await dispatch(discordLogin(code));
+
+      if (discordLogin.fulfilled.match(action)) {
+        const payload = action.payload;
+        // An account with this email already exists; ask the user to confirm
+        // and sign in before linking.
+        if (payload != null && 'requiresLink' in payload) {
+          void navigate('/auth/discord/link', {
+            state: {
+              email: payload.email,
+              linkToken: payload.linkToken,
+            },
+          });
+          return;
+        }
+        void navigate('/');
+      } else {
+        toast.error('Error', {
+          description: 'Unable to sign in with Discord.',
+        });
+        void navigate('/login');
+      }
+    })();
   }, []);
 
   return (
