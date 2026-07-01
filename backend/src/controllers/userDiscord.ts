@@ -3,7 +3,7 @@ import { User } from '../entity/User';
 import {
   type DiscordChannel,
   type DiscordServer,
-} from '../interfaces/userInterfaces';
+} from '@keebmeet/shared';
 import {
   fetchGuildTextChannels,
   fetchUserMutualServers,

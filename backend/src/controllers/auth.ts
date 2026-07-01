@@ -16,18 +16,11 @@ import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotifica
 import { claimDiscordTickets } from '../util/rsvp';
 import { toUserResponse } from '../util/userResponse';
 import {
+  type TokenData,
   createUserSchema,
   editUserSchema,
   verifyEmailSchema,
-} from '../util/validator';
-
-export interface TokenData {
-  id: number;
-  nick_name: string;
-  is_organizer: boolean;
-  is_admin: boolean;
-  is_owner: boolean;
-}
+} from '@keebmeet/shared';
 
 const hashPassword = async (password: string): Promise<string> => {
   const saltRounds = 10;

@@ -7,6 +7,20 @@ For day-to-day development you run the services directly with Node (not Docker).
 - [Node.js](https://nodejs.org/) and npm
 - [PostgreSQL](https://www.postgresql.org/download/)
 
+## Install
+
+This is an npm **workspaces** monorepo (`shared`, `backend`, `frontend`, `bot`).
+Install everything once from the repo root, then build the shared package that
+the backend and frontend depend on:
+
+```bash
+npm install          # installs all workspaces
+npm run build:shared # compile @keebmeet/shared (needed before the others run)
+```
+
+Rebuild `@keebmeet/shared` (`npm run build:shared`) whenever you change a shared
+type or validation schema.
+
 ## Database
 
 Create a database and a user with access to it. You do **not** need to create
@@ -25,7 +39,6 @@ cp .env.example .env
 
 ```bash
 cd backend
-npm install
 cp .env.example .env    # then fill in DB creds and secrets
 
 # start each server in its own terminal (each applies pending migrations):
@@ -38,7 +51,6 @@ npm run devSocket  # Socket.IO server
 
 ```bash
 cd frontend
-npm install
 cp .env.example .env    # server URLs must match the ports in backend/.env
 npm run dev
 ```
@@ -47,7 +59,6 @@ npm run dev
 
 ```bash
 cd bot
-npm install
 cp .env.example .env    # DISCORD_BOT_TOKEN + INTERNAL_API_SECRET (matches backend)
 npm run dev
 ```

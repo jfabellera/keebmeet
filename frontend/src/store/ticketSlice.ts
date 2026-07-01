@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
-import { type CreateTicketPayload } from '../../../backend/src/util/validator';
+import { type SimpleTicketInfo } from '@keebmeet/shared';
+import { type CreateTicketPayload } from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 

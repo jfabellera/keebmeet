@@ -7,13 +7,18 @@
     "type": "git",
     "url": "git+https://github.com/jfabellera/keebmeet.git"
   },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend",
+    "bot"
+  ],
   "scripts": {
-    "install:backend": "cd ./backend && npm install",
-    "install:frontend": "cd ./frontend && npm install",
-    "install:all": "npm run install:backend && npm run install:frontend",
-    "build:backend": "cd ./backend && npm run build",
-    "build:frontend": "cd ./frontend && npm run build",
-    "build:all": "npm run build:backend && npm run build:frontend",
+    "install:all": "npm install",
+    "build:shared": "npm run build -w @keebmeet/shared",
+    "build:backend": "npm run build:shared && npm run build -w api",
+    "build:frontend": "npm run build:shared && npm run build -w @keebmeet/frontend",
+    "build:all": "npm run build:shared && npm run build -w api && npm run build -w @keebmeet/frontend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "style:all": "npx prettier --write ."

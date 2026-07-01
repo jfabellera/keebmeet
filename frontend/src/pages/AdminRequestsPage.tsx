@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { type ReactNode } from 'react';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { type OrganizerRequestInfo } from '../../../backend/src/interfaces/userInterfaces';
+import { type OrganizerRequestInfo } from '@keebmeet/shared';
 import {
   useApproveOrganizerRequestMutation,
   useDenyOrganizerRequestMutation,

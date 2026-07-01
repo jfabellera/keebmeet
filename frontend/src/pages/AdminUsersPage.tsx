@@ -20,7 +20,7 @@ import {
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { type User } from '../../../backend/src/interfaces/userInterfaces';
+import { type User } from '@keebmeet/shared';
 import { setUserAccess } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useGetAllUsersQuery } from '../store/userSlice';

@@ -1,7 +1,7 @@
 import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
-import { type User as UserInterface } from '../interfaces/userInterfaces';
+import { type User as UserInterface } from '@keebmeet/shared';
 import { fetchDiscordUsername } from '../util/discord';
 import { toUserResponse } from '../util/userResponse';
 

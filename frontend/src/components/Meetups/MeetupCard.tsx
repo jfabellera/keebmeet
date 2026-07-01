@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { type ReactNode } from 'react';
 import { FiImage } from 'react-icons/fi';
-import type { MeetupInfo } from '../../../../backend/src/controllers/meetups';
+import type { MeetupInfo } from '@keebmeet/shared';
 
 dayjs.extend(customParseFormat);
 

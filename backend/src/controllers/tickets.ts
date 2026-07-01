@@ -3,17 +3,16 @@ import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
-import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
+import {
+  type EventbriteAttendee,
+  type SimpleTicketInfo,
+  createTicketSchema,
+  editTicketSchema,
+} from '@keebmeet/shared';
 import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
-import { createTicketSchema, editTicketSchema } from '../util/validator';
-
-export interface SimpleTicketInfo {
-  id: number;
-  meetup_id: number;
-}
 
 export const getAllTickets = async (
   req: Request,

@@ -14,8 +14,12 @@ import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
-import { type EventbriteAttendee } from '../interfaces/eventbriteInterfaces';
-import { type MeetupDisplayAssets } from '../interfaces/meetupInterfaces';
+import {
+  type EventbriteAttendee,
+  type MeetupDisplayAssets,
+  type MeetupInfo,
+  type TicketInfo,
+} from '@keebmeet/shared';
 import {
   createEventbriteWebhook,
   getEventbriteAttendees,
@@ -34,47 +38,10 @@ import {
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
-} from '../util/validator';
+} from '@keebmeet/shared';
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
-
-export interface MeetupInfo {
-  id: number;
-  name: string;
-  date: string;
-  location: {
-    full_address?: string;
-    address_line_1?: string;
-    address_line_2?: string;
-    city: string;
-    state: string | null;
-    country: string;
-    postal_code?: string;
-  };
-  organizers?: string[];
-  tickets?: {
-    total: number;
-    available: number;
-  };
-  duration_hours?: number;
-  image_url: string;
-  eventbrite_url?: string;
-  description?: string;
-}
-
-export interface TicketInfo {
-  id: number;
-  created_at: Date;
-  is_checked_in: boolean;
-  checked_in_at?: Date;
-  ticket_holder_display_name: string;
-  ticket_holder_first_name: string;
-  ticket_holder_last_name: string;
-  ticket_holder_email: string;
-  raffle_entries: number;
-  raffle_wins: number;
-}
 
 enum MeetupInfoDetailLevel {
   Simple,

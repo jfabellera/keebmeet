@@ -26,7 +26,7 @@ import {
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type SimpleTicketInfo } from '../../../../backend/src/controllers/tickets';
+import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';

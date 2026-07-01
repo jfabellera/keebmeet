@@ -5,7 +5,7 @@ import {
 } from '@reduxjs/toolkit';
 import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { type TokenData } from '../../../backend/src/controllers/auth';
+import { type TokenData } from '@keebmeet/shared';
 import config from '../config';
 
 export interface LoginPayload {

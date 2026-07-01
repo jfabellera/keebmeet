@@ -8,7 +8,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { type EditMeetupPayload } from '../../../../backend/src/util/validator';
+import { type EditMeetupPayload } from '@keebmeet/shared';
 import {
   useEditMeetupMutation,
   useGetMeetupQuery,

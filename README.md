@@ -11,6 +11,9 @@ The project has four parts:
   and a **Socket.IO** server for real-time meetup updates.
 - **Frontend** (`frontend/`) — a React + Vite single-page app.
 - **Bot** (`bot/`) — a Discord bot for handling meetup RSVPs.
+- **Shared** (`shared/`) — `@keebmeet/shared`, the API contract (response DTOs +
+  zod validation schemas) that the backend produces and the frontend consumes,
+  so the two can't drift. It's an npm workspace both depend on.
 - **Database** — PostgreSQL. The schema is managed by **TypeORM migrations**
   (see [DEVELOPMENT.md](DEVELOPMENT.md#database-migrations)); there is no
   separate schema tool.

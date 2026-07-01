@@ -18,7 +18,7 @@ import { FiSettings } from 'react-icons/fi';
 import { MdHistory } from 'react-icons/md';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type RaffleRecordResponse } from '../../../backend/src/interfaces/rafflesInterfaces';
+import { type RaffleRecordResponse } from '@keebmeet/shared';
 import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
 import { socket } from '../socket';
 import {
