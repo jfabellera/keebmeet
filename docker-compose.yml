@@ -1,0 +1,109 @@
+# Shared environment for the three backend processes (they run the same image).
+x-backend-env: &backend-env
+  KEEBMEET_DATABASE_HOST: db
+  KEEBMEET_DATABASE_PORT: '5432'
+  KEEBMEET_DATABASE_NAME: ${KEEBMEET_DATABASE_NAME}
+  KEEBMEET_DATABASE_USER: ${KEEBMEET_DATABASE_USER}
+  KEEBMEET_DATABASE_PASSWORD: ${KEEBMEET_DATABASE_PASSWORD}
+  KEEBMEET_SOCKET_URL: http://socket:3002
+  KEEBMEET_API_URL: ${PUBLIC_API_URL}
+  KEEBMEET_WEB_URL: ${PUBLIC_WEB_URL}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+  AES_ENCRYPTION_KEY: ${AES_ENCRYPTION_KEY}
+  GCP_API_KEY: ${GCP_API_KEY}
+  EVENTBRITE_API_KEY: ${EVENTBRITE_API_KEY}
+  EVENTBRITE_CLIENT_SECRET: ${EVENTBRITE_CLIENT_SECRET}
+  RESEND_API_KEY: ${RESEND_API_KEY}
+  DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+  DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+  DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+  DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KEEBMEET_DATABASE_USER}
+      POSTGRES_PASSWORD: ${KEEBMEET_DATABASE_PASSWORD}
+      POSTGRES_DB: ${KEEBMEET_DATABASE_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${KEEBMEET_DATABASE_USER} -d ${KEEBMEET_DATABASE_NAME}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
+    restart: unless-stopped
+    command: ['node', 'build/Server.js']
+    environment:
+      <<: *backend-env
+      KEEBMEET_API_SERVER_HOSTNAME: 0.0.0.0
+      KEEBMEET_API_SERVER_PORT: '3000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  auth:
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
+    restart: unless-stopped
+    command: ['node', 'build/AuthServer.js']
+    environment:
+      <<: *backend-env
+      KEEBMEET_AUTH_SERVER_HOSTNAME: 0.0.0.0
+      KEEBMEET_AUTH_SERVER_PORT: '3001'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  socket:
+    image: ghcr.io/jfabellera/keebmeet-backend:latest
+    restart: unless-stopped
+    command: ['node', 'build/SocketServer.js']
+    environment:
+      <<: *backend-env
+      KEEBMEET_SOCKET_SERVER_HOSTNAME: 0.0.0.0
+      KEEBMEET_SOCKET_SERVER_PORT: '3002'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  bot:
+    image: ghcr.io/jfabellera/keebmeet-bot:latest
+    restart: unless-stopped
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      KEEBMEET_API_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_started
+
+  web:
+    image: ghcr.io/jfabellera/keebmeet-web:latest
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - auth
+      - socket
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

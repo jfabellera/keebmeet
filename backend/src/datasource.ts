@@ -29,6 +29,8 @@ export const AppDataSource = new DataSource({
     RaffleRecord,
     RaffleWinner,
   ],
-  synchronize: true,
+  synchronize: false,
+  migrations: [__dirname + '/migrations/*.{ts,js}'],
+  migrationsRun: true,
   logging: false,
 });

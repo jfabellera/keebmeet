@@ -33,14 +33,17 @@ class AuthServer {
     this.express.use(express.json());
     this.express.use(express.urlencoded({ extended: false }));
     this.express.use(function (req, res, next) {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      // In production the frontend is same-origin (served under the same domain
+      // as /api/auth), so these headers are a no-op. They only matter for local
+      // dev, where the Vite server (config.webUrl) is a different origin.
+      res.setHeader('Access-Control-Allow-Origin', config.webUrl);
       res.setHeader(
         'Access-Control-Allow-Methods',
         'GET,POST,PUT,DELETE,OPTIONS'
       );
       res.setHeader(
         'Access-Control-Allow-Headers',
-        'Content-Type, Access-Control-Allow-Headers, Authorization'
+        'Content-Type, Authorization'
       );
       next();
     });
