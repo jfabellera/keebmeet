@@ -10,6 +10,10 @@
     "devAuth": "ts-node-dev --respawn -r dotenv/config ./src/AuthServer.ts",
     "devSocket": "ts-node-dev --respawn -r dotenv/config ./src/SocketServer.ts",
     "build": "tsc",
+    "typeorm": "typeorm-ts-node-commonjs -d src/datasource.ts",
+    "migration:generate": "npm run typeorm -- migration:generate",
+    "migration:run": "npm run typeorm -- migration:run",
+    "migration:revert": "npm run typeorm -- migration:revert",
     "test": "jest",
     "test:ci": "jest --ci --reporters=default --reporters=jest-junit"
   },
