@@ -13,109 +13,44 @@ Create a database and a user with access to it. You do **not** need to create
 any tables — TypeORM migrations run automatically when the backend starts and
 build the schema for you.
 
+Each service reads its own `.env`. In every service directory, copy the
+committed `.env.example` and fill in the blanks (each file documents its
+variables):
+
+```bash
+cp .env.example .env
+```
+
 ## Backend
 
-1. Install dependencies.
+```bash
+cd backend
+npm install
+cp .env.example .env    # then fill in DB creds and secrets
 
-   ```bash
-   cd backend
-   npm install
-   ```
-
-2. Create a `.env` file in `backend/` (ports may vary to taste):
-
-   ```bash
-   KEEBMEET_API_SERVER_HOSTNAME=localhost
-   KEEBMEET_API_SERVER_PORT=3000
-   KEEBMEET_AUTH_SERVER_HOSTNAME=localhost
-   KEEBMEET_AUTH_SERVER_PORT=3001
-   KEEBMEET_SOCKET_SERVER_HOSTNAME=localhost
-   KEEBMEET_SOCKET_SERVER_PORT=3002
-
-   KEEBMEET_API_URL=http://localhost:3000
-   KEEBMEET_SOCKET_URL=http://localhost:3002
-   # Origin allowed by CORS — must match the frontend dev server URL below.
-   KEEBMEET_WEB_URL=http://localhost:5173
-
-   KEEBMEET_DATABASE_HOST=localhost
-   KEEBMEET_DATABASE_PORT=5432
-   KEEBMEET_DATABASE_NAME=
-   KEEBMEET_DATABASE_USER=
-   KEEBMEET_DATABASE_PASSWORD=
-
-   JWT_ACCESS_SECRET=
-   AES_ENCRYPTION_KEY=
-   INTERNAL_API_SECRET=
-
-   GCP_API_KEY=
-   EVENTBRITE_API_KEY=
-   EVENTBRITE_CLIENT_SECRET=
-
-   DISCORD_CLIENT_ID=
-   DISCORD_CLIENT_SECRET=
-   DISCORD_BOT_TOKEN=
-   DISCORD_REDIRECT_URI=http://localhost:5173/auth/discord/callback
-   ```
-
-3. Start each server in its own terminal (each applies pending migrations on
-   startup):
-
-   ```bash
-   npm run dev        # API server
-   npm run devAuth    # Auth server
-   npm run devSocket  # Socket.IO server
-   ```
+# start each server in its own terminal (each applies pending migrations):
+npm run dev        # API server
+npm run devAuth    # Auth server
+npm run devSocket  # Socket.IO server
+```
 
 ## Frontend
 
-1. Install dependencies.
-
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. Create a `.env` file in `frontend/`. Make sure the server URLs match the
-   ports set in the backend `.env` above.
-
-   ```bash
-   VITE_KEEBMEET_API_SERVER_URL=http://localhost:3000
-   VITE_KEEBMEET_AUTH_SERVER_URL=http://localhost:3001
-   VITE_KEEBMEET_SOCKET_SERVER_URL=http://localhost:3002
-   VITE_KEEBMEET_APP_URL=http://localhost:5173
-
-   VITE_DISCORD_CLIENT_ID=
-   VITE_DISCORD_REDIRECT_URI=http://localhost:5173/auth/discord/callback
-   ```
-
-3. Run the app.
-
-   ```bash
-   npm run dev
-   ```
+```bash
+cd frontend
+npm install
+cp .env.example .env    # server URLs must match the ports in backend/.env
+npm run dev
+```
 
 ## Bot
 
-1. Install dependencies.
-
-   ```bash
-   cd bot
-   npm install
-   ```
-
-2. Create a `.env` file in `bot/` (see [bot/.env.example](bot/.env.example)):
-
-   ```bash
-   DISCORD_BOT_TOKEN=
-   KEEBMEET_API_URL=http://localhost:3000
-   INTERNAL_API_SECRET=
-   ```
-
-3. Run the bot.
-
-   ```bash
-   npm run dev
-   ```
+```bash
+cd bot
+npm install
+cp .env.example .env    # DISCORD_BOT_TOKEN + INTERNAL_API_SECRET (matches backend)
+npm run dev
+```
 
 ## Database migrations
 
