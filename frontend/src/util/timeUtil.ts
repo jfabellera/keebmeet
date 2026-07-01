@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
+import { type MeetupInfo } from '@keebmeet/shared';
 
 dayjs.extend(isBetween);
 

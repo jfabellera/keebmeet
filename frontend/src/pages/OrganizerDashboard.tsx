@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
+import { type MeetupInfo } from '@keebmeet/shared';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';

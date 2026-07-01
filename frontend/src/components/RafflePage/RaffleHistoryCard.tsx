@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import dayjs from 'dayjs';
 import RelativeTime from 'dayjs/plugin/relativeTime';
-import { type RaffleRecordResponse } from '../../../../backend/src/interfaces/rafflesInterfaces';
+import { type RaffleRecordResponse } from '@keebmeet/shared';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 

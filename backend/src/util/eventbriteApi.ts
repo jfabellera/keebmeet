@@ -7,7 +7,7 @@ import {
   type EventbriteTicket,
   type EventbriteVenue,
   type EventbriteWebhook,
-} from '../interfaces/eventbriteInterfaces';
+} from '@keebmeet/shared';
 
 export const getEventbriteOrganizations = async (
   accessToken: string

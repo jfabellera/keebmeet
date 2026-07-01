@@ -21,15 +21,18 @@ jobs:
         node-version: 20
 
     - name: Install dependencies
-      run: |
-        npm install
-        npm run install:all
+      run: npm install
+
+    # Build the shared package first so its declarations exist for linting,
+    # type-checking, and the backend/frontend builds.
+    - name: Build shared
+      run: npm run build:shared
 
     - name: Lint
       run: npm run lint
 
     - name: Build backend
-      run: npm run build:backend
+      run: npm run build -w api
 
     - name: Build frontend
-      run: npm run build:frontend
+      run: npm run build -w @keebmeet/frontend

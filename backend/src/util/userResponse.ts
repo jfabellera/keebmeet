@@ -1,5 +1,5 @@
 import { type User } from '../entity/User';
-import { type User as UserInterface } from '../interfaces/userInterfaces';
+import { type User as UserInterface } from '@keebmeet/shared';
 
 /**
  * Maps a User entity to the public-facing response shape, omitting sensitive

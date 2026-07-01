@@ -6,7 +6,7 @@ import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
-import { discordRsvpSchema } from '../util/validator';
+import { discordRsvpSchema } from '@keebmeet/shared';
 
 /**
  * Handles a Discord user's RSVP action for a meetup, called by the bot when an

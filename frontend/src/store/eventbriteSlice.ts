@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type EventbriteOrganization } from '../../../backend/src/interfaces/eventbriteInterfaces';
+import { type EventbriteOrganization } from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 

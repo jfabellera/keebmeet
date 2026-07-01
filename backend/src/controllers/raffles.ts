@@ -9,13 +9,13 @@ import {
   type RaffleRecordResponse,
   type RaffleWinnerInfo,
   type RollRaffleWinnerResponse,
-} from '../interfaces/rafflesInterfaces';
+} from '@keebmeet/shared';
 import { generateMultipleRandomNumbers } from '../util/math';
 import {
   claimRaffleWinnerSchema,
   rollRaffleWinnerSchema,
   unclaimRaffleWinnerSchema,
-} from '../util/validator';
+} from '@keebmeet/shared';
 
 const mapRaffleRecordToResponse = (
   raffleRecord: RaffleRecord

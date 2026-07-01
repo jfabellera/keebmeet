@@ -1,0 +1,10 @@
+# Build context is the repo root (workspace builds). Keep it lean and never
+# copy host-installed deps or build output over what the image builds itself.
+**/node_modules
+**/dist
+**/build
+.git
+**/.env
+**/.env.*
+*.log
+**/.DS_Store

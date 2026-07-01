@@ -27,7 +27,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type TicketInfo } from '../../../backend/src/controllers/meetups';
+import { type TicketInfo } from '@keebmeet/shared';
 import {
   useCheckInAttendeeMutation,
   useEditAttendeeMutation,

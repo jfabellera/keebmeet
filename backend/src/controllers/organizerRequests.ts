@@ -2,7 +2,7 @@ import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { type User } from '../entity/User';
 import config from '../config';
-import { type OrganizerRequestInfo } from '../interfaces/userInterfaces';
+import { type OrganizerRequestInfo } from '@keebmeet/shared';
 import {
   sendOrganizerApprovedEmail,
   sendOrganizerDeniedEmail,

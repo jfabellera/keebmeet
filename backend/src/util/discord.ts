@@ -3,7 +3,7 @@ import config from '../config';
 import {
   type DiscordChannel,
   type DiscordServer,
-} from '../interfaces/userInterfaces';
+} from '@keebmeet/shared';
 
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
 

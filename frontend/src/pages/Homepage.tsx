@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { type MeetupInfo } from '../../../backend/src/controllers/meetups';
-import { type SimpleTicketInfo } from '../../../backend/src/controllers/tickets';
+import { type MeetupInfo } from '@keebmeet/shared';
+import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';

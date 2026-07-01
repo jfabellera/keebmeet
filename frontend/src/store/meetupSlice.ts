@@ -1,12 +1,12 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { MeetupInfo } from '../../../backend/src/controllers/meetups';
-import { type MeetupDisplayAssets } from '../../../backend/src/interfaces/meetupInterfaces';
-import { type MeetupDiscordMessageInfo } from '../../../backend/src/interfaces/userInterfaces';
+import type { MeetupInfo } from '@keebmeet/shared';
+import { type MeetupDisplayAssets } from '@keebmeet/shared';
+import { type MeetupDiscordMessageInfo } from '@keebmeet/shared';
 import {
   type CreateMeetupFromEventbritePayload,
   type CreateMeetupPayload,
   type EditMeetupPayload,
-} from '../../../backend/src/util/validator';
+} from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 

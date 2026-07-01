@@ -1,15 +1,15 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type TicketInfo } from '../../../backend/src/controllers/meetups';
+import { type TicketInfo } from '@keebmeet/shared';
 import {
   type RaffleRecordResponse,
   type RollRaffleWinnerResponse,
-} from '../../../backend/src/interfaces/rafflesInterfaces';
+} from '@keebmeet/shared';
 import {
   EditTicketPayload,
   type ClaimRaffleWinnerPayload,
   type RollRaffleWinnerPayload,
   type UnclaimRaffleWinnerPayload,
-} from '../../../backend/src/util/validator';
+} from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 

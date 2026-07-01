@@ -4,7 +4,7 @@ import {
   type DiscordServer,
   type OrganizerRequestInfo,
   type User,
-} from '../../../backend/src/interfaces/userInterfaces';
+} from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 

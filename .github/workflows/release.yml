@@ -36,7 +36,8 @@ jobs:
       - name: Build & push backend
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
+          file: ./backend/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ env.OWNER }}/keebmeet-backend:latest
@@ -47,7 +48,8 @@ jobs:
       - name: Build & push bot
         uses: docker/build-push-action@v6
         with:
-          context: ./bot
+          context: .
+          file: ./bot/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ env.OWNER }}/keebmeet-bot:latest
@@ -62,7 +64,8 @@ jobs:
       - name: Build & push web (frontend + Caddy)
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: .
+          file: ./frontend/Dockerfile
           push: true
           build-args: |
             VITE_KEEBMEET_API_SERVER_URL=${{ vars.PUBLIC_API_URL }}

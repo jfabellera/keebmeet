@@ -13,7 +13,7 @@ import {
   buildRsvpComponents,
   getMeetupAttendeeDisplayNames,
 } from '../util/meetupDiscordMessage';
-import { createMeetupDiscordMessageSchema } from '../util/validator';
+import { createMeetupDiscordMessageSchema } from '@keebmeet/shared';
 
 const findMeetupWithMessage = async (
   meetupId: string

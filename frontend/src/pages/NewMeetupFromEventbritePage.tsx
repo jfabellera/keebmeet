@@ -19,7 +19,7 @@ import {
   type EventbriteOrganization,
   type EventbriteQuestion,
   type EventbriteTicket,
-} from '../../../backend/src/interfaces/eventbriteInterfaces';
+} from '@keebmeet/shared';
 import Page from '../components/Page/Page';
 import {
   useGetCustomQuestionsQuery,
