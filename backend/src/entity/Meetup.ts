@@ -36,7 +36,7 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'int' })
   capacity: number;
 
-  @Column({ type: 'int' })
+  @Column({ type: 'float' })
   duration_hours: number;
 
   @Column({ type: 'varchar', length: 255 })
