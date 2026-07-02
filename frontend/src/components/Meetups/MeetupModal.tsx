@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useEffect, type ReactNode } from 'react';
@@ -26,7 +27,6 @@ import {
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { socket } from '../../socket';
 import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
@@ -260,7 +260,7 @@ export const MeetupModal = ({
               ) : (
                 <Button
                   variant="default"
-                  disabled={!isLoggedIn}
+                  disabled={!isLoggedIn || meetup.tickets?.available === 0}
                   onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
                 >
                   <FiUserCheck />
