@@ -191,18 +191,20 @@ const AccountPage = (): ReactNode => {
               </Button>
             )}
           </div>
-          <div className="flex items-center justify-between gap-4">
-            <span>Eventbrite</span>
-            <a
-              href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
-            >
-              <Button disabled={user?.is_eventbrite_linked}>
-                {(user?.is_eventbrite_linked ?? false)
-                  ? 'Eventbrite linked!'
-                  : 'Link Eventbrite'}
-              </Button>
-            </a>
-          </div>
+          {user?.is_organizer && (
+            <div className="flex items-center justify-between gap-4">
+              <span>Eventbrite</span>
+              <a
+                href={`${config.apiUrl}/oauth2/eventbrite?redirect_uri=${config.appUrl}/account/authorize-eventbrite`}
+              >
+                <Button disabled={user?.is_eventbrite_linked}>
+                  {(user?.is_eventbrite_linked ?? false)
+                    ? 'Eventbrite linked!'
+                    : 'Link Eventbrite'}
+                </Button>
+              </a>
+            </div>
+          )}
         </div>
         <div className="bg-card text-card-foreground flex flex-col gap-4 rounded-lg p-8 shadow-lg">
           <h2 className="text-lg font-medium">Organizer access</h2>
