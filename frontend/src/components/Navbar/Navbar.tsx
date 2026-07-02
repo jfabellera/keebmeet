@@ -108,7 +108,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
 const GuestButtons = (): ReactNode => {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-row items-center justify-end gap-6">
+    <div className="flex flex-row items-center justify-end gap-2">
       <Button
         variant="link"
         className="text-sm font-normal"
@@ -119,7 +119,7 @@ const GuestButtons = (): ReactNode => {
         Sign In
       </Button>
       <Button
-        className="hidden font-semibold md:inline-flex"
+        className="font-semibold"
         onClick={() => {
           void navigate('/register');
         }}
