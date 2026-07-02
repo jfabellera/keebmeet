@@ -32,6 +32,7 @@ import { useAppDispatch } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 
 dayjs.extend(customParseFormat);
@@ -106,6 +107,7 @@ export const MeetupModal = ({
   const hasEnded = hasMeetupEnded(meetup);
   // A meetup can be RSVP'd to (or cancelled) right up until it ends.
   const isRsvpable = !hasEnded;
+  const isRsvpDisabled = !isLoggedIn || meetup.tickets?.available === 0;
 
   return (
     <Dialog
@@ -258,14 +260,29 @@ export const MeetupModal = ({
                   Manage RSVP
                 </Button>
               ) : (
-                <Button
-                  variant="default"
-                  disabled={!isLoggedIn || meetup.tickets?.available === 0}
-                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
-                >
-                  <FiUserCheck />
-                  RSVP
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="default"
+                        disabled={isRsvpDisabled}
+                        onClick={() =>
+                          void navigate('/meetup/' + meetupId + '/rsvp')
+                        }
+                      >
+                        <FiUserCheck />
+                        RSVP
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {isRsvpDisabled && (
+                    <TooltipContent>
+                      {isLoggedIn
+                        ? 'No tickets available'
+                        : 'Please log in to RSVP'}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               )
             ) : null}
             <Button variant="secondary" onClick={onClose}>
