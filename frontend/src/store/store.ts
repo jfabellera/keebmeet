@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import authSlice from './authSlice';
+import authSlice, { refreshSession } from './authSlice';
 import { eventbriteSlice } from './eventbriteSlice';
 import { meetupSlice } from './meetupSlice';
 import { organizerSlice } from './organizerSlice';
@@ -26,6 +26,13 @@ export const store = configureStore({
 });
 
 setupListeners(store.dispatch);
+
+// Re-sync the session token with the server on every page load so role changes
+// made since login (e.g. organizer approval) take effect without a re-login.
+// Dispatched before the first render so guards can wait on the refreshing flag.
+if (localStorage.getItem('token') != null) {
+  void store.dispatch(refreshSession());
+}
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

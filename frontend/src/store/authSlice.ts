@@ -1,3 +1,4 @@
+import { type TokenData } from '@keebmeet/shared';
 import {
   createAsyncThunk,
   createSlice,
@@ -5,7 +6,6 @@ import {
 } from '@reduxjs/toolkit';
 import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { type TokenData } from '@keebmeet/shared';
 import config from '../config';
 
 export interface LoginPayload {
@@ -70,6 +70,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   error: number | null;
+  refreshing: boolean;
 }
 
 /**
@@ -109,6 +110,43 @@ export const login = createAsyncThunk<
           userId: err.response.data.user_id,
         } satisfies UnverifiedEmailError);
       }
+      return rejectWithValue(err.response.status);
+    } else {
+      return rejectWithValue(500);
+    }
+  }
+});
+
+/**
+ * Thunk for refreshing the session token.
+ *
+ * Role flags are baked into the JWT when it is signed, so changes made after
+ * login (e.g. an admin approving the user's organizer request) don't reach an
+ * existing session on their own. This asks the auth server to re-sign the
+ * token from the user's current database record and replaces the stored one,
+ * so a page refresh is enough to pick up new roles — no re-login needed.
+ */
+export const refreshSession = createAsyncThunk<
+  User | null,
+  void,
+  { rejectValue: number }
+>('auth/refreshSession', async (_, { rejectWithValue }) => {
+  const token = localStorage.getItem('token');
+  if (token == null) return null;
+
+  try {
+    const response = await axios.post(
+      `${config.authUrl}/refresh`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const { data } = response;
+
+    localStorage.setItem('token', data.token);
+
+    return getUserFromToken(data.token);
+  } catch (err) {
+    if (err instanceof AxiosError && err.response != null) {
       return rejectWithValue(err.response.status);
     } else {
       return rejectWithValue(500);
@@ -257,7 +295,7 @@ export const resendVerification = createAsyncThunk(
  *
  * Sends the role flags to the auth server, which only honours them for an admin
  * requestor. The affected user's own session token keeps its old flags until
- * they next sign in.
+ * their next page load, when {@link refreshSession} re-signs it.
  */
 export const setUserAccess = createAsyncThunk(
   'auth/setUserAccess',
@@ -292,7 +330,8 @@ export const setUserAccess = createAsyncThunk(
  *
  * Sends the editable profile fields to the auth server. The display name is
  * also reflected in local auth state so the UI updates without a re-login (the
- * JWT itself keeps the old value until the next sign in).
+ * JWT itself keeps the old value until {@link refreshSession} next re-signs
+ * it on page load).
  */
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
@@ -397,6 +436,7 @@ const initialState: AuthState = {
   user: getUserFromLocalStorage(),
   loading: false,
   error: null,
+  refreshing: false,
 };
 
 const authSlice = createSlice({
@@ -487,6 +527,24 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action: PayloadAction<any>) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(refreshSession.pending, (state) => {
+        state.refreshing = true;
+      })
+      .addCase(refreshSession.fulfilled, (state, action) => {
+        state.refreshing = false;
+        if (action.payload != null) {
+          state.user = action.payload;
+          state.isLoggedIn = true;
+        }
+      })
+      .addCase(refreshSession.rejected, (state, action) => {
+        state.refreshing = false;
+        if (action.payload === 401 || action.payload === 404) {
+          state.user = null;
+          state.isLoggedIn = false;
+          localStorage.removeItem('token');
+        }
       });
   },
 });

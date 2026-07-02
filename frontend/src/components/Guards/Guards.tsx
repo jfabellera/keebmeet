@@ -49,11 +49,15 @@ export const RequireGuest = ({ children }: GuardProps): ReactNode => {
  * the homepage.
  */
 export const RequireAdmin = ({ children }: GuardProps): ReactNode => {
-  const { user } = useAppSelector((state) => state.user);
+  const { user, refreshing } = useAppSelector((state) => state.user);
+
+  if (user == null) return <Navigate to="/" replace />;
 
   // Owners outrank admins and may use any admin-gated page.
-  if (user == null || !(user.isAdmin || user.isOwner))
+  if (!(user.isAdmin || user.isOwner)) {
+    if (refreshing) return null;
     return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 };
@@ -63,9 +67,14 @@ export const RequireAdmin = ({ children }: GuardProps): ReactNode => {
  * are sent to the homepage.
  */
 export const RequireOrganizer = ({ children }: GuardProps): ReactNode => {
-  const { user } = useAppSelector((state) => state.user);
+  const { user, refreshing } = useAppSelector((state) => state.user);
 
-  if (user == null || !user.isOrganizer) return <Navigate to="/" replace />;
+  if (user == null) return <Navigate to="/" replace />;
+
+  if (!user.isOrganizer) {
+    if (refreshing) return null;
+    return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 };
