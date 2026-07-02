@@ -1,11 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import { Loader2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
 import {
   login,
@@ -159,6 +159,21 @@ const LoginPage = (): ReactNode => {
                   Sign in
                 </Button>
                 <DiscordLoginButton />
+                <div className="pt-2">
+                  <p className="text-center">
+                    Don't have an account?{' '}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer text-blue-500"
+                      onClick={() => {
+                        void navigate('/register');
+                      }}
+                    >
+                      Register
+                    </span>
+                  </p>
+                </div>
               </div>
             </form>
           </div>
