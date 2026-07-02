@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { useFormik } from 'formik';
 import { type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   type EventbriteEvent,
@@ -27,11 +27,18 @@ import {
   useGetOrganizationsQuery,
   useGetTicketClassesQuery,
 } from '../store/eventbriteSlice';
+import { useAppSelector } from '../store/hooks';
 import { useCreateMeetupFromEventbriteMutation } from '../store/meetupSlice';
+import { useGetUserQuery } from '../store/userSlice';
 import MeetupFromEventbriteFormSchema from '../util/schemas/MeetupFromEventbriteFormSchema';
 
 const NewMeetupFromEventbritePage = (): ReactNode => {
   const navigate = useNavigate();
+  const { user: localUser } = useAppSelector((state) => state.user);
+  const { data: user } = useGetUserQuery(localUser?.id ?? NaN, {
+    skip: localUser == null,
+  });
+  const isEventbriteLinked = user?.is_eventbrite_linked === true;
   const formik = useFormik({
     initialValues: {
       organizationId: NaN,
@@ -74,7 +81,9 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
     validateOnMount: true,
   });
 
-  const { data: organizations } = useGetOrganizationsQuery();
+  const { data: organizations } = useGetOrganizationsQuery(undefined, {
+    skip: !isEventbriteLinked,
+  });
   const { data: events } = useGetEventsQuery(
     Number(formik.values.organizationId),
     {
@@ -163,61 +172,76 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
               >
                 Use native
               </span>
-              <FormSelect
-                name={'Organization'}
-                id={'organizationId'}
-                options={organizations}
-                value={formik.values.organizationId}
-              />
-              <FormSelect
-                name={'Event'}
-                id={'eventId'}
-                options={events}
-                value={formik.values.eventId}
-                disabled={events == null}
-              />
-              <FormSelect
-                name={'Ticket Class'}
-                id={'ticketClassId'}
-                options={ticketClasses}
-                value={formik.values.ticketClassId}
-                disabled={ticketClasses == null}
-              />
-              <FormSelect
-                name={'Custom Question'}
-                id={'customQuestionId'}
-                options={customQuestions}
-                value={formik.values.customQuestionId}
-                disabled={customQuestions == null}
-              />
+              {!isEventbriteLinked ? (
+                <p>
+                  Please connect your Eventbrite account in your{' '}
+                  <Link to="/account" className="text-primary underline">
+                    account settings
+                  </Link>{' '}
+                  to create a meetup from an Eventbrite event.
+                </p>
+              ) : (
+                <>
+                  <FormSelect
+                    name={'Organization'}
+                    id={'organizationId'}
+                    options={organizations}
+                    value={formik.values.organizationId}
+                  />
+                  <FormSelect
+                    name={'Event'}
+                    id={'eventId'}
+                    options={events}
+                    value={formik.values.eventId}
+                    disabled={events == null}
+                  />
+                  <FormSelect
+                    name={'Ticket Class'}
+                    id={'ticketClassId'}
+                    options={ticketClasses}
+                    value={formik.values.ticketClassId}
+                    disabled={ticketClasses == null}
+                  />
+                  <FormSelect
+                    name={'Custom Question'}
+                    id={'customQuestionId'}
+                    options={customQuestions}
+                    value={formik.values.customQuestionId}
+                    disabled={customQuestions == null}
+                  />
 
-              <div className="flex w-full items-center gap-2">
-                <Label htmlFor="hasRaffle" className="pr-4">
-                  Will this meetup have raffles?
-                </Label>
-                <Checkbox
-                  id="hasRaffle"
-                  name="hasRaffle"
-                  checked={formik.values.hasRaffle}
-                  onCheckedChange={(checked) => {
-                    void formik.setFieldValue('hasRaffle', checked === true);
-                  }}
-                />
-                <span>Yes</span>
-              </div>
+                  <div className="flex w-full items-center gap-2">
+                    <Label htmlFor="hasRaffle" className="pr-4">
+                      Will this meetup have raffles?
+                    </Label>
+                    <Checkbox
+                      id="hasRaffle"
+                      name="hasRaffle"
+                      checked={formik.values.hasRaffle}
+                      onCheckedChange={(checked) => {
+                        void formik.setFieldValue('hasRaffle', checked === true);
+                      }}
+                    />
+                    <span>Yes</span>
+                  </div>
 
-              <FormField
-                formik={formik}
-                name="defaultRaffleEntries"
-                label="Default raffle entries per attendee"
-                type="number"
-                disabled={!formik.values.hasRaffle}
-                value={formik.values.defaultRaffleEntries}
-                className="w-full"
-              />
-              <Button type={'submit'} disabled={!formik.isValid || isLoading}>
-                Submit
-              </Button>
+                  <FormField
+                    formik={formik}
+                    name="defaultRaffleEntries"
+                    label="Default raffle entries per attendee"
+                    type="number"
+                    disabled={!formik.values.hasRaffle}
+                    value={formik.values.defaultRaffleEntries}
+                    className="w-full"
+                  />
+                  <Button
+                    type={'submit'}
+                    disabled={!formik.isValid || isLoading}
+                  >
+                    Submit
+                  </Button>
+                </>
+              )}
             </div>
           </form>
         </div>
