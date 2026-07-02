@@ -7,6 +7,7 @@ import {
   discordLogin,
   linkDiscordAccount,
   login,
+  refreshToken,
   resendVerificationEmail,
   updateUser,
   verifyUser,
@@ -70,6 +71,11 @@ class AuthServer {
     );
 
     this.express.post('/login', loginLimiter, login as RequestHandler);
+    this.express.post(
+      '/refresh',
+      authChecker() as RequestHandler,
+      refreshToken as RequestHandler
+    );
     this.express.post('/oauth2/discord', discordLogin as RequestHandler);
     this.express.post('/oauth2/discord/link', discordLink as RequestHandler);
     this.express.post(

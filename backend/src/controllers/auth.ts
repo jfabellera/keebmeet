@@ -253,6 +253,24 @@ export const deleteUser = async (
   return res.status(204).end();
 };
 
+/**
+ * Re-issues the requestor's session token from their current database record.
+ *
+ * Role flags are baked into the token at signing time, so a role change (e.g.
+ * an organizer request being approved) is invisible to an existing session.
+ * Clients call this on page load to pick up such changes without forcing the
+ * user to log out and back in. Requires a valid session token (authChecker
+ * populates res.locals.requestor with the fresh user row).
+ */
+export const refreshToken = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const requestor: User = res.locals.requestor;
+
+  return res.status(200).json({ token: signToken(requestor) });
+};
+
 export const login = async (req: Request, res: Response): Promise<Response> => {
   const { email, password } = req.body;
 
