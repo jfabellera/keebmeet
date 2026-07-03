@@ -1,10 +1,20 @@
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { type RaffleRecordResponse } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import RelativeTime from 'dayjs/plugin/relativeTime';
 import { type ReactNode } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiAlertTriangle, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useDeleteRaffleRecordMutation } from '../../store/organizerSlice';
 import { Button } from '../ui/button';
@@ -40,6 +50,11 @@ const RaffleHistoryCard = ({
     }
   };
 
+  const isBatchRoll = raffleRecord.winners.length > 1;
+  const claimedCount = raffleRecord.winners.filter(
+    (winner) => winner.claimed
+  ).length;
+
   return (
     <div
       className={cn(
@@ -60,17 +75,65 @@ const RaffleHistoryCard = ({
             {dayjs(raffleRecord.createdAt).fromNow(true)} ago
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={isDeleting}
-          onClick={(e) => {
-            e.stopPropagation();
-            void handleDelete();
-          }}
-        >
-          <FiX />
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={isDeleting}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FiX />
+            </Button>
+          </DialogTrigger>
+          {/* Stop card-selection clicks from firing while interacting with the dialog. */}
+          <DialogContent onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Delete this raffle roll?</DialogTitle>
+              <DialogDescription>
+                This permanently removes the roll and its{' '}
+                {raffleRecord.winners.length}{' '}
+                {raffleRecord.winners.length === 1 ? 'winner' : 'winners'}. This
+                can&apos;t be undone.
+              </DialogDescription>
+              {claimedCount > 0 ? (
+                <div className="border-destructive/50 bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-md border p-3 text-sm">
+                  <FiAlertTriangle className="mt-0.5 shrink-0" />
+                  <p>
+                    {isBatchRoll
+                      ? `${claimedCount} of these winners have`
+                      : 'This winner has'}{' '}
+                    already claimed{' '}
+                    {claimedCount === 1 ? 'their win' : 'their wins'}. Deleting
+                    this roll may make them eligible for future rolls.
+                  </p>
+                </div>
+              ) : null}
+              {raffleRecord.wasDisplayed ? (
+                <div className="mt-2 flex items-start gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
+                  <FiAlertTriangle className="mt-0.5 shrink-0" />
+                  <p>
+                    This roll has already been shown on the display for
+                    attendees to see.
+                  </p>
+                </div>
+              ) : null}
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button
+                  variant="destructive"
+                  onClick={() => void handleDelete()}
+                >
+                  Delete
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       <div className="flex flex-col gap-1.5">
         {raffleRecord.winners.map((winner, index) => (
