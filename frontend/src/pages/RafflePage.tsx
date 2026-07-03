@@ -11,6 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
+import { type RaffleRecordResponse } from '@keebmeet/shared';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -18,7 +19,7 @@ import { FiSettings } from 'react-icons/fi';
 import { MdHistory } from 'react-icons/md';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type RaffleRecordResponse } from '@keebmeet/shared';
+import { isNotFoundError } from '../components/Guards/Guards';
 import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
 import { socket } from '../socket';
 import {
@@ -73,10 +74,10 @@ const RafflePage = (): ReactNode => {
   const [raffleRecordId, setRaffleRecordId] = useState<number | null>(null);
   const [isDisplayed, setIsDisplayed] = useState<boolean>(false);
   const [isAllIn, setIsAllIn] = useState<boolean>(false);
-  const { data: getRaffleRecordResult } = useGetRaffleRecordQuery(
-    raffleRecordId ?? 0,
-    { skip: raffleRecordId == null }
-  );
+  const { data: getRaffleRecordResult, error: getRaffleRecordError } =
+    useGetRaffleRecordQuery(raffleRecordId ?? 0, {
+      skip: raffleRecordId == null,
+    });
   const [raffleRecord, setRaffleRecord] = useState<RaffleRecordResponse | null>(
     null
   );
@@ -193,6 +194,12 @@ const RafflePage = (): ReactNode => {
 
     setRaffleRecord(getRaffleRecordResult);
   }, [getRaffleRecordResult]);
+
+  useEffect(() => {
+    if (raffleRecordId != null && isNotFoundError(getRaffleRecordError)) {
+      handleClear();
+    }
+  }, [getRaffleRecordError, raffleRecordId]);
 
   useEffect(() => {
     if (isRollSuccess) {
