@@ -1,15 +1,13 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type TicketInfo } from '@keebmeet/shared';
-import {
-  type RaffleRecordResponse,
-  type RollRaffleWinnerResponse,
-} from '@keebmeet/shared';
 import {
   EditTicketPayload,
   type ClaimRaffleWinnerPayload,
+  type RaffleRecordResponse,
   type RollRaffleWinnerPayload,
+  type RollRaffleWinnerResponse,
+  type TicketInfo,
   type UnclaimRaffleWinnerPayload,
 } from '@keebmeet/shared';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { type RootState } from './store';
 
@@ -107,6 +105,13 @@ export const organizerSlice = createApi({
       }),
       invalidatesTags: ['Raffles', 'Raffle'], // TODO(jan): Invalidate by id
     }),
+    deleteRaffleRecord: builder.mutation<void, number>({
+      query: (raffleRecordId) => ({
+        url: `raffles/${raffleRecordId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Raffles', 'Raffle'],
+    }),
     getRaffleHistory: builder.query<RaffleRecordResponse[], number>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/raffles`,
@@ -136,6 +141,7 @@ export const {
   useRollRaffleWinnerMutation,
   useClaimRaffleWinnerMutation,
   useUnClaimRaffleWinnerMutation,
+  useDeleteRaffleRecordMutation,
   useGetRaffleHistoryQuery,
   useGetRaffleRecordQuery,
   useMarkRaffleAsDisplayedMutation,

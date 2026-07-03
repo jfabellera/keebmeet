@@ -1,9 +1,13 @@
-import { type ReactNode } from 'react';
-import dayjs from 'dayjs';
-import RelativeTime from 'dayjs/plugin/relativeTime';
-import { type RaffleRecordResponse } from '@keebmeet/shared';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { type RaffleRecordResponse } from '@keebmeet/shared';
+import dayjs from 'dayjs';
+import RelativeTime from 'dayjs/plugin/relativeTime';
+import { type ReactNode } from 'react';
+import { FiX } from 'react-icons/fi';
+import { toast } from 'sonner';
+import { useDeleteRaffleRecordMutation } from '../../store/organizerSlice';
+import { Button } from '../ui/button';
 
 dayjs.extend(RelativeTime);
 
@@ -18,19 +22,56 @@ const RaffleHistoryCard = ({
   className,
   ...rest
 }: Props): ReactNode => {
+  const [deleteRaffleRecord, { isLoading: isDeleting }] =
+    useDeleteRaffleRecordMutation();
+
   const handleClick = (): void => {
     onCardClick(Number(raffleRecord.id)); // TODO(jan): id is actually a string
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    try {
+      await deleteRaffleRecord(Number(raffleRecord.id)).unwrap();
+    } catch {
+      toast.error('Error', {
+        description: 'Failed to delete raffle roll',
+        position: 'top-center',
+      });
+    }
   };
 
   return (
     <div
       className={cn(
-        'bg-card text-card-foreground w-full cursor-pointer rounded-md p-4 shadow-sm',
+        'bg-card text-card-foreground flex w-full cursor-pointer flex-col gap-2 rounded-md p-4 shadow-sm',
         className
       )}
       onClick={handleClick}
       {...rest}
     >
+      <div className="flex justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          {raffleRecord.wasDisplayed ? (
+            <Badge className="bg-yellow-400 text-black">Displayed</Badge>
+          ) : (
+            <Badge className="bg-gray-300 text-black">Not Displayed</Badge>
+          )}
+          <p className="italic">
+            {dayjs(raffleRecord.createdAt).fromNow(true)} ago
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          disabled={isDeleting}
+          onClick={(e) => {
+            e.stopPropagation();
+            void handleDelete();
+          }}
+        >
+          <FiX />
+        </Button>
+      </div>
       <div className="flex flex-col gap-1.5">
         {raffleRecord.winners.map((winner, index) => (
           <div key={index} className="flex justify-between">
@@ -40,14 +81,6 @@ const RaffleHistoryCard = ({
             ) : null}
           </div>
         ))}
-        <div className="mt-2 flex justify-between">
-          {raffleRecord.wasDisplayed ? (
-            <Badge className="bg-yellow-400 text-black">Displayed</Badge>
-          ) : (
-            <span />
-          )}
-          <p>{dayjs(raffleRecord.createdAt).fromNow(true)}</p>
-        </div>
       </div>
     </div>
   );
