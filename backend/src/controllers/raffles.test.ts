@@ -17,9 +17,13 @@ jest.mock('../entity/Ticket', () => ({
 jest.mock('../util/math', () => ({
   generateMultipleRandomNumbers: jest.fn(),
 }));
+jest.mock('../datasource', () => ({
+  AppDataSource: { transaction: jest.fn() },
+}));
 
 import {
   claimRaffleWinner,
+  deleteRaffleRecord,
   getRaffleRecord,
   getRaffleRecords,
   markRaffleRecordAsDisplayed,
@@ -27,6 +31,7 @@ import {
   unclaimRaffleWinner,
 } from './raffles';
 import { socket } from '../Server';
+import { AppDataSource } from '../datasource';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
@@ -37,6 +42,7 @@ const mockedRaffleWinner = jest.mocked(RaffleWinner);
 const mockedTicket = jest.mocked(Ticket);
 const mockedRandom = jest.mocked(generateMultipleRandomNumbers);
 const mockedSocket = jest.mocked(socket);
+const mockedDataSource = jest.mocked(AppDataSource);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -448,5 +454,67 @@ describe('unclaimRaffleWinner', () => {
     expect(winner.claimed).toBe(false);
     expect(winner.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// ---- deleteRaffleRecord ----------------------------------------------------
+
+describe('deleteRaffleRecord', () => {
+  // Runs the transaction callback against a throwaway manager so the tests can
+  // assert on the decrement/remove calls it makes.
+  const stubTransaction = (): {
+    decrement: jest.Mock;
+    remove: jest.Mock;
+  } => {
+    const manager = {
+      decrement: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedDataSource.transaction.mockImplementation(
+      (async (cb: any) => cb(manager)) as any
+    );
+    return manager;
+  };
+
+  it('returns 404 when the record does not exist', async () => {
+    mockedRaffleRecord.findOne.mockResolvedValue(null);
+    stubTransaction();
+    const res = mockResponse();
+
+    await deleteRaffleRecord(mockRequest({}, { raffle_id: '3' }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(mockedDataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('decrements wins only for claimed winners and removes every row', async () => {
+    const claimedWinner = { ticket: { id: 5 }, claimed: true };
+    const unclaimedWinner = { ticket: { id: 6 }, claimed: false };
+    const raffleRecord = {
+      meetup: { id: 10 },
+      winners: [claimedWinner, unclaimedWinner],
+    };
+    mockedRaffleRecord.findOne.mockResolvedValue(raffleRecord as any);
+    const manager = stubTransaction();
+    const res = mockResponse();
+
+    await deleteRaffleRecord(mockRequest({}, { raffle_id: '3' }), res);
+
+    // Only the claimed winner gives back a win.
+    expect(manager.decrement).toHaveBeenCalledTimes(1);
+    expect(manager.decrement).toHaveBeenCalledWith(
+      Ticket,
+      { id: 5 },
+      'raffle_wins',
+      1
+    );
+    // Both winners and the record itself are removed.
+    expect(manager.remove).toHaveBeenCalledWith(claimedWinner);
+    expect(manager.remove).toHaveBeenCalledWith(unclaimedWinner);
+    expect(manager.remove).toHaveBeenCalledWith(raffleRecord);
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: 10,
+    });
+    expect(res.statusCode).toBe(204);
   });
 });

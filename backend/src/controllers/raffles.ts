@@ -1,21 +1,20 @@
-import { type Request, type Response } from 'express';
-import { MoreThan, Raw } from 'typeorm';
-import { socket } from '../Server';
-import { type Meetup } from '../entity/Meetup';
-import { RaffleRecord } from '../entity/RaffleRecord';
-import { RaffleWinner } from '../entity/RaffleWinner';
-import { Ticket } from '../entity/Ticket';
-import {
-  type RaffleRecordResponse,
-  type RaffleWinnerInfo,
-  type RollRaffleWinnerResponse,
-} from '@keebmeet/shared';
-import { generateMultipleRandomNumbers } from '../util/math';
 import {
   claimRaffleWinnerSchema,
   rollRaffleWinnerSchema,
   unclaimRaffleWinnerSchema,
+  type RaffleRecordResponse,
+  type RaffleWinnerInfo,
+  type RollRaffleWinnerResponse,
 } from '@keebmeet/shared';
+import { type Request, type Response } from 'express';
+import { MoreThan, Raw } from 'typeorm';
+import { socket } from '../Server';
+import { AppDataSource } from '../datasource';
+import { type Meetup } from '../entity/Meetup';
+import { RaffleRecord } from '../entity/RaffleRecord';
+import { RaffleWinner } from '../entity/RaffleWinner';
+import { Ticket } from '../entity/Ticket';
+import { generateMultipleRandomNumbers } from '../util/math';
 
 const mapRaffleRecordToResponse = (
   raffleRecord: RaffleRecord
@@ -279,4 +278,40 @@ export const unclaimRaffleWinner = async (
 
   socket.emit('meetup:update', { meetupId: raffleRecord.meetup.id });
   return res.status(200).end();
+};
+
+export const deleteRaffleRecord = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { raffle_id } = req.params;
+
+  const raffleRecord = await RaffleRecord.findOne({
+    relations: { winners: { ticket: true }, meetup: true },
+    where: { id: Number(raffle_id) },
+  });
+
+  if (raffleRecord == null)
+    return res.status(404).json({ message: 'Invalid raffle record ID.' });
+
+  await AppDataSource.transaction(async (manager) => {
+    for (const winner of raffleRecord.winners) {
+      // Undo win if the winner was claimed
+      if (winner.claimed) {
+        await manager.decrement(
+          Ticket,
+          { id: winner.ticket.id },
+          'raffle_wins',
+          1
+        );
+      }
+
+      await manager.remove(winner);
+    }
+
+    await manager.remove(raffleRecord);
+  });
+
+  socket.emit('meetup:update', { meetupId: raffleRecord.meetup.id });
+  return res.status(204).end();
 };

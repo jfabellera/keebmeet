@@ -1,5 +1,6 @@
 import express, { type RequestHandler } from 'express';
 import {
+  deleteRaffleRecord,
   getRaffleRecord,
   markRaffleRecordAsDisplayed,
   unclaimRaffleWinner,
@@ -12,6 +13,12 @@ router.get(
   '/:raffle_id',
   authChecker() as RequestHandler,
   getRaffleRecord as RequestHandler
+);
+
+router.delete(
+  '/:raffle_id',
+  authChecker() as RequestHandler,
+  deleteRaffleRecord as RequestHandler
 );
 
 router.post(
