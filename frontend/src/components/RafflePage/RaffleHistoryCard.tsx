@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogOverlay,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
@@ -103,7 +104,10 @@ const RaffleHistoryCard = ({
             </Button>
           </DialogTrigger>
           {/* Stop card-selection clicks from firing while interacting with the dialog. */}
-          <DialogContent onClick={(e) => e.stopPropagation()}>
+          <DialogContent
+            onClick={(e) => e.stopPropagation()}
+            showCloseButton={false}
+          >
             <DialogHeader>
               <DialogTitle>Delete this raffle roll?</DialogTitle>
               <DialogDescription>
