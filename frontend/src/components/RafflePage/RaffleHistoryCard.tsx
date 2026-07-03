@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { type RaffleRecordResponse } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import RelativeTime from 'dayjs/plugin/relativeTime';
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FiAlertTriangle, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useDeleteRaffleRecordMutation } from '../../store/organizerSlice';
@@ -35,6 +35,27 @@ const RaffleHistoryCard = ({
   const [deleteRaffleRecord, { isLoading: isDeleting }] =
     useDeleteRaffleRecordMutation();
 
+  const [isOpen, setIsOpen] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  const isBatchRoll = raffleRecord.winners.length > 1;
+  const claimedCount = raffleRecord.winners.filter(
+    (winner) => winner.claimed
+  ).length;
+  const hasWarning = claimedCount > 0 || raffleRecord.wasDisplayed;
+
+  const handleOpenChange = (open: boolean): void => {
+    setIsOpen(open);
+    if (open) setCooldown(hasWarning ? 3 : 0);
+  };
+
+  // Cooldown timer for delete confirmation
+  useEffect(() => {
+    if (!isOpen || cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((current) => current - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [isOpen, cooldown]);
+
   const handleClick = (): void => {
     onCardClick(Number(raffleRecord.id)); // TODO(jan): id is actually a string
   };
@@ -49,11 +70,6 @@ const RaffleHistoryCard = ({
       });
     }
   };
-
-  const isBatchRoll = raffleRecord.winners.length > 1;
-  const claimedCount = raffleRecord.winners.filter(
-    (winner) => winner.claimed
-  ).length;
 
   return (
     <div
@@ -75,7 +91,7 @@ const RaffleHistoryCard = ({
             {dayjs(raffleRecord.createdAt).fromNow(true)} ago
           </p>
         </div>
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button
               variant="ghost"
@@ -126,9 +142,10 @@ const RaffleHistoryCard = ({
               <DialogClose asChild>
                 <Button
                   variant="destructive"
+                  disabled={cooldown > 0}
                   onClick={() => void handleDelete()}
                 >
-                  Delete
+                  {cooldown > 0 ? `Delete (${cooldown})` : 'Delete'}
                 </Button>
               </DialogClose>
             </DialogFooter>
