@@ -4,8 +4,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Input } from '@/components/ui/input';
 import { type ChangeEvent, type ReactNode } from 'react';
-import { toast } from 'sonner';
-import { useUploadMeetupImageMutation } from '../../store/meetupSlice';
+import { IMAGE_ACCEPT, useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
   /** URL used to render the current image preview. */
@@ -30,23 +29,11 @@ const MeetupImageField = ({
   editable = true,
   label = 'Meetup Image',
 }: Props): ReactNode => {
-  const [uploadImage, { isLoading }] = useUploadMeetupImageMutation();
+  const { upload, isUploading } = useMeetupImageUpload();
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
-    if (file == null) return;
-
-    void (async () => {
-      const result = await uploadImage(file);
-      if ('error' in result && result.error != null) {
-        const data: any = 'data' in result.error ? result.error.data : null;
-        toast.error('Error uploading image', {
-          description: data?.message ?? 'Please try a different image.',
-        });
-        return;
-      }
-      onUploaded(result.data.image_key, result.data.image_url);
-    })();
+    if (file != null) upload(file, onUploaded);
   };
 
   return (
@@ -68,8 +55,8 @@ const MeetupImageField = ({
             id="meetupImage"
             name="meetupImage"
             type="file"
-            accept="image/png,image/jpeg,image/webp"
-            disabled={isLoading}
+            accept={IMAGE_ACCEPT}
+            disabled={isUploading}
             onChange={onFileChange}
           />
           {onRemove != null && previewUrl !== '' ? (
@@ -77,7 +64,7 @@ const MeetupImageField = ({
               type="button"
               variant="destructive"
               onClick={onRemove}
-              disabled={isLoading}
+              disabled={isUploading}
             >
               Remove
             </Button>

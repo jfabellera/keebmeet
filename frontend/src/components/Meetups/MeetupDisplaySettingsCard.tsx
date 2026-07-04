@@ -6,15 +6,12 @@ import { useBoolean } from '@/hooks/useBoolean';
 import type React from 'react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
-import { toast } from 'sonner';
 import {
   useEditMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
-  useUploadMeetupImageMutation,
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
-
-const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
+import { IMAGE_ACCEPT, useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
   meetupId: number;
@@ -26,7 +23,7 @@ const gridClass =
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup] = useEditMeetupMutation();
-  const [uploadImage] = useUploadMeetupImageMutation();
+  const { upload } = useMeetupImageUpload();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
   const [raffleBackgroundUrl, setRaffleBackgroundUrl] = useState<string>('');
@@ -47,18 +44,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
     file: File | undefined,
     apply: (url: string) => void
   ): void => {
-    if (file == null) return;
-    void (async () => {
-      const result = await uploadImage(file);
-      if ('error' in result && result.error != null) {
-        const data: any = 'data' in result.error ? result.error.data : null;
-        toast.error('Error uploading image', {
-          description: data?.message ?? 'Please try a different image.',
-        });
-        return;
-      }
-      apply(result.data.image_url);
-    })();
+    if (file != null) upload(file, (_imageKey, imageUrl) => apply(imageUrl));
   };
 
   const onIdleFileChange =

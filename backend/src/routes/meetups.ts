@@ -26,17 +26,17 @@ import {
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
 import { Rule, authChecker } from '../middleware/authChecker';
+import { ALLOWED_IMAGE_TYPES } from '../util/objectStorage';
 
 const router = express.Router();
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_MB = MAX_IMAGE_BYTES / (1024 * 1024);
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 // Marker so the wrapper can distinguish a rejected mimetype from other errors.
 const UNSUPPORTED_IMAGE_TYPE = 'UNSUPPORTED_IMAGE_TYPE';
 
 // Meetup images are held in memory and streamed straight to R2; they never
-// touch disk. Mimetype is validated again in the handler.
+// touch disk. Allowed mimetypes come from objectStorage's single source.
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_BYTES },

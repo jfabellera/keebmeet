@@ -21,6 +21,7 @@ jest.mock('../config', () => ({
     r2SecretKey: 'sk',
     r2JurisdictionUrl: 'https://acct.r2.cloudflarestorage.com',
     r2PublicBaseUrl: 'https://pub.r2.dev',
+    r2Bucket: 'keebmeet',
   },
 }));
 

@@ -32,6 +32,7 @@ interface Config {
   r2SecretKey: string;
   r2JurisdictionUrl: string;
   r2PublicBaseUrl: string;
+  r2Bucket: string;
 }
 
 const config: Config = {
@@ -66,6 +67,7 @@ const config: Config = {
   r2SecretKey: process.env.R2_SECRET_KEY ?? '',
   r2JurisdictionUrl: process.env.R2_JURISDICTION_URL ?? '',
   r2PublicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? '',
+  r2Bucket: process.env.R2_BUCKET ?? 'keebmeet',
 };
 
 export default config;

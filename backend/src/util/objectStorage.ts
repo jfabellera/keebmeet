@@ -7,9 +7,18 @@ import {
 import { randomUUID } from 'crypto';
 import config from '../config';
 
-const BUCKET = 'keebmeet';
+const BUCKET = config.r2Bucket;
 
 const ABSOLUTE_URL = /^https?:\/\//i;
+
+// Accepted upload mimetypes mapped to the extension stored in R2. Single source
+// of truth for both the multer filter (routes) and the upload handler.
+export const IMAGE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
+export const ALLOWED_IMAGE_TYPES = Object.keys(IMAGE_EXT_BY_MIME);
 
 // Fresh uploads land under a temp prefix. They are "promoted" to the permanent
 // prefix only when a meetup that references them is saved; anything left under
@@ -65,30 +74,24 @@ export const upload = async (
 };
 
 /**
- * Resolves a stored image reference to a URL a browser can load.
- *
- * New uploads are stored as bare R2 object keys, but some meetups reference an
- * external absolute URL (legacy rows, Eventbrite-sourced images). Absolute URLs
- * are returned unchanged; bare keys are prefixed with the configured R2 public
- * base URL.
- */
-export const publicUrl = (keyOrUrl: string): string => {
-  if (keyOrUrl === '') {
-    return '';
-  }
-  if (ABSOLUTE_URL.test(keyOrUrl)) {
-    return keyOrUrl;
-  }
-  const base = config.r2PublicBaseUrl.replace(/\/+$/, '');
-  return `${base}/${keyOrUrl}`;
-};
-
-/**
  * True when `value` is a bare R2 object key we own (not an external absolute
  * URL such as a legacy or Eventbrite image, which must never be deleted).
  */
 export const isManagedKey = (value: string): boolean =>
   value !== '' && !ABSOLUTE_URL.test(value);
+
+/**
+ * Resolves a stored image reference to a URL a browser can load.
+ *
+ * New uploads are stored as bare R2 object keys, but some meetups reference an
+ * external absolute URL (legacy rows, Eventbrite-sourced images), and an empty
+ * key means "no image". Only bare keys are prefixed with the R2 public base;
+ * everything else is returned unchanged.
+ */
+export const publicUrl = (keyOrUrl: string): string =>
+  isManagedKey(keyOrUrl)
+    ? `${config.r2PublicBaseUrl.replace(/\/+$/, '')}/${keyOrUrl}`
+    : keyOrUrl;
 
 /**
  * Inverse of {@link publicUrl}: recovers the stored object key from a value that
@@ -100,10 +103,9 @@ export const isManagedKey = (value: string): boolean =>
  */
 export const toStoredKey = (value: string): string => {
   const base = config.r2PublicBaseUrl.replace(/\/+$/, '');
-  if (base !== '' && value.startsWith(`${base}/`)) {
-    return value.slice(base.length + 1);
-  }
-  return value;
+  return base !== '' && value.startsWith(`${base}/`)
+    ? value.slice(base.length + 1)
+    : value;
 };
 
 /**

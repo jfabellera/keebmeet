@@ -35,6 +35,7 @@ import {
 } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
+  IMAGE_EXT_BY_MIME,
   buildTempImageKey,
   deleteObject,
   isManagedKey,
@@ -52,6 +53,21 @@ import {
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
+
+/**
+ * Best-effort deletion of R2 objects we own: keeps only managed keys (skips
+ * external/legacy URLs and empties) and swallows per-object failures — an
+ * orphaned object is preferable to a failed edit/delete.
+ */
+const deleteManagedObjects = async (keys: string[]): Promise<void> => {
+  await Promise.all(
+    keys.filter(isManagedKey).map((key) =>
+      deleteObject(key).catch((error) =>
+        console.error(`Failed to delete image "${key}":`, error)
+      )
+    )
+  );
+};
 
 enum MeetupInfoDetailLevel {
   Simple,
@@ -214,12 +230,6 @@ export const getMeetup = async (
   const meetupInfo = await mapMeetupInfo(meetup, detailLevel);
 
   return res.json(meetupInfo);
-};
-
-const IMAGE_EXT_BY_MIME: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
 };
 
 /**
@@ -491,28 +501,14 @@ const syncDisplayRecord = async (
 
   await record.save();
 
-  // Best-effort cleanup of images no longer referenced (skips external URLs).
-  const orphaned = [
-    ...prevIdle.filter(
-      (key) => isManagedKey(key) && !record.idle_image_urls.includes(key)
-    ),
-    ...(
-      [
-        [prevRaffle, record.raffle_background_url],
-        [prevBatch, record.batch_raffle_background_url],
-      ] as const
-    )
-      .filter(
-        ([prev, next]) => prev != null && isManagedKey(prev) && prev !== next
-      )
-      .map(([prev]) => prev as string),
-  ];
-  await Promise.all(
-    orphaned.map((key) =>
-      deleteObject(key).catch((error) =>
-        console.error(`Failed to delete removed display image "${key}":`, error)
-      )
-    )
+  // Best-effort cleanup of images no longer referenced (deleteManagedObjects
+  // skips external URLs and empties).
+  await deleteManagedObjects(
+    [
+      ...prevIdle.filter((key) => !record.idle_image_urls.includes(key)),
+      prevRaffle !== record.raffle_background_url ? prevRaffle : null,
+      prevBatch !== record.batch_raffle_background_url ? prevBatch : null,
+    ].filter((key): key is string => key != null)
   );
 };
 
@@ -640,20 +636,9 @@ export const updateMeetup = async (
 
   await meetup.save();
 
-  // Best-effort cleanup of the replaced image. Runs only after a successful
-  // save, skips external URLs (legacy/Eventbrite), and never fails the edit.
-  if (
-    previousImageKey !== meetup.image_key &&
-    isManagedKey(previousImageKey)
-  ) {
-    try {
-      await deleteObject(previousImageKey);
-    } catch (error) {
-      console.error(
-        `Failed to delete replaced meetup image "${previousImageKey}":`,
-        error
-      );
-    }
+  // Best-effort cleanup of the replaced image, after a successful save.
+  if (previousImageKey !== meetup.image_key) {
+    await deleteManagedObjects([previousImageKey]);
   }
 
   socket.emit('meetup:update', { meetupId: meetup.id });
@@ -746,21 +731,13 @@ export const deleteMeetup = async (
   });
 
   // Best-effort cleanup of the meetup's R2 image objects, after the DB delete
-  // commits. Skips external URLs (legacy/Eventbrite) and never blocks the
-  // response — orphaned objects are preferable to a failed deletion.
-  const imageKeys = [
+  // commits.
+  await deleteManagedObjects([
     meetup.image_key,
     ...(meetup.displayRecord?.idle_image_urls ?? []),
     meetup.displayRecord?.raffle_background_url ?? '',
     meetup.displayRecord?.batch_raffle_background_url ?? '',
-  ].filter(isManagedKey);
-  await Promise.all(
-    imageKeys.map((key) =>
-      deleteObject(key).catch((error) =>
-        console.error(`Failed to delete meetup image "${key}":`, error)
-      )
-    )
-  );
+  ]);
 
   socket.emit('meetup:update', { meetupId });
 
