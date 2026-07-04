@@ -26,7 +26,13 @@ interface Props {
   onRemove?: () => void;
   /** When false, only the preview is shown (no file picker). Defaults to true. */
   editable?: boolean;
+  /** Field label. Omit to render no label (e.g. inside a grid with its own heading). */
   label?: string;
+  /**
+   * Controls rendered in a row directly below the preview, e.g. reorder/remove
+   * buttons for a gallery item. Only shown while editable.
+   */
+  footer?: ReactNode;
   /** Preview aspect ratio (width/height). Defaults to 2 (meetup banner). */
   aspectRatio?: number;
   /** Render the preview as a circle (for avatars). */
@@ -47,7 +53,8 @@ const ImageUploadField = ({
   onUploaded,
   onRemove,
   editable = true,
-  label = 'Image',
+  label,
+  footer,
   aspectRatio = 2,
   rounded = false,
   className,
@@ -75,9 +82,11 @@ const ImageUploadField = ({
 
   return (
     <Field className={cn('max-w-sm min-w-0 py-2', className)}>
-      <FieldLabel htmlFor={inputId} className="line-clamp-1">
-        {label}
-      </FieldLabel>
+      {label != null && label !== '' ? (
+        <FieldLabel htmlFor={inputId} className="line-clamp-1">
+          {label}
+        </FieldLabel>
+      ) : null}
       <AspectRatio ratio={aspectRatio}>
         <div
           className={cn(
@@ -145,6 +154,11 @@ const ImageUploadField = ({
           ) : null}
         </div>
       </AspectRatio>
+      {editable && footer != null ? (
+        <div className="mt-2 flex items-center justify-center gap-1">
+          {footer}
+        </div>
+      ) : null}
     </Field>
   );
 };
