@@ -53,8 +53,15 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         payload.duration_hours = values.duration;
       if (formik.initialValues.capacity !== values.capacity)
         payload.capacity = values.capacity;
-      // imageKey is only set when the organizer uploads a new image.
-      if (values.imageKey !== '') payload.image_key = values.imageKey;
+      // A new upload sets imageKey; clearing an existing image empties imageUrl.
+      if (values.imageKey !== '') {
+        payload.image_key = values.imageKey;
+      } else if (
+        values.imageUrl === '' &&
+        formik.initialValues.imageUrl !== ''
+      ) {
+        payload.image_key = '';
+      }
       if (formik.initialValues.description !== values.description)
         payload.description = values.description;
 
@@ -190,6 +197,10 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onUploaded={(imageKey, imageUrl) => {
             void formik.setFieldValue('imageKey', imageKey);
             void formik.setFieldValue('imageUrl', imageUrl);
+          }}
+          onRemove={() => {
+            void formik.setFieldValue('imageKey', '');
+            void formik.setFieldValue('imageUrl', '');
           }}
         />
         <EditableFormField

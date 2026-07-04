@@ -1,4 +1,5 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ interface Props {
   previewUrl: string;
   /** Called with the R2 object key (and its public URL) after a successful upload. */
   onUploaded: (imageKey: string, imageUrl: string) => void;
+  onRemove?: () => void;
   /** When false, only the preview is shown (no file picker). Defaults to true. */
   editable?: boolean;
   label?: string;
@@ -24,6 +26,7 @@ interface Props {
 const MeetupImageField = ({
   previewUrl,
   onUploaded,
+  onRemove,
   editable = true,
   label = 'Meetup Image',
 }: Props): ReactNode => {
@@ -60,15 +63,26 @@ const MeetupImageField = ({
         </div>
       </AspectRatio>
       {editable ? (
-        <Input
-          id="meetupImage"
-          name="meetupImage"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="mt-4"
-          disabled={isLoading}
-          onChange={onFileChange}
-        />
+        <div className="mt-4 flex items-center gap-2">
+          <Input
+            id="meetupImage"
+            name="meetupImage"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={isLoading}
+            onChange={onFileChange}
+          />
+          {onRemove != null && previewUrl !== '' ? (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={onRemove}
+              disabled={isLoading}
+            >
+              Remove
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </Field>
   );

@@ -500,6 +500,23 @@ describe('updateMeetup', () => {
     expect(mockedDeleteObject).not.toHaveBeenCalled();
   });
 
+  it('clears and deletes the image when image_key is emptied', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(mockRequest({ image_key: '' }, { meetup_id: '10' }), res);
+
+    expect(meetup.image_key).toBe('');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
   it('still succeeds if deleting the replaced image fails', async () => {
     const meetup = fakeMeetupRow({
       image_key: 'meetups/old.png',
