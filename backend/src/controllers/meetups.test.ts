@@ -66,6 +66,11 @@ jest.mock('../datasource', () => ({
     ),
   },
 }));
+jest.mock('../entity/User', () => ({
+  User: {
+    findBy: jest.fn(),
+  },
+}));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
 jest.mock('../util/objectStorage', () => {
   const actual = jest.requireActual('../util/objectStorage');
@@ -91,7 +96,9 @@ import {
   updateMeetup,
 } from './meetups';
 import { socket } from '../Server';
+import { In } from 'typeorm';
 import { Meetup } from '../entity/Meetup';
+import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { Ticket } from '../entity/Ticket';
@@ -107,6 +114,7 @@ import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
+const mockedUser = jest.mocked(User);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
@@ -312,6 +320,69 @@ describe('createMeetup', () => {
     expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('adds the selected additional organizers, requestor first', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedUser.findBy.mockResolvedValue([
+      { id: 2, nick_name: 'john' },
+      { id: 3, nick_name: 'jill' },
+    ] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ organizer_ids: [2, 3] })),
+      res
+    );
+
+    expect(mockedUser.findBy).toHaveBeenCalledWith({ id: In([2, 3]) });
+    const created = res.body as any;
+    expect(created.organizers).toEqual([
+      { id: 1, nick_name: 'jane' },
+      { id: 2, nick_name: 'john' },
+      { id: 3, nick_name: 'jill' },
+    ]);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not duplicate the requestor when included in organizer_ids', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    // Mirrors the DB returning the requestor row for their own id.
+    mockedUser.findBy.mockResolvedValue([
+      { id: 1, nick_name: 'jane' },
+      { id: 2, nick_name: 'john' },
+    ] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ organizer_ids: [1, 2] })),
+      res
+    );
+
+    const created = res.body as any;
+    expect(created.organizers).toEqual([
+      { id: 1, nick_name: 'jane' },
+      { id: 2, nick_name: 'john' },
+    ]);
+  });
+
+  it('does not query for organizers when none are selected', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(mockedUser.findBy).not.toHaveBeenCalled();
+    expect((res.body as any).organizers).toEqual([{ id: 1, nick_name: 'jane' }]);
   });
 
   it('promotes the uploaded image out of the temp prefix', async () => {

@@ -12,7 +12,7 @@ import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
-import { type User } from '../entity/User';
+import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
   type EditMeetupPayload,
@@ -268,11 +268,21 @@ export const createMeetup = async (
     default_raffle_entries: result.data.default_raffle_entries,
   });
 
-  // Add requestor to front of organizer list
-  newMeetup.organizers.unshift(res.locals.requestor);
+  const requestor = res.locals.requestor as User;
 
-  // Remove duplicates
-  newMeetup.organizers = Array.from(new Set(newMeetup.organizers));
+  // Add any additional organizers selected by the requestor, excluding the
+  // requestor themselves (added to the front below).
+  if (result.data.organizer_ids != null && result.data.organizer_ids.length > 0) {
+    const additionalOrganizers = await User.findBy({
+      id: In(result.data.organizer_ids),
+    });
+    newMeetup.organizers.push(
+      ...additionalOrganizers.filter((user) => user.id !== requestor.id)
+    );
+  }
+
+  // Add requestor to front of organizer list
+  newMeetup.organizers.unshift(requestor);
 
   // Check if meetup name is taken
   const existingMeetup = await Meetup.findOne({
