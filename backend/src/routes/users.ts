@@ -4,7 +4,12 @@ import {
   getUserDiscordServerChannels,
   getUserDiscordServers,
 } from '../controllers/userDiscord';
-import { getAllUsers, getUser, uploadUserImage } from '../controllers/users';
+import {
+  getAllUsers,
+  getOrganizers,
+  getUser,
+  uploadUserImage,
+} from '../controllers/users';
 import { authChecker, Rule } from '../middleware/authChecker';
 import { uploadImageFile } from '../middleware/imageUpload';
 import { loginLimiter } from '../middleware/rateLimiter';
@@ -24,6 +29,11 @@ router.get(
   '/',
   authChecker([Rule.requireAdmin]) as RequestHandler,
   getAllUsers as RequestHandler
+);
+router.get(
+  '/organizers',
+  authChecker() as RequestHandler,
+  getOrganizers as RequestHandler
 );
 router.get(
   '/:user_id',

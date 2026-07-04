@@ -17,6 +17,12 @@ export interface User {
   has_organizer_request?: boolean;
 }
 
+export interface Organizer {
+  id: number;
+  display_name: string;
+  photo_url: string;
+}
+
 export interface OrganizerRequestInfo {
   id: number;
   created_at: string;

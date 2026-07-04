@@ -1,7 +1,10 @@
+import {
+  type Organizer as OrganizerInterface,
+  type User as UserInterface,
+} from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
-import { type User as UserInterface } from '@keebmeet/shared';
 import { fetchDiscordUsername } from '../util/discord';
 import {
   IMAGE_EXT_BY_MIME,
@@ -47,6 +50,26 @@ export const getAllUsers = async (
   const users = await User.find();
 
   const response: UserInterface[] = users.map(toUserResponse);
+
+  return res.json(response);
+};
+
+export const getOrganizers = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const organizers = await User.findBy({
+    is_organizer: true,
+  });
+
+  const response: OrganizerInterface[] = organizers.map(
+    (user) =>
+      ({
+        id: user.id,
+        display_name: user.nick_name,
+        photo_url: publicUrl(user.photo_key ?? ''),
+      }) satisfies OrganizerInterface
+  );
 
   return res.json(response);
 };
