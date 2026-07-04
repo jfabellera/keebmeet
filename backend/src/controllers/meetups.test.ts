@@ -186,7 +186,7 @@ const fakeMeetupRow = (overrides = {}): any => ({
   capacity: 100,
   image_key: 'http://img',
   organizers: [{ id: 1, nick_name: 'jane' }],
-  leadOrganizer: { id: 1, nick_name: 'jane' },
+  lead_organizer: { id: 1, nick_name: 'jane' },
   eventbriteRecord: null,
   ...overrides,
 });
@@ -239,7 +239,7 @@ describe('getAllMeetups', () => {
     const body = res.body as any[];
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
     expect(body[0].organizers).toEqual([{ id: 1, display_name: 'jane' }]);
-    expect(body[0].lead_organizer_id).toBe(1);
+    expect(body[0].lead_organizer).toEqual({ id: 1, display_name: 'jane' });
   });
 });
 
@@ -336,13 +336,14 @@ describe('createMeetup', () => {
 
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
-    expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
-    expect(created.leadOrganizer).toEqual({ id: 1, nick_name: 'jane' });
+    // The requestor is the lead, tracked separately — not in the co-organizers.
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.organizers).toEqual([]);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
   });
 
-  it('adds the selected additional organizers, requestor first', async () => {
+  it('sets the selected additional organizers as co-organizers (lead separate)', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
@@ -360,15 +361,15 @@ describe('createMeetup', () => {
 
     expect(mockedUser.findBy).toHaveBeenCalledWith({ id: In([2, 3]) });
     const created = res.body as any;
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
     expect(created.organizers).toEqual([
-      { id: 1, nick_name: 'jane' },
       { id: 2, nick_name: 'john' },
       { id: 3, nick_name: 'jill' },
     ]);
     expect(res.statusCode).toBe(201);
   });
 
-  it('does not duplicate the requestor when included in organizer_ids', async () => {
+  it('keeps the lead out of the co-organizers when included in organizer_ids', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
@@ -386,10 +387,8 @@ describe('createMeetup', () => {
     );
 
     const created = res.body as any;
-    expect(created.organizers).toEqual([
-      { id: 1, nick_name: 'jane' },
-      { id: 2, nick_name: 'john' },
-    ]);
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.organizers).toEqual([{ id: 2, nick_name: 'john' }]);
   });
 
   it('does not query for organizers when none are selected', async () => {
@@ -402,7 +401,11 @@ describe('createMeetup', () => {
     await createMeetup(mockRequest(validCreateBody()), res);
 
     expect(mockedUser.findBy).not.toHaveBeenCalled();
-    expect((res.body as any).organizers).toEqual([{ id: 1, nick_name: 'jane' }]);
+    expect((res.body as any).organizers).toEqual([]);
+    expect((res.body as any).lead_organizer).toEqual({
+      id: 1,
+      nick_name: 'jane',
+    });
   });
 
   it('promotes the uploaded image out of the temp prefix', async () => {
@@ -489,48 +492,49 @@ describe('updateMeetup', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('adds new organizers via the join table, keeping the requestor', async () => {
+  it('sets the co-organizer join table to match organizer_ids', async () => {
     const meetup = fakeMeetupRow({
       save: jest.fn().mockResolvedValue(undefined),
     });
     mockedMeetup.findOne
-      .mockResolvedValueOnce(meetup) // target lookup (no organizers relation)
+      .mockResolvedValueOnce(meetup) // target lookup (lead_organizer loaded)
       .mockResolvedValueOnce(null) // name-collision lookup
-      .mockResolvedValueOnce({ organizers: [{ id: 1 }] } as never); // organizers lookup
+      .mockResolvedValueOnce({
+        organizers: [{ id: 2 }, { id: 5 }],
+      } as never); // organizers lookup
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
 
     await updateMeetup(
       mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
       res
     );
 
-    // Only the newly added ids are inserted; nothing is removed.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([2, 3], []);
+    // Add 3, remove 5; 2 is unchanged.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], [5]);
     expect(res.statusCode).toBe(201);
   });
 
-  it('does not re-add the requestor when included in organizer_ids', async () => {
+  it('never adds the lead to the co-organizer list', async () => {
+    // fakeMeetupRow's lead is user 1; a client that includes it is ignored.
     const meetup = fakeMeetupRow({
       save: jest.fn().mockResolvedValue(undefined),
     });
     mockedMeetup.findOne
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ organizers: [{ id: 1 }] } as never);
+      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
 
     await updateMeetup(
-      mockRequest({ organizer_ids: [1, 2] }, { meetup_id: '10' }),
+      mockRequest({ organizer_ids: [1, 2, 3] }, { meetup_id: '10' }),
       res
     );
 
-    // Requestor (1) is already linked, so only 2 is added.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([2], []);
+    // Lead (1) is filtered out; only co-organizer 3 is added.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], []);
   });
 
-  it('removes co-organizers when organizer_ids is empty, keeping the requestor', async () => {
+  it('removes all co-organizers when organizer_ids is empty', async () => {
     const meetup = fakeMeetupRow({
       save: jest.fn().mockResolvedValue(undefined),
     });
@@ -538,66 +542,17 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
-        organizers: [{ id: 1 }, { id: 2 }],
+        organizers: [{ id: 2 }, { id: 3 }],
       } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
 
     await updateMeetup(
       mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
       res
     );
 
-    // Requestor (1) is kept; co-organizer 2 is unlinked.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2]);
-  });
-
-  it('keeps the requestor even when they are not first in the stored order', async () => {
-    const meetup = fakeMeetupRow({
-      save: jest.fn().mockResolvedValue(undefined),
-    });
-    // Requestor (1) is stored second; removing co-organizer 2 must not drop 1.
-    mockedMeetup.findOne
-      .mockResolvedValueOnce(meetup)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        organizers: [{ id: 2 }, { id: 1 }, { id: 3 }],
-      } as never);
-    const res = mockResponse();
-    res.locals.requestor = { id: 1 };
-
-    await updateMeetup(
-      mockRequest({ organizer_ids: [3] }, { meetup_id: '10' }),
-      res
-    );
-
-    // Desired [1, 3]; only co-organizer 2 is unlinked, requestor 1 is kept.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2]);
-  });
-
-  it('keeps the lead organizer when a co-organizer edits', async () => {
-    // Lead is user 1; the editor (requestor) is co-organizer 5.
-    const meetup = fakeMeetupRow({
-      leadOrganizer: { id: 1, nick_name: 'jane' },
-      save: jest.fn().mockResolvedValue(undefined),
-    });
-    mockedMeetup.findOne
-      .mockResolvedValueOnce(meetup)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        organizers: [{ id: 1 }, { id: 5 }, { id: 3 }],
-      } as never);
-    const res = mockResponse();
-    res.locals.requestor = { id: 5 };
-
-    await updateMeetup(
-      mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
-      res
-    );
-
-    // Desired [1 (lead), 5 (requestor)]; only co-organizer 3 is unlinked — the
-    // lead can't be dropped even though the editor isn't the lead.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [3]);
+    // The lead lives in its own column and is untouched here.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2, 3]);
   });
 
   it('leaves organizers untouched when organizer_ids is not provided', async () => {
@@ -625,18 +580,15 @@ describe('updateMeetup', () => {
     mockedMeetup.findOne
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        organizers: [{ id: 1 }, { id: 2 }],
-      } as never);
+      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
 
     await updateMeetup(
       mockRequest({ organizer_ids: [2] }, { meetup_id: '10' }),
       res
     );
 
-    // Desired set [1, 2] matches the current set, so nothing is written.
+    // Desired set [2] matches the current co-organizers, so nothing is written.
     expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
   });
 

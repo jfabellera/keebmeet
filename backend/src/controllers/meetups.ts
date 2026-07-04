@@ -90,7 +90,12 @@ const mapMeetupInfo = async (
       id: organizer.id,
       display_name: organizer.nick_name,
     }));
-    meetupInfo.lead_organizer_id = meetup.lead_organizer?.id;
+    if (meetup.lead_organizer != null) {
+      meetupInfo.lead_organizer = {
+        id: meetup.lead_organizer.id,
+        display_name: meetup.lead_organizer.nick_name,
+      };
+    }
 
     // Get ticket details
     const ticketCount = await Ticket.count({
@@ -110,15 +115,10 @@ const mapMeetupInfo = async (
   return meetupInfo;
 };
 
-const createMeetupsFilter = (query: ParsedQs): FindOptionsWhere<Meetup> => {
+const createMeetupsFilter = (
+  query: ParsedQs
+): FindOptionsWhere<Meetup> | FindOptionsWhere<Meetup>[] => {
   const findOptionsWhere: FindOptionsWhere<Meetup> = {};
-
-  if (query.by_organizer_id != null) {
-    const organizerId = Number(query.by_organizer_id);
-    findOptionsWhere.organizers = {
-      id: organizerId,
-    };
-  }
 
   if (query.by_city != null) {
     const city = String(query.by_city);
@@ -133,6 +133,14 @@ const createMeetupsFilter = (query: ParsedQs): FindOptionsWhere<Meetup> => {
   if (query.by_country != null) {
     const country = String(query.by_country);
     findOptionsWhere.country = ILike(country);
+  }
+
+  if (query.by_organizer_id != null) {
+    const organizerId = Number(query.by_organizer_id);
+    return [
+      { ...findOptionsWhere, organizers: { id: organizerId } },
+      { ...findOptionsWhere, lead_organizer: { id: organizerId } },
+    ];
   }
 
   return findOptionsWhere;
@@ -206,6 +214,7 @@ export const getMeetup = async (
   const meetup = await Meetup.findOne({
     relations: {
       organizers: true,
+      lead_organizer: true,
       eventbriteRecord: true,
     },
     where: {
@@ -276,12 +285,12 @@ export const createMeetup = async (
 
   const requestor = res.locals.requestor as User;
 
-  // The creator owns the meetup: they're the lead organizer and are always part
-  // of the organizer list.
+  // The creator owns the meetup as its lead organizer. `organizers` holds only
+  // the additional (co-)organizers, so the requestor is not added there.
   newMeetup.lead_organizer = requestor;
 
   // Add any additional organizers selected by the requestor, excluding the
-  // requestor themselves (added to the front below).
+  // requestor themselves (they're the lead, tracked separately).
   if (
     result.data.organizer_ids != null &&
     result.data.organizer_ids.length > 0
@@ -293,9 +302,6 @@ export const createMeetup = async (
       ...additionalOrganizers.filter((user) => user.id !== requestor.id)
     );
   }
-
-  // Add requestor to front of organizer list
-  newMeetup.organizers.unshift(requestor);
 
   // Check if meetup name is taken
   const existingMeetup = await Meetup.findOne({
@@ -430,8 +436,9 @@ export const createMeetupFromEventbrite = async (
       default_raffle_entries: result.data.default_raffle_entries,
     });
 
-    newMeetup.organizers.unshift(user);
-    newMeetup.organizers = Array.from(new Set(newMeetup.organizers));
+    // The creator owns the meetup as its lead organizer; `organizers` holds only
+    // additional co-organizers (none for an Eventbrite import).
+    newMeetup.lead_organizer = user;
     newMeetup.utc_offset = utcOffset;
 
     await newMeetup.save();
@@ -535,7 +542,7 @@ export const updateMeetup = async (
     relations: {
       displayRecord: true,
       // ManyToOne — safe to load on the saved entity (unlike the organizers
-      // ManyToMany). We need the lead's id to keep them in the organizer list.
+      // ManyToMany). Used to keep the lead out of the co-organizer list.
       lead_organizer: true,
     },
     where: { id: parseInt(meetup_id) },
@@ -623,15 +630,14 @@ export const updateMeetup = async (
 
   await meetup.save();
 
-  // Update the organizer list. The lead organizer (owner) and the requestor
-  // (the organizer making the edit — excluded from the client's picker, so
-  // absent from organizer_ids) are always kept. We read the current organizers
-  // in a separate query: the ManyToMany relation is deliberately NOT loaded on
-  // the saved entity above, since save()ing an entity with the relation loaded
-  // re-inserts the join rows and trips the join table's primary key. The join
-  // table is instead updated via the relation builder.
+  // Update the co-organizer list to match organizer_ids. `organizers` holds
+  // co-organizers only — the lead is tracked separately and is filtered out
+  // here so it can never be added to (or removed from) this list. We read the
+  // current organizers in a separate query: the ManyToMany relation is
+  // deliberately NOT loaded on the saved entity above, since save()ing an entity
+  // with the relation loaded re-inserts the join rows and trips the join table's
+  // primary key. The join table is instead updated via the relation builder.
   if (result.data.organizer_ids != null) {
-    const requestor = res.locals.requestor as User;
     const withOrganizers = await Meetup.findOne({
       relations: { organizers: true },
       where: { id: meetup.id },
@@ -639,12 +645,8 @@ export const updateMeetup = async (
     const currentIds = (withOrganizers?.organizers ?? []).map(
       (organizer) => organizer.id
     );
-    const desiredIds = Array.from(
-      new Set([
-        meetup.lead_organizer.id,
-        requestor.id,
-        ...result.data.organizer_ids,
-      ])
+    const desiredIds = Array.from(new Set(result.data.organizer_ids)).filter(
+      (id) => id !== meetup.lead_organizer?.id
     );
     const toAdd = desiredIds.filter((id) => !currentIds.includes(id));
     const toRemove = currentIds.filter((id) => !desiredIds.includes(id));

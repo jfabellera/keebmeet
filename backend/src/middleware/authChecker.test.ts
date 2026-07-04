@@ -477,6 +477,27 @@ describe('authChecker: meetup_id ownership', () => {
     expect(next).toHaveBeenCalled();
   });
 
+  it('allows the lead organizer even when not in the organizers list', async () => {
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    // Lead lives in its own column; co-organizers list doesn't include them.
+    mockedMeetup.findOne.mockResolvedValue({
+      id: 10,
+      lead_organizer: { id: 1 },
+      organizers: [{ id: 2 }],
+    } as any);
+    const res = mockResponse();
+    const next = jest.fn();
+
+    await authChecker()(
+      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      res,
+      next
+    );
+
+    expect(res.locals.meetup).toBeDefined();
+    expect(next).toHaveBeenCalled();
+  });
+
   it('skips the organizer check when ignoreMeetupOrganizer is set', async () => {
     mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
     mockedMeetup.findOne.mockResolvedValue({ id: 10, organizers: [] } as any);

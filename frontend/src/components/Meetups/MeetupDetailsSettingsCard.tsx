@@ -14,6 +14,7 @@ import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
+import { Badge } from '@/components/ui/badge';
 import OrganizerCombobox from './OrganizerCombobox';
 
 dayjs.extend(customParseFormat);
@@ -180,13 +181,16 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         />
         <Field className="py-2">
           <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+          {meetup?.lead_organizer != null ? (
+            <Badge variant="secondary" className="w-fit">
+              {meetup.lead_organizer.display_name} · Lead
+            </Badge>
+          ) : null}
           <OrganizerCombobox
             id="organizers"
             disabled={!isEditable}
             excludeIds={
-              meetup?.lead_organizer_id != null
-                ? [meetup.lead_organizer_id]
-                : []
+              meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
             }
             value={formik.values.organizerIds}
             onChange={(organizerIds) =>

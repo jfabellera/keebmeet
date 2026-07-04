@@ -16,9 +16,7 @@ export interface MeetupInfo {
     postal_code?: string;
   };
   organizers?: { id: number; display_name: string }[];
-  // The owning organizer's id. Lets the edit form treat the lead as fixed
-  // (never removable from the organizer list).
-  lead_organizer_id?: number;
+  lead_organizer?: { id: number; display_name: string };
   tickets?: {
     total: number;
     available: number;

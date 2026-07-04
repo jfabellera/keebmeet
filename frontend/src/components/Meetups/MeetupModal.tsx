@@ -208,9 +208,14 @@ export const MeetupModal = ({
                   <p>
                     Organized by{' '}
                     {new Intl.ListFormat().format(
-                      meetup.organizers.map(
-                        (organizer) => organizer.display_name
-                      )
+                      [meetup.lead_organizer, ...meetup.organizers]
+                        .filter(
+                          (
+                            organizer
+                          ): organizer is NonNullable<typeof organizer> =>
+                            organizer != null
+                        )
+                        .map((organizer) => organizer.display_name)
                     )}
                   </p>
                 </div>
