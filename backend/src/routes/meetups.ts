@@ -1,4 +1,5 @@
 import express, { type RequestHandler } from 'express';
+import multer from 'multer';
 import {
   createMeetup,
   createMeetupFromEventbrite,
@@ -9,6 +10,7 @@ import {
   getMeetupDisplayAssets,
   syncEventbriteAttendees,
   updateMeetup,
+  uploadMeetupImage,
 } from '../controllers/meetups';
 import {
   createMeetupDiscordMessage,
@@ -22,6 +24,17 @@ import { Rule, authChecker } from '../middleware/authChecker';
 
 const router = express.Router();
 
+// Meetup images are held in memory and streamed straight to R2; they never
+// touch disk. Mimetype is validated again in the handler.
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
 router.get('/', getAllMeetups as RequestHandler);
 
 router.get('/:meetup_id', getMeetup as RequestHandler);
@@ -30,6 +43,13 @@ router.post(
   '/',
   authChecker([Rule.requireOrganizer]) as RequestHandler,
   createMeetup as RequestHandler
+);
+
+router.post(
+  '/image',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  imageUpload.single('image'),
+  uploadMeetupImage as RequestHandler
 );
 
 router.post(

@@ -125,7 +125,7 @@ const fakeMeetupRow = (overrides = {}): any => ({
   address: '123 Main St',
   description: 'A meetup',
   capacity: 100,
-  image_url: 'http://img',
+  image_key: 'http://img',
   organizers: [{ id: 1, nick_name: 'jane' }],
   eventbriteRecord: null,
   ...overrides,
@@ -227,7 +227,7 @@ const validCreateBody = (overrides = {}) => ({
   address: '500 Congress Ave',
   duration_hours: 4,
   capacity: 50,
-  image_url: 'http://img',
+  image_key: 'http://img',
   ...overrides,
 });
 

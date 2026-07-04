@@ -1,7 +1,3 @@
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { ImageWithFallback } from '@/components/ui/image-with-fallback';
-import { Input } from '@/components/ui/input';
 import { useBoolean } from '@/hooks/useBoolean';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -16,6 +12,7 @@ import {
 import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
+import MeetupImageField from './MeetupImageField';
 
 dayjs.extend(customParseFormat);
 
@@ -37,6 +34,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       duration: 0,
       capacity: 0,
       imageUrl: '',
+      imageKey: '',
       description: '',
     },
     onSubmit: async (values) => {
@@ -55,8 +53,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         payload.duration_hours = values.duration;
       if (formik.initialValues.capacity !== values.capacity)
         payload.capacity = values.capacity;
-      if (formik.initialValues.imageUrl !== values.imageUrl)
-        payload.image_url = values.imageUrl;
+      // imageKey is only set when the organizer uploads a new image.
+      if (values.imageKey !== '') payload.image_key = values.imageKey;
       if (formik.initialValues.description !== values.description)
         payload.description = values.description;
 
@@ -87,6 +85,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         duration: meetup?.duration_hours ?? 0,
         capacity: meetup?.tickets?.total ?? 0,
         imageUrl: meetup?.image_url ?? '',
+        imageKey: '',
         description: meetup?.description ?? '',
       },
     });
@@ -185,29 +184,14 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.capacity}
         />
-        <Field className="max-w-sm min-w-0 py-2">
-          <FieldLabel htmlFor={'imageUrl'} className="line-clamp-1">
-            Meetup Image
-          </FieldLabel>
-          <AspectRatio ratio={2 / 1}>
-            <div className="size-full border">
-              <ImageWithFallback
-                src={formik.values.imageUrl}
-                className="size-full object-cover"
-              />
-            </div>
-          </AspectRatio>
-          {isEditable ? (
-            <Input
-              id={'imageUrl'}
-              name={'imageUrl'}
-              className="mt-4"
-              value={formik.values.imageUrl}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-            />
-          ) : null}
-        </Field>
+        <MeetupImageField
+          previewUrl={formik.values.imageUrl}
+          editable={isEditable}
+          onUploaded={(imageKey, imageUrl) => {
+            void formik.setFieldValue('imageKey', imageKey);
+            void formik.setFieldValue('imageUrl', imageUrl);
+          }}
+        />
         <EditableFormField
           name={'Description'}
           value={meetup?.description}

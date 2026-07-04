@@ -33,6 +33,7 @@ import {
   type GeocodeResults,
 } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { buildImageKey, publicUrl, upload } from '../util/objectStorage';
 import { decrypt } from '../util/security';
 import {
   createMeetupFromEventbriteSchema,
@@ -62,7 +63,7 @@ const mapMeetupInfo = async (
       state: meetup.state,
       country: meetup.country,
     },
-    image_url: meetup.image_url,
+    image_url: publicUrl(meetup.image_key),
   };
 
   if (meetup.eventbriteRecord != null) {
@@ -206,6 +207,40 @@ export const getMeetup = async (
   return res.json(meetupInfo);
 };
 
+const IMAGE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
+
+/**
+ * Accepts a single multipart image file, stores it in R2, and returns the
+ * object key plus a browser-loadable URL. Organizers upload here first, then
+ * pass the returned `image_key` when creating or editing a meetup.
+ */
+export const uploadMeetupImage = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const file = req.file;
+
+  if (file == null) {
+    return res.status(400).json({ message: 'No image file provided.' });
+  }
+
+  const ext = IMAGE_EXT_BY_MIME[file.mimetype];
+  if (ext === undefined) {
+    return res
+      .status(400)
+      .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
+  }
+
+  const key = buildImageKey(ext);
+  await upload(key, file.buffer, file.mimetype);
+
+  return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
+};
+
 export const createMeetup = async (
   req: Request,
   res: Response
@@ -223,7 +258,7 @@ export const createMeetup = async (
     organizers: [],
     capacity: result.data.capacity,
     duration_hours: result.data.duration_hours,
-    image_url: result.data.image_url,
+    image_key: result.data.image_key,
     description: result.data.description,
     has_raffle: result.data.has_raffle,
     default_raffle_entries: result.data.default_raffle_entries,
@@ -352,7 +387,9 @@ export const createMeetupFromEventbrite = async (
       country: geocodeResult.country,
       capacity: ebTicketClass.total,
       duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
-      image_url: ebEvent.imageUrl,
+      // Eventbrite provides an external absolute URL; stored as-is and passed
+      // through publicUrl() unchanged on read.
+      image_key: ebEvent.imageUrl,
       description: ebEvent.description,
       organizers: [],
       has_raffle: result.data.has_raffle,
@@ -432,7 +469,7 @@ export const updateMeetup = async (
   meetup.duration_hours = req.body.duration_hours ?? meetup.duration_hours;
   meetup.has_raffle = req.body.has_raffle ?? meetup.has_raffle;
   meetup.capacity = req.body.capacity ?? meetup.capacity;
-  meetup.image_url = req.body.image_url ?? meetup.image_url;
+  meetup.image_key = req.body.image_key ?? meetup.image_key;
   meetup.address = req.body.address ?? meetup.address;
   meetup.description = req.body.description ?? meetup.description;
   meetup.default_raffle_entries =

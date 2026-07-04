@@ -63,6 +63,21 @@ export const meetupSlice = createApi({
       }),
       invalidatesTags: ['Meetups'],
     }),
+    uploadMeetupImage: builder.mutation<
+      { image_key: string; image_url: string },
+      File
+    >({
+      query: (file) => {
+        const body = new FormData();
+        body.append('image', file);
+        // Don't set Content-Type — the browser adds the multipart boundary.
+        return {
+          url: `meetups/image`,
+          method: 'POST',
+          body,
+        };
+      },
+    }),
     createMeetupFromEventbrite: builder.mutation<
       void,
       CreateMeetupFromEventbritePayload
@@ -156,6 +171,7 @@ export const {
   useGetMeetupsQuery,
   useGetMeetupQuery,
   useCreateMeetupMutation,
+  useUploadMeetupImageMutation,
   useCreateMeetupFromEventbriteMutation,
   useEditMeetupMutation,
   useDeleteMeetupMutation,

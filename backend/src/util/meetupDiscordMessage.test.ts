@@ -38,7 +38,7 @@ const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   description: 'desc',
   date: '2026-07-01T00:00:00Z',
   address: '123 St',
-  image_url: 'http://img',
+  image_key: 'http://img',
   capacity: 100,
   discordMessage: null,
   ...overrides,
