@@ -134,6 +134,27 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       isFormInvalid={false}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
+        <Field className="py-2">
+          <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+          {meetup?.lead_organizer != null ? (
+            <Badge variant="secondary" className="w-fit">
+              {meetup.lead_organizer.display_name} · Lead
+            </Badge>
+          ) : null}
+          <OrganizerCombobox
+            id="organizers"
+            disabled={
+              !isEditable || currentUserId !== meetup?.lead_organizer?.id
+            }
+            excludeIds={
+              meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
+            }
+            value={formik.values.organizerIds}
+            onChange={(organizerIds) =>
+              void formik.setFieldValue('organizerIds', organizerIds)
+            }
+          />
+        </Field>
         <EditableFormField
           name={'Meetup Name'}
           value={meetup?.name}
@@ -182,27 +203,6 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.address}
         />
-        <Field className="py-2">
-          <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
-          {meetup?.lead_organizer != null ? (
-            <Badge variant="secondary" className="w-fit">
-              {meetup.lead_organizer.display_name} · Lead
-            </Badge>
-          ) : null}
-          <OrganizerCombobox
-            id="organizers"
-            disabled={
-              !isEditable || currentUserId !== meetup?.lead_organizer?.id
-            }
-            excludeIds={
-              meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
-            }
-            value={formik.values.organizerIds}
-            onChange={(organizerIds) =>
-              void formik.setFieldValue('organizerIds', organizerIds)
-            }
-          />
-        </Field>
         <EditableFormField
           name={'Duration (hours)'}
           value={meetup?.duration_hours}

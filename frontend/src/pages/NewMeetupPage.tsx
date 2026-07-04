@@ -93,6 +93,21 @@ const NewMeetupPage = (): ReactNode => {
                 >
                   Use Eventbrite
                 </span>
+
+                <Field>
+                  <FieldLabel htmlFor="organizers">
+                    Additional Organizers
+                  </FieldLabel>
+                  <OrganizerCombobox
+                    id="organizers"
+                    value={formik.values.organizerIds}
+                    onChange={(organizerIds) =>
+                      void formik.setFieldValue('organizerIds', organizerIds)
+                    }
+                    excludeIds={currentUserId ? [currentUserId] : []}
+                  />
+                </Field>
+
                 <FormField formik={formik} name="name" label="Meetup Name" />
 
                 <div className="flex gap-2">
@@ -130,20 +145,6 @@ const NewMeetupPage = (): ReactNode => {
                 </div>
 
                 <FormField formik={formik} name="address" label="Address" />
-
-                <Field>
-                  <FieldLabel htmlFor="organizers">
-                    Additional Organizers
-                  </FieldLabel>
-                  <OrganizerCombobox
-                    id="organizers"
-                    value={formik.values.organizerIds}
-                    onChange={(organizerIds) =>
-                      void formik.setFieldValue('organizerIds', organizerIds)
-                    }
-                    excludeIds={currentUserId ? [currentUserId] : []}
-                  />
-                </Field>
 
                 <MeetupImageField
                   previewUrl={formik.values.imageUrl}
