@@ -614,6 +614,32 @@ describe('updateMeetup', () => {
     expect(created.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
   });
+
+  it('clears and deletes a display background when emptied', async () => {
+    const displayRecord = {
+      idle_image_urls: [],
+      raffle_background_url: 'meetups/bg.png',
+      batch_raffle_background_url: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const meetup = fakeMeetupRow({
+      displayRecord,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ display_raffle_background_url: '' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(displayRecord.raffle_background_url).toBeNull();
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/bg.png');
+    expect(res.statusCode).toBe(201);
+  });
 });
 
 // ---- deleteMeetup ----------------------------------------------------------

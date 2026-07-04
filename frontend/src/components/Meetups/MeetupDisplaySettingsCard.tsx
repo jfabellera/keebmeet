@@ -229,14 +229,24 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
             </div>
           </AspectRatio>
           {isEditable ? (
-            <Input
-              type="file"
-              accept={IMAGE_ACCEPT}
-              className="mt-4"
-              onChange={(event) =>
-                uploadAndSet(event.target.files?.[0], setRaffleBackgroundUrl)
-              }
-            />
+            <div className="mt-4 flex items-center gap-2">
+              <Input
+                type="file"
+                accept={IMAGE_ACCEPT}
+                onChange={(event) =>
+                  uploadAndSet(event.target.files?.[0], setRaffleBackgroundUrl)
+                }
+              />
+              {raffleBackgroundUrl !== '' ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setRaffleBackgroundUrl('')}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -255,17 +265,27 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
             </div>
           </AspectRatio>
           {isEditable ? (
-            <Input
-              type="file"
-              accept={IMAGE_ACCEPT}
-              className="mt-4"
-              onChange={(event) =>
-                uploadAndSet(
-                  event.target.files?.[0],
-                  setBatchRaffleBackgroundUrl
-                )
-              }
-            />
+            <div className="mt-4 flex items-center gap-2">
+              <Input
+                type="file"
+                accept={IMAGE_ACCEPT}
+                onChange={(event) =>
+                  uploadAndSet(
+                    event.target.files?.[0],
+                    setBatchRaffleBackgroundUrl
+                  )
+                }
+              />
+              {batchRaffleBackgroundUrl !== '' ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setBatchRaffleBackgroundUrl('')}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
