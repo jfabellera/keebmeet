@@ -2,8 +2,10 @@ import {
   BaseEntity,
   Column,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -25,6 +27,10 @@ export class Meetup extends BaseEntity {
 
   @Column({ type: 'timestamp with time zone' })
   date: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'lead_organizer' })
+  lead_organizer: User;
 
   @ManyToMany(() => User, (user) => user.id)
   @JoinTable()

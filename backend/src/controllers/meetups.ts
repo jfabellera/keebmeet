@@ -1,8 +1,23 @@
+import {
+  createMeetupFromEventbriteSchema,
+  createMeetupSchema,
+  editMeetupSchema,
+  type EditMeetupPayload,
+  type EventbriteAttendee,
+  type MeetupDisplayAssets,
+  type MeetupInfo,
+  type TicketInfo,
+} from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { type Request, type Response } from 'express';
 import { type ParsedQs } from 'qs';
-import { ILike, In, type FindOptionsOrder, type FindOptionsWhere } from 'typeorm';
+import {
+  ILike,
+  In,
+  type FindOptionsOrder,
+  type FindOptionsWhere,
+} from 'typeorm';
 import { socket } from '../Server';
 import config from '../config';
 import { AppDataSource } from '../datasource';
@@ -15,13 +30,6 @@ import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
-  type EditMeetupPayload,
-  type EventbriteAttendee,
-  type MeetupDisplayAssets,
-  type MeetupInfo,
-  type TicketInfo,
-} from '@keebmeet/shared';
-import {
   createEventbriteWebhook,
   getEventbriteAttendees,
   getEventbriteEvent,
@@ -33,6 +41,7 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
+import { deleteManagedObjects } from '../util/imageCleanup';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   IMAGE_EXT_BY_MIME,
@@ -42,13 +51,7 @@ import {
   toStoredKey,
   upload,
 } from '../util/objectStorage';
-import { deleteManagedObjects } from '../util/imageCleanup';
 import { decrypt } from '../util/security';
-import {
-  createMeetupFromEventbriteSchema,
-  createMeetupSchema,
-  editMeetupSchema,
-} from '@keebmeet/shared';
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
@@ -87,6 +90,7 @@ const mapMeetupInfo = async (
       id: organizer.id,
       display_name: organizer.nick_name,
     }));
+    meetupInfo.lead_organizer_id = meetup.lead_organizer?.id;
 
     // Get ticket details
     const ticketCount = await Ticket.count({
@@ -173,6 +177,7 @@ export const getAllMeetups = async (
     await Meetup.find({
       relations: {
         organizers: true,
+        lead_organizer: true,
         eventbriteRecord: true,
       },
       where: findOptionsWhere,
@@ -271,9 +276,16 @@ export const createMeetup = async (
 
   const requestor = res.locals.requestor as User;
 
+  // The creator owns the meetup: they're the lead organizer and are always part
+  // of the organizer list.
+  newMeetup.lead_organizer = requestor;
+
   // Add any additional organizers selected by the requestor, excluding the
   // requestor themselves (added to the front below).
-  if (result.data.organizer_ids != null && result.data.organizer_ids.length > 0) {
+  if (
+    result.data.organizer_ids != null &&
+    result.data.organizer_ids.length > 0
+  ) {
     const additionalOrganizers = await User.findBy({
       id: In(result.data.organizer_ids),
     });
@@ -522,6 +534,9 @@ export const updateMeetup = async (
   const meetup = await Meetup.findOne({
     relations: {
       displayRecord: true,
+      // ManyToOne — safe to load on the saved entity (unlike the organizers
+      // ManyToMany). We need the lead's id to keep them in the organizer list.
+      lead_organizer: true,
     },
     where: { id: parseInt(meetup_id) },
   });
@@ -608,13 +623,13 @@ export const updateMeetup = async (
 
   await meetup.save();
 
-  // Update the organizer list. The requestor (the organizer making the edit) is
-  // always kept — the client's organizer picker excludes the current user, so
-  // their id never appears in organizer_ids and must be preserved here. We read
-  // the current organizers in a separate query: the ManyToMany relation is
-  // deliberately NOT loaded on the saved entity above, since save()ing an entity
-  // with the relation loaded re-inserts the join rows and trips the join table's
-  // primary key. The join table is instead updated via the relation builder.
+  // Update the organizer list. The lead organizer (owner) and the requestor
+  // (the organizer making the edit — excluded from the client's picker, so
+  // absent from organizer_ids) are always kept. We read the current organizers
+  // in a separate query: the ManyToMany relation is deliberately NOT loaded on
+  // the saved entity above, since save()ing an entity with the relation loaded
+  // re-inserts the join rows and trips the join table's primary key. The join
+  // table is instead updated via the relation builder.
   if (result.data.organizer_ids != null) {
     const requestor = res.locals.requestor as User;
     const withOrganizers = await Meetup.findOne({
@@ -625,7 +640,11 @@ export const updateMeetup = async (
       (organizer) => organizer.id
     );
     const desiredIds = Array.from(
-      new Set([requestor.id, ...result.data.organizer_ids])
+      new Set([
+        meetup.lead_organizer.id,
+        requestor.id,
+        ...result.data.organizer_ids,
+      ])
     );
     const toAdd = desiredIds.filter((id) => !currentIds.includes(id));
     const toRemove = currentIds.filter((id) => !desiredIds.includes(id));
@@ -859,7 +878,8 @@ export const getMeetupDisplayAssets = async (
 
   const display = meetup.displayRecord;
   return res.status(200).json({
-    idleImageUrls: display != null ? display.idle_image_urls.map(publicUrl) : null,
+    idleImageUrls:
+      display != null ? display.idle_image_urls.map(publicUrl) : null,
     raffleWinnerBackgroundImageUrl:
       display?.raffle_background_url != null
         ? publicUrl(display.raffle_background_url)

@@ -186,6 +186,7 @@ const fakeMeetupRow = (overrides = {}): any => ({
   capacity: 100,
   image_key: 'http://img',
   organizers: [{ id: 1, nick_name: 'jane' }],
+  leadOrganizer: { id: 1, nick_name: 'jane' },
   eventbriteRecord: null,
   ...overrides,
 });
@@ -238,6 +239,7 @@ describe('getAllMeetups', () => {
     const body = res.body as any[];
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
     expect(body[0].organizers).toEqual([{ id: 1, display_name: 'jane' }]);
+    expect(body[0].lead_organizer_id).toBe(1);
   });
 });
 
@@ -335,6 +337,7 @@ describe('createMeetup', () => {
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
     expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
+    expect(created.leadOrganizer).toEqual({ id: 1, nick_name: 'jane' });
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
   });
@@ -570,6 +573,31 @@ describe('updateMeetup', () => {
 
     // Desired [1, 3]; only co-organizer 2 is unlinked, requestor 1 is kept.
     expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2]);
+  });
+
+  it('keeps the lead organizer when a co-organizer edits', async () => {
+    // Lead is user 1; the editor (requestor) is co-organizer 5.
+    const meetup = fakeMeetupRow({
+      leadOrganizer: { id: 1, nick_name: 'jane' },
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        organizers: [{ id: 1 }, { id: 5 }, { id: 3 }],
+      } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 5 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Desired [1 (lead), 5 (requestor)]; only co-organizer 3 is unlinked — the
+    // lead can't be dropped even though the editor isn't the lead.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [3]);
   });
 
   it('leaves organizers untouched when organizer_ids is not provided', async () => {

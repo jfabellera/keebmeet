@@ -183,6 +183,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           <OrganizerCombobox
             id="organizers"
             disabled={!isEditable}
+            excludeIds={
+              meetup?.lead_organizer_id != null
+                ? [meetup.lead_organizer_id]
+                : []
+            }
             value={formik.values.organizerIds}
             onChange={(organizerIds) =>
               void formik.setFieldValue('organizerIds', organizerIds)

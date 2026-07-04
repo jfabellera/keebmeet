@@ -22,19 +22,26 @@ interface Props {
   onChange: (organizerIds: number[]) => void;
   /** Read-only mode: chips are shown but the selection can't be changed. */
   disabled?: boolean;
+  /**
+   * Organizer ids to hide from the options in addition to the current user,
+   * e.g. the lead organizer, who is fixed and can't be removed.
+   */
+  excludeIds?: number[];
   /** Associates the input with an external label. */
   id?: string;
 }
 
 /**
- * Multi-select combobox for picking meetup organizers. The current user is the
- * head organizer (added automatically), so they're excluded from the options.
- * Shared by the new-meetup and edit-meetup flows.
+ * Multi-select combobox for picking meetup organizers. The current user is
+ * always excluded (they're added automatically as the lead / are the editor);
+ * `excludeIds` hides any additional fixed organizers. Shared by the new-meetup
+ * and edit-meetup flows.
  */
 const OrganizerCombobox = ({
   value,
   onChange,
   disabled = false,
+  excludeIds = [],
   id,
 }: Props): ReactNode => {
   const { data: organizers } = useGetOrganizersQuery();
@@ -43,7 +50,8 @@ const OrganizerCombobox = ({
 
   type Organizer = NonNullable<typeof organizers>[number];
   const options = (organizers ?? []).filter(
-    (organizer) => organizer.id !== currentUserId
+    (organizer) =>
+      organizer.id !== currentUserId && !excludeIds.includes(organizer.id)
   );
   const selected = options.filter((organizer) => value.includes(organizer.id));
 
