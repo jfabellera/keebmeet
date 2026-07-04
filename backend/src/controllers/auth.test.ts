@@ -312,11 +312,11 @@ describe('createUser', () => {
     const res = mockResponse();
 
     await createUser(
-      mockRequest(validCreateBody({ photo_key: 'users/tmp/photo.png' })),
+      mockRequest(validCreateBody({ photo_key: 'tmp/users/photo.png' })),
       res
     );
 
-    expect(mockedPromoteImage).toHaveBeenCalledWith('users/tmp/photo.png');
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/users/photo.png');
     expect(mockedUser.create).toHaveBeenCalledWith(
       expect.objectContaining({ photo_key: 'users/photo.png' })
     );
@@ -330,7 +330,7 @@ describe('createUser', () => {
     const res = mockResponse();
 
     await createUser(
-      mockRequest(validCreateBody({ photo_key: 'users/tmp/photo.png' })),
+      mockRequest(validCreateBody({ photo_key: 'tmp/users/photo.png' })),
       res
     );
 
@@ -590,11 +590,11 @@ describe('updateUser', () => {
     res.locals.requestor = fakeUser();
 
     await updateUser(
-      mockRequest({ photo_key: 'users/tmp/new.png' }, { user_id: '1' }),
+      mockRequest({ photo_key: 'tmp/users/new.png' }, { user_id: '1' }),
       res
     );
 
-    expect(mockedPromoteImage).toHaveBeenCalledWith('users/tmp/new.png');
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/users/new.png');
     expect(target.photo_key).toBe('users/new.png');
     expect(mockedDeleteManagedObjects).toHaveBeenCalledWith(['users/old.png']);
     expect(res.statusCode).toBe(201);

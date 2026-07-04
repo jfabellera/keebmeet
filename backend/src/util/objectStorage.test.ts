@@ -77,12 +77,12 @@ describe('toStoredKey', () => {
 });
 
 describe('buildTempImageKey', () => {
-  it('creates a unique key under the category temp prefix', () => {
+  it('creates a unique key under the root temp prefix, namespaced by category', () => {
     expect(buildTempImageKey('meetups', 'png')).toMatch(
-      /^meetups\/tmp\/[0-9a-f-]{36}\.png$/
+      /^tmp\/meetups\/[0-9a-f-]{36}\.png$/
     );
     expect(buildTempImageKey('users', 'jpg')).toMatch(
-      /^users\/tmp\/[0-9a-f-]{36}\.jpg$/
+      /^tmp\/users\/[0-9a-f-]{36}\.jpg$/
     );
   });
 });
@@ -99,28 +99,28 @@ describe('promoteImage', () => {
   });
 
   it('copies a temp object to the permanent prefix and deletes the temp copy', async () => {
-    const result = await promoteImage('meetups/tmp/abc.png');
+    const result = await promoteImage('tmp/meetups/abc.png');
 
     expect(result).toBe('meetups/abc.png');
     const commands = send.mock.calls.map(([command]) => command);
     expect(commands.find((c) => c.command === 'Copy').input).toMatchObject({
       Bucket: 'keebmeet',
-      CopySource: 'keebmeet/meetups/tmp/abc.png',
+      CopySource: 'keebmeet/tmp/meetups/abc.png',
       Key: 'meetups/abc.png',
     });
     expect(commands.find((c) => c.command === 'Delete').input).toMatchObject({
       Bucket: 'keebmeet',
-      Key: 'meetups/tmp/abc.png',
+      Key: 'tmp/meetups/abc.png',
     });
   });
 
   it('promotes any category, not just meetups', async () => {
-    expect(await promoteImage('users/tmp/abc.png')).toBe('users/abc.png');
+    expect(await promoteImage('tmp/users/abc.png')).toBe('users/abc.png');
     const copy = send.mock.calls
       .map(([command]) => command)
       .find((c) => c.command === 'Copy');
     expect(copy.input).toMatchObject({
-      CopySource: 'keebmeet/users/tmp/abc.png',
+      CopySource: 'keebmeet/tmp/users/abc.png',
       Key: 'users/abc.png',
     });
   });
@@ -133,7 +133,7 @@ describe('promoteImage', () => {
         : Promise.resolve({})
     );
 
-    expect(await promoteImage('meetups/tmp/abc.png')).toBe('meetups/abc.png');
+    expect(await promoteImage('tmp/meetups/abc.png')).toBe('meetups/abc.png');
     errorSpy.mockRestore();
   });
 });
