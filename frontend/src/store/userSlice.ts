@@ -30,6 +30,18 @@ export const userSlice = createApi({
       }),
       providesTags: ['User'],
     }),
+    // Uploads a profile photo to R2, returning its temp key + preview URL. Used
+    // during registration (no token) and on the account page.
+    uploadUserImage: builder.mutation<
+      { image_key: string; image_url: string },
+      File
+    >({
+      query: (file) => {
+        const body = new FormData();
+        body.append('image', file);
+        return { url: `users/photo`, method: 'POST', body };
+      },
+    }),
     getAllUsers: builder.query<User[], void>({
       query: () => ({
         url: `/users`,
@@ -94,6 +106,7 @@ export const userSlice = createApi({
 
 export const {
   useGetUserQuery,
+  useUploadUserImageMutation,
   useGetAllUsersQuery,
   useGetUserDiscordServersQuery,
   useGetUserDiscordServerChannelsQuery,

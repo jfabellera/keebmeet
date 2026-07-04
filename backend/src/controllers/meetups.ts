@@ -37,13 +37,12 @@ import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   IMAGE_EXT_BY_MIME,
   buildTempImageKey,
-  deleteObject,
-  isManagedKey,
   promoteImage,
   publicUrl,
   toStoredKey,
   upload,
 } from '../util/objectStorage';
+import { deleteManagedObjects } from '../util/imageCleanup';
 import { decrypt } from '../util/security';
 import {
   createMeetupFromEventbriteSchema,
@@ -53,21 +52,6 @@ import {
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
-
-/**
- * Best-effort deletion of R2 objects we own: keeps only managed keys (skips
- * external/legacy URLs and empties) and swallows per-object failures — an
- * orphaned object is preferable to a failed edit/delete.
- */
-const deleteManagedObjects = async (keys: string[]): Promise<void> => {
-  await Promise.all(
-    keys.filter(isManagedKey).map((key) =>
-      deleteObject(key).catch((error) =>
-        console.error(`Failed to delete image "${key}":`, error)
-      )
-    )
-  );
-};
 
 enum MeetupInfoDetailLevel {
   Simple,
@@ -255,7 +239,7 @@ export const uploadMeetupImage = async (
   }
 
   // Stored under the temp prefix; promoted to permanent when a meetup is saved.
-  const key = buildTempImageKey(ext);
+  const key = buildTempImageKey('meetups', ext);
   await upload(key, file.buffer, file.mimetype);
 
   return res.status(201).json({ image_key: key, image_url: publicUrl(key) });

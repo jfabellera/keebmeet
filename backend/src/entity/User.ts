@@ -24,6 +24,11 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 30 })
   nick_name: string;
 
+  // R2 object key for the profile photo; '' means no photo. Served as a URL via
+  // publicUrl() in the user DTO, mirroring meetups' image_key.
+  @Column({ type: 'varchar', length: 255, default: '' })
+  photo_key: string;
+
   @Column({ type: 'boolean', default: false })
   is_organizer: boolean;
 

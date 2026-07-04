@@ -77,9 +77,12 @@ describe('toStoredKey', () => {
 });
 
 describe('buildTempImageKey', () => {
-  it('creates a unique key under the temp prefix', () => {
-    expect(buildTempImageKey('png')).toMatch(
+  it('creates a unique key under the category temp prefix', () => {
+    expect(buildTempImageKey('meetups', 'png')).toMatch(
       /^meetups\/tmp\/[0-9a-f-]{36}\.png$/
+    );
+    expect(buildTempImageKey('users', 'jpg')).toMatch(
+      /^users\/tmp\/[0-9a-f-]{36}\.jpg$/
     );
   });
 });
@@ -108,6 +111,17 @@ describe('promoteImage', () => {
     expect(commands.find((c) => c.command === 'Delete').input).toMatchObject({
       Bucket: 'keebmeet',
       Key: 'meetups/tmp/abc.png',
+    });
+  });
+
+  it('promotes any category, not just meetups', async () => {
+    expect(await promoteImage('users/tmp/abc.png')).toBe('users/abc.png');
+    const copy = send.mock.calls
+      .map(([command]) => command)
+      .find((c) => c.command === 'Copy');
+    expect(copy.input).toMatchObject({
+      CopySource: 'keebmeet/users/tmp/abc.png',
+      Key: 'users/abc.png',
     });
   });
 

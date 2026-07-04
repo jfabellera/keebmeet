@@ -1,4 +1,5 @@
 import { type User } from '../entity/User';
+import { publicUrl } from './objectStorage';
 import { type User as UserInterface } from '@keebmeet/shared';
 
 /**
@@ -17,5 +18,6 @@ export const toUserResponse = (user: User): UserInterface => {
     is_organizer: user.is_organizer,
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
     is_discord_linked: user.discord_id != null,
+    photo_url: publicUrl(user.photo_key ?? ''),
   } satisfies UserInterface;
 };

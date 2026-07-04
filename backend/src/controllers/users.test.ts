@@ -95,6 +95,7 @@ describe('getAllUsers', () => {
       is_organizer: false,
       is_eventbrite_linked: true,
       is_discord_linked: true,
+      photo_url: '',
     });
     expect(body[1].is_eventbrite_linked).toBe(false);
     expect(body[1].is_discord_linked).toBe(false);

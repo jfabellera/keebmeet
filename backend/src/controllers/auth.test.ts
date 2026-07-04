@@ -15,7 +15,22 @@ jest.mock('../config', () => ({
     discordRedirectUri: 'http://localhost/cb',
     discordBotToken: 'bot-token',
     turnstileSecretKey: 'test-turnstile-secret',
+    r2PublicBaseUrl: 'https://cdn.test',
   },
+}));
+
+// Keep the real pure helpers (publicUrl etc.); stub photo promotion + cleanup.
+jest.mock('../util/objectStorage', () => {
+  const actual = jest.requireActual('../util/objectStorage');
+  return {
+    __esModule: true,
+    ...actual,
+    promoteImage: jest.fn(async (key: string) => key),
+  };
+});
+jest.mock('../util/imageCleanup', () => ({
+  __esModule: true,
+  deleteManagedObjects: jest.fn(async () => undefined),
 }));
 
 // Turnstile verification hits Cloudflare over HTTP; stub axios so it doesn't.
@@ -80,8 +95,12 @@ import {
   verifyVerificationToken,
 } from '../util/emailVerification';
 import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
+import { promoteImage } from '../util/objectStorage';
+import { deleteManagedObjects } from '../util/imageCleanup';
 
 const mockedUser = jest.mocked(User);
+const mockedPromoteImage = jest.mocked(promoteImage);
+const mockedDeleteManagedObjects = jest.mocked(deleteManagedObjects);
 const mockedOrganizerRequest = jest.mocked(OrganizerRequest);
 const mockedNotifyAdmins = jest.mocked(notifyAdminsOfOrganizerRequest);
 const mockedBcrypt = jest.mocked(bcrypt);
@@ -285,6 +304,42 @@ describe('createUser', () => {
     expect(mockedNotifyAdmins).toHaveBeenCalledTimes(1);
     // The account is still created as a non-organizer; requesting never grants.
     expect(created.is_organizer).toBe(false);
+  });
+
+  it('promotes an uploaded profile photo and stores its key', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    mockedPromoteImage.mockResolvedValueOnce('users/photo.png');
+    const res = mockResponse();
+
+    await createUser(
+      mockRequest(validCreateBody({ photo_key: 'users/tmp/photo.png' })),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('users/tmp/photo.png');
+    expect(mockedUser.create).toHaveBeenCalledWith(
+      expect.objectContaining({ photo_key: 'users/photo.png' })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('still creates the account if promoting the photo fails', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = mockResponse();
+
+    await createUser(
+      mockRequest(validCreateBody({ photo_key: 'users/tmp/photo.png' })),
+      res
+    );
+
+    // Falls back to no photo rather than blocking signup.
+    expect(mockedUser.create).toHaveBeenCalledWith(
+      expect.objectContaining({ photo_key: '' })
+    );
+    expect(res.statusCode).toBe(201);
+    errorSpy.mockRestore();
   });
 });
 
@@ -525,6 +580,41 @@ describe('updateUser', () => {
     expect(mockedBcrypt.hash).toHaveBeenCalledWith('brand-new-password', 10);
     expect(target.password_hash).toBe('new-hash');
   });
+
+  it('promotes a new profile photo and deletes the previous one', async () => {
+    const target = fakeUser({ id: 1, photo_key: 'users/old.png' });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    mockedPromoteImage.mockResolvedValueOnce('users/new.png');
+    const res = mockResponse();
+    res.locals.requestor = fakeUser();
+
+    await updateUser(
+      mockRequest({ photo_key: 'users/tmp/new.png' }, { user_id: '1' }),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('users/tmp/new.png');
+    expect(target.photo_key).toBe('users/new.png');
+    expect(mockedDeleteManagedObjects).toHaveBeenCalledWith(['users/old.png']);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not delete the photo when it is unchanged', async () => {
+    const target = fakeUser({ id: 1, photo_key: 'users/keep.png' });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser();
+
+    await updateUser(
+      mockRequest({ first_name: 'Updated' }, { user_id: '1' }),
+      res
+    );
+
+    expect(mockedDeleteManagedObjects).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
 });
 
 // ---- deleteUser ------------------------------------------------------------
@@ -550,6 +640,18 @@ describe('deleteUser', () => {
     expect(target.remove).toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
     expect(res.end).toHaveBeenCalled();
+  });
+
+  it("deletes the user's profile photo object", async () => {
+    const target = fakeUser({ id: 1, photo_key: 'users/pic.png' });
+    mockedUser.findOneBy.mockResolvedValue(target);
+    const res = mockResponse();
+
+    await deleteUser(mockRequest({}, { user_id: '1' }), res);
+
+    expect(target.remove).toHaveBeenCalled();
+    expect(mockedDeleteManagedObjects).toHaveBeenCalledWith(['users/pic.png']);
+    expect(res.statusCode).toBe(204);
   });
 });
 
