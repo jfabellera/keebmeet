@@ -2,9 +2,16 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useId, type ChangeEvent, type ReactNode } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
 import { IMAGE_ACCEPT, useImageUpload } from '../../hooks/useImageUpload';
 
 interface Props {
@@ -48,10 +55,22 @@ const ImageUploadField = ({
 }: Props): ReactNode => {
   const { upload, isUploading } = useUpload();
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia('(hover: none)');
+    const update = (): void => setIsTouch(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  const [revealed, setRevealed] = useState(false);
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (file != null) upload(file, onUploaded);
+    // Allow re-selecting the same file after a remove/re-add.
+    event.target.value = '';
   };
 
   return (
@@ -62,37 +81,70 @@ const ImageUploadField = ({
       <AspectRatio ratio={aspectRatio}>
         <div
           className={cn(
-            'size-full border',
-            rounded && 'overflow-hidden rounded-full'
+            'group relative size-full border',
+            rounded && 'overflow-hidden rounded-full',
+            editable && isTouch && 'cursor-pointer'
           )}
+          onClick={
+            editable && isTouch ? () => setRevealed((prev) => !prev) : undefined
+          }
         >
           <ImageWithFallback
             src={previewUrl}
             className="size-full object-cover"
           />
-        </div>
-      </AspectRatio>
-      {editable ? (
-        <div className="mt-4 flex items-center gap-2">
-          <Input
-            id={inputId}
-            type="file"
-            accept={IMAGE_ACCEPT}
-            disabled={isUploading}
-            onChange={onFileChange}
-          />
-          {onRemove != null && previewUrl !== '' ? (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={onRemove}
-              disabled={isUploading}
+          {editable ? (
+            <div
+              className={cn(
+                'absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity',
+                'pointer-events-none',
+                'group-hover:pointer-events-auto group-hover:opacity-100',
+                'focus-within:pointer-events-auto focus-within:opacity-100',
+                rounded && 'rounded-full',
+                revealed && 'pointer-events-auto opacity-100'
+              )}
             >
-              Remove
-            </Button>
+              <input
+                ref={inputRef}
+                id={inputId}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                disabled={isUploading}
+                onChange={onFileChange}
+                className="sr-only"
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  inputRef.current?.click();
+                }}
+                disabled={isUploading}
+                aria-label="Change image"
+              >
+                <Pencil />
+              </Button>
+              {onRemove != null && previewUrl !== '' ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemove();
+                  }}
+                  disabled={isUploading}
+                  aria-label="Remove image"
+                >
+                  <Trash2 />
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      ) : null}
+      </AspectRatio>
     </Field>
   );
 };
