@@ -5,6 +5,7 @@ import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useAppSelector } from '@/store/hooks';
 import { useFormik } from 'formik';
 import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
   const [createMeetup] = useCreateMeetupMutation();
+  const currentUserId = useAppSelector((state) => state.user.user?.id);
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -139,6 +141,7 @@ const NewMeetupPage = (): ReactNode => {
                     onChange={(organizerIds) =>
                       void formik.setFieldValue('organizerIds', organizerIds)
                     }
+                    excludeIds={currentUserId ? [currentUserId] : []}
                   />
                 </Field>
 

@@ -45,13 +45,11 @@ const OrganizerCombobox = ({
   id,
 }: Props): ReactNode => {
   const { data: organizers } = useGetOrganizersQuery();
-  const currentUserId = useAppSelector((state) => state.user.user?.id);
   const anchor = useComboboxAnchor();
 
   type Organizer = NonNullable<typeof organizers>[number];
   const options = (organizers ?? []).filter(
-    (organizer) =>
-      organizer.id !== currentUserId && !excludeIds.includes(organizer.id)
+    (organizer) => !excludeIds.includes(organizer.id)
   );
   const selected = options.filter((organizer) => value.includes(organizer.id));
 

@@ -1,11 +1,13 @@
+import { Badge } from '@/components/ui/badge';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { useBoolean } from '@/hooks/useBoolean';
+import { useAppSelector } from '@/store/hooks';
+import { type EditMeetupPayload } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { type EditMeetupPayload } from '@keebmeet/shared';
 import {
   useEditMeetupMutation,
   useGetMeetupQuery,
@@ -14,7 +16,6 @@ import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
-import { Badge } from '@/components/ui/badge';
 import OrganizerCombobox from './OrganizerCombobox';
 
 dayjs.extend(customParseFormat);
@@ -25,6 +26,7 @@ interface Props {
 
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
+  const currentUserId = useAppSelector((state) => state.user.user?.id);
   const hasStarted = meetup != null ? hasMeetupStarted(meetup) : false;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup] = useEditMeetupMutation();
@@ -103,7 +105,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         imageUrl: meetup?.image_url ?? '',
         imageKey: '',
         description: meetup?.description ?? '',
-        organizerIds: meetup?.organizers?.map((organizer) => organizer.id) ?? [],
+        organizerIds:
+          meetup?.organizers?.map((organizer) => organizer.id) ?? [],
       },
     });
   }, [meetup]);
@@ -188,7 +191,9 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           ) : null}
           <OrganizerCombobox
             id="organizers"
-            disabled={!isEditable}
+            disabled={
+              !isEditable || currentUserId !== meetup?.lead_organizer?.id
+            }
             excludeIds={
               meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
             }
