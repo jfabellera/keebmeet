@@ -15,6 +15,7 @@ import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
+  type EditMeetupPayload,
   type EventbriteAttendee,
   type MeetupDisplayAssets,
   type MeetupInfo,
@@ -33,6 +34,16 @@ import {
   type GeocodeResults,
 } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import {
+  IMAGE_EXT_BY_MIME,
+  buildTempImageKey,
+  deleteObject,
+  isManagedKey,
+  promoteImage,
+  publicUrl,
+  toStoredKey,
+  upload,
+} from '../util/objectStorage';
 import { decrypt } from '../util/security';
 import {
   createMeetupFromEventbriteSchema,
@@ -42,6 +53,21 @@ import {
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
+
+/**
+ * Best-effort deletion of R2 objects we own: keeps only managed keys (skips
+ * external/legacy URLs and empties) and swallows per-object failures — an
+ * orphaned object is preferable to a failed edit/delete.
+ */
+const deleteManagedObjects = async (keys: string[]): Promise<void> => {
+  await Promise.all(
+    keys.filter(isManagedKey).map((key) =>
+      deleteObject(key).catch((error) =>
+        console.error(`Failed to delete image "${key}":`, error)
+      )
+    )
+  );
+};
 
 enum MeetupInfoDetailLevel {
   Simple,
@@ -62,7 +88,7 @@ const mapMeetupInfo = async (
       state: meetup.state,
       country: meetup.country,
     },
-    image_url: meetup.image_url,
+    image_url: publicUrl(meetup.image_key),
   };
 
   if (meetup.eventbriteRecord != null) {
@@ -206,6 +232,35 @@ export const getMeetup = async (
   return res.json(meetupInfo);
 };
 
+/**
+ * Accepts a single multipart image file, stores it in R2, and returns the
+ * object key plus a browser-loadable URL. Organizers upload here first, then
+ * pass the returned `image_key` when creating or editing a meetup.
+ */
+export const uploadMeetupImage = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const file = req.file;
+
+  if (file == null) {
+    return res.status(400).json({ message: 'No image file provided.' });
+  }
+
+  const ext = IMAGE_EXT_BY_MIME[file.mimetype];
+  if (ext === undefined) {
+    return res
+      .status(400)
+      .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
+  }
+
+  // Stored under the temp prefix; promoted to permanent when a meetup is saved.
+  const key = buildTempImageKey(ext);
+  await upload(key, file.buffer, file.mimetype);
+
+  return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
+};
+
 export const createMeetup = async (
   req: Request,
   res: Response
@@ -223,7 +278,7 @@ export const createMeetup = async (
     organizers: [],
     capacity: result.data.capacity,
     duration_hours: result.data.duration_hours,
-    image_url: result.data.image_url,
+    image_key: result.data.image_key,
     description: result.data.description,
     has_raffle: result.data.has_raffle,
     default_raffle_entries: result.data.default_raffle_entries,
@@ -271,6 +326,13 @@ export const createMeetup = async (
     .utc(newMeetup.date)
     .subtract(newMeetup.utc_offset, 'hour')
     .toISOString();
+
+  // Promote the uploaded image out of the temp prefix now that we're committing.
+  try {
+    newMeetup.image_key = await promoteImage(newMeetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
 
   await newMeetup.save();
 
@@ -352,7 +414,9 @@ export const createMeetupFromEventbrite = async (
       country: geocodeResult.country,
       capacity: ebTicketClass.total,
       duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
-      image_url: ebEvent.imageUrl,
+      // Eventbrite provides an external absolute URL; stored as-is and passed
+      // through publicUrl() unchanged on read.
+      image_key: ebEvent.imageUrl,
       description: ebEvent.description,
       organizers: [],
       has_raffle: result.data.has_raffle,
@@ -394,6 +458,60 @@ export const createMeetupFromEventbrite = async (
   return res.status(201).end();
 };
 
+/**
+ * Applies display-image edits to a meetup's display record: promotes freshly
+ * uploaded temp images to permanent keys, persists the record, then deletes any
+ * managed objects that were replaced or removed. Throws if a promotion fails.
+ */
+const syncDisplayRecord = async (
+  meetup: Meetup,
+  data: EditMeetupPayload
+): Promise<void> => {
+  const prevIdle = meetup.displayRecord?.idle_image_urls ?? [];
+  const prevRaffle = meetup.displayRecord?.raffle_background_url ?? null;
+  const prevBatch = meetup.displayRecord?.batch_raffle_background_url ?? null;
+
+  if (meetup.displayRecord == null) {
+    meetup.displayRecord = MeetupDisplayRecord.create();
+  }
+  const record = meetup.displayRecord;
+
+  // Recover the stored key from a re-submitted public URL, then promote any
+  // freshly uploaded temp image to its permanent key.
+  const store = async (value: string): Promise<string> =>
+    promoteImage(toStoredKey(value));
+
+  if (data.display_idle_image_urls !== undefined) {
+    record.idle_image_urls = await Promise.all(
+      data.display_idle_image_urls.filter((value) => value !== '').map(store)
+    );
+  }
+  if (data.display_raffle_background_url !== undefined) {
+    record.raffle_background_url =
+      data.display_raffle_background_url === null
+        ? null
+        : await store(data.display_raffle_background_url);
+  }
+  if (data.display_batch_raffle_background_url !== undefined) {
+    record.batch_raffle_background_url =
+      data.display_batch_raffle_background_url === null
+        ? null
+        : await store(data.display_batch_raffle_background_url);
+  }
+
+  await record.save();
+
+  // Best-effort cleanup of images no longer referenced (deleteManagedObjects
+  // skips external URLs and empties).
+  await deleteManagedObjects(
+    [
+      ...prevIdle.filter((key) => !record.idle_image_urls.includes(key)),
+      prevRaffle !== record.raffle_background_url ? prevRaffle : null,
+      prevBatch !== record.batch_raffle_background_url ? prevBatch : null,
+    ].filter((key): key is string => key != null)
+  );
+};
+
 export const updateMeetup = async (
   req: Request,
   res: Response
@@ -428,11 +546,14 @@ export const updateMeetup = async (
     return res.status(409).json({ message: 'Meetup name is taken.' });
   }
 
+  // Remember the current image so we can clean it up if it gets replaced.
+  const previousImageKey = meetup.image_key;
+
   meetup.name = req.body.name ?? meetup.name;
   meetup.duration_hours = req.body.duration_hours ?? meetup.duration_hours;
   meetup.has_raffle = req.body.has_raffle ?? meetup.has_raffle;
   meetup.capacity = req.body.capacity ?? meetup.capacity;
-  meetup.image_url = req.body.image_url ?? meetup.image_url;
+  meetup.image_key = req.body.image_key ?? meetup.image_key;
   meetup.address = req.body.address ?? meetup.address;
   meetup.description = req.body.description ?? meetup.description;
   meetup.default_raffle_entries =
@@ -473,24 +594,13 @@ export const updateMeetup = async (
     result.data.display_raffle_background_url !== undefined ||
     result.data.display_batch_raffle_background_url !== undefined
   ) {
-    // Create display record if one does not exist
-    if (meetup.displayRecord == null) {
-      meetup.displayRecord = MeetupDisplayRecord.create();
+    try {
+      await syncDisplayRecord(meetup, result.data);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: 'Failed to store display image.' });
     }
-
-    if (result.data.display_idle_image_urls !== undefined)
-      meetup.displayRecord.idle_image_urls =
-        result.data.display_idle_image_urls;
-
-    if (result.data.display_raffle_background_url !== undefined)
-      meetup.displayRecord.raffle_background_url =
-        result.data.display_raffle_background_url;
-
-    if (result.data.display_batch_raffle_background_url !== undefined)
-      meetup.displayRecord.batch_raffle_background_url =
-        result.data.display_batch_raffle_background_url;
-
-    await meetup.displayRecord.save();
   }
 
   // TODO(jan): Implement this correctly with new typeorm entities
@@ -516,7 +626,20 @@ export const updateMeetup = async (
   //   });
   // }
 
+  // Promote a newly uploaded image out of the temp prefix (no-op if the image
+  // is unchanged or is an external URL).
+  try {
+    meetup.image_key = await promoteImage(meetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
+
   await meetup.save();
+
+  // Best-effort cleanup of the replaced image, after a successful save.
+  if (previousImageKey !== meetup.image_key) {
+    await deleteManagedObjects([previousImageKey]);
+  }
 
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
@@ -606,6 +729,15 @@ export const deleteMeetup = async (
     // Removing the meetup also clears its rows in the organizers join table.
     await manager.remove(meetup);
   });
+
+  // Best-effort cleanup of the meetup's R2 image objects, after the DB delete
+  // commits.
+  await deleteManagedObjects([
+    meetup.image_key,
+    ...(meetup.displayRecord?.idle_image_urls ?? []),
+    meetup.displayRecord?.raffle_background_url ?? '',
+    meetup.displayRecord?.batch_raffle_background_url ?? '',
+  ]);
 
   socket.emit('meetup:update', { meetupId });
 
@@ -724,11 +856,16 @@ export const getMeetupDisplayAssets = async (
     return res.status(404).json({ message: 'Invalid meetupID.' });
   }
 
+  const display = meetup.displayRecord;
   return res.status(200).json({
-    idleImageUrls: meetup.displayRecord?.idle_image_urls ?? null,
+    idleImageUrls: display != null ? display.idle_image_urls.map(publicUrl) : null,
     raffleWinnerBackgroundImageUrl:
-      meetup.displayRecord?.raffle_background_url ?? null,
+      display?.raffle_background_url != null
+        ? publicUrl(display.raffle_background_url)
+        : null,
     batchRaffleWinnerBackgroundImageUrl:
-      meetup.displayRecord?.batch_raffle_background_url ?? null,
+      display?.batch_raffle_background_url != null
+        ? publicUrl(display.batch_raffle_background_url)
+        : null,
   } satisfies MeetupDisplayAssets);
 };

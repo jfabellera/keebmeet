@@ -7,7 +7,7 @@ jest.mock('../Server', () => ({ socket: { emit: jest.fn() } }));
 
 jest.mock('../config', () => ({
   __esModule: true,
-  default: { apiUrl: 'http://api.test' },
+  default: { apiUrl: 'http://api.test', r2PublicBaseUrl: 'https://cdn.test' },
 }));
 
 jest.mock('../entity/Meetup', () => ({
@@ -49,6 +49,35 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+// Run the delete transaction callback against a no-op manager.
+jest.mock('../datasource', () => ({
+  AppDataSource: {
+    transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
+      cb({
+        remove: jest.fn().mockResolvedValue(undefined),
+        delete: jest.fn().mockResolvedValue(undefined),
+        createQueryBuilder: jest.fn(() => ({
+          delete: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue(undefined),
+        })),
+      })
+    ),
+  },
+}));
+// Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
+jest.mock('../util/objectStorage', () => {
+  const actual = jest.requireActual('../util/objectStorage');
+  return {
+    __esModule: true,
+    ...actual,
+    upload: jest.fn(),
+    deleteObject: jest.fn(async () => undefined),
+    // Default: promotion is a passthrough (returns the key unchanged).
+    promoteImage: jest.fn(async (key: string) => key),
+  };
+});
 
 import {
   createMeetup,
@@ -64,6 +93,7 @@ import {
 import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
+import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { Ticket } from '../entity/Ticket';
 import {
   createEventbriteWebhook,
@@ -74,9 +104,13 @@ import {
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
+const mockedDeleteObject = jest.mocked(deleteObject);
+const mockedPromoteImage = jest.mocked(promoteImage);
+const mockedDisplayRecord = jest.mocked(MeetupDisplayRecord);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
@@ -125,7 +159,7 @@ const fakeMeetupRow = (overrides = {}): any => ({
   address: '123 Main St',
   description: 'A meetup',
   capacity: 100,
-  image_url: 'http://img',
+  image_key: 'http://img',
   organizers: [{ id: 1, nick_name: 'jane' }],
   eventbriteRecord: null,
   ...overrides,
@@ -227,7 +261,7 @@ const validCreateBody = (overrides = {}) => ({
   address: '500 Congress Ave',
   duration_hours: 4,
   capacity: 50,
-  image_url: 'http://img',
+  image_key: 'http://img',
   ...overrides,
 });
 
@@ -278,6 +312,41 @@ describe('createMeetup', () => {
     expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('promotes the uploaded image out of the temp prefix', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/abc.png');
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/abc.png');
+    expect((res.body as any).image_key).toBe('meetups/abc.png');
+    expect((res.body as any).save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 500 if promoting the uploaded image fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      res
+    );
+
+    expect(res.statusCode).toBe(500);
   });
 });
 
@@ -352,6 +421,225 @@ describe('updateMeetup', () => {
 
     expect(res.statusCode).toBe(201);
   });
+
+  it('deletes the previous image when replaced with a new upload', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.image_key).toBe('meetups/new.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('promotes a newly uploaded temp image and deletes the previous one', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/new.png');
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/tmp/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/new.png');
+    expect(meetup.image_key).toBe('meetups/new.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not delete an external (legacy/Eventbrite) image on replace', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'https://external.example/photo.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedDeleteObject).not.toHaveBeenCalled();
+  });
+
+  it('does not delete anything when the image is unchanged', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/keep.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 6 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedDeleteObject).not.toHaveBeenCalled();
+  });
+
+  it('clears and deletes the image when image_key is emptied', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(mockRequest({ image_key: '' }, { meetup_id: '10' }), res);
+
+    expect(meetup.image_key).toBe('');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('still succeeds if deleting the replaced image fails', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    mockedDeleteObject.mockRejectedValueOnce(new Error('R2 down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    errorSpy.mockRestore();
+  });
+
+  it('promotes display images and deletes ones no longer referenced', async () => {
+    const displayRecord = {
+      idle_image_urls: ['meetups/old1.png', 'meetups/keep.png'],
+      raffle_background_url: 'meetups/oldbg.png',
+      batch_raffle_background_url: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const meetup = fakeMeetupRow({
+      displayRecord,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest(
+        {
+          display_idle_image_urls: [
+            'meetups/keep.png',
+            'meetups/tmp/new.png',
+            '',
+          ],
+          display_raffle_background_url: 'meetups/newbg.png',
+        },
+        { meetup_id: '10' }
+      ),
+      res
+    );
+
+    // Empty entries dropped; each remaining entry promoted.
+    expect(displayRecord.idle_image_urls).toEqual([
+      'meetups/keep.png',
+      'meetups/tmp/new.png',
+    ]);
+    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/new.png');
+    expect(displayRecord.save).toHaveBeenCalled();
+    // Removed idle image and replaced raffle background are cleaned up.
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old1.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/oldbg.png');
+    // Retained image is not deleted.
+    expect(mockedDeleteObject).not.toHaveBeenCalledWith('meetups/keep.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('creates a display record when the meetup has none', async () => {
+    const created = {
+      idle_image_urls: [] as string[],
+      raffle_background_url: null,
+      batch_raffle_background_url: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedDisplayRecord.create.mockReturnValueOnce(created as any);
+    const meetup = fakeMeetupRow({
+      displayRecord: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest(
+        { display_idle_image_urls: ['meetups/tmp/a.png'] },
+        { meetup_id: '10' }
+      ),
+      res
+    );
+
+    expect(mockedDisplayRecord.create).toHaveBeenCalled();
+    expect(created.idle_image_urls).toEqual(['meetups/tmp/a.png']);
+    expect(created.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('clears and deletes a display background when emptied', async () => {
+    const displayRecord = {
+      idle_image_urls: [],
+      raffle_background_url: 'meetups/bg.png',
+      batch_raffle_background_url: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const meetup = fakeMeetupRow({
+      displayRecord,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ display_raffle_background_url: '' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(displayRecord.raffle_background_url).toBeNull();
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/bg.png');
+    expect(res.statusCode).toBe(201);
+  });
 });
 
 // ---- deleteMeetup ----------------------------------------------------------
@@ -365,6 +653,35 @@ describe('deleteMeetup', () => {
     await deleteMeetup(mockRequest({}, { meetup_id: '99' }), res);
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('deletes the meetup image and display image objects it owns', async () => {
+    const meetup = {
+      id: 10,
+      image_key: 'meetups/main.png',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: {
+        idle_image_urls: ['meetups/idle1.png', 'https://external/x.png'],
+        raffle_background_url: 'meetups/bg.png',
+        batch_raffle_background_url: null,
+      },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/main.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/idle1.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/bg.png');
+    // External URLs are not ours to delete.
+    expect(mockedDeleteObject).not.toHaveBeenCalledWith('https://external/x.png');
+    expect(res.statusCode).toBe(204);
   });
 
   // BUG: deleteMeetup re-fetches with `findOneBy`, which does NOT load the
@@ -479,13 +796,13 @@ describe('getMeetupDisplayAssets', () => {
     });
   });
 
-  it('returns the stored display assets when present', async () => {
+  it('resolves stored keys to public URLs and passes external URLs through', async () => {
     mockedMeetup.findOne.mockResolvedValue({
       id: 10,
       displayRecord: {
-        idle_image_urls: ['a', 'b'],
-        raffle_background_url: 'bg',
-        batch_raffle_background_url: 'batch-bg',
+        idle_image_urls: ['meetups/a.png', 'https://external.com/b.png'],
+        raffle_background_url: 'meetups/bg.png',
+        batch_raffle_background_url: 'https://external.com/batch.png',
       },
     } as any);
     const res = mockResponse();
@@ -493,9 +810,12 @@ describe('getMeetupDisplayAssets', () => {
     await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.body).toEqual({
-      idleImageUrls: ['a', 'b'],
-      raffleWinnerBackgroundImageUrl: 'bg',
-      batchRaffleWinnerBackgroundImageUrl: 'batch-bg',
+      idleImageUrls: [
+        'https://cdn.test/meetups/a.png',
+        'https://external.com/b.png',
+      ],
+      raffleWinnerBackgroundImageUrl: 'https://cdn.test/meetups/bg.png',
+      batchRaffleWinnerBackgroundImageUrl: 'https://external.com/batch.png',
     });
   });
 });

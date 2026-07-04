@@ -28,6 +28,11 @@ interface Config {
   apiUrl: string;
   socketUrl: string;
   webUrl: string;
+  r2AccessKeyId: string;
+  r2SecretKey: string;
+  r2JurisdictionUrl: string;
+  r2PublicBaseUrl: string;
+  r2Bucket: string;
 }
 
 const config: Config = {
@@ -58,6 +63,11 @@ const config: Config = {
   apiUrl: process.env.KEEBMEET_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.KEEBMEET_SOCKET_URL ?? 'http://localhost:3002',
   webUrl: process.env.KEEBMEET_WEB_URL ?? 'http://localhost:5173',
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+  r2SecretKey: process.env.R2_SECRET_KEY ?? '',
+  r2JurisdictionUrl: process.env.R2_JURISDICTION_URL ?? '',
+  r2PublicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? '',
+  r2Bucket: process.env.R2_BUCKET ?? 'keebmeet',
 };
 
 export default config;

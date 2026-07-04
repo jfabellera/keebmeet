@@ -55,7 +55,7 @@ export class Meetup extends BaseEntity {
   utc_offset: number;
 
   @Column({ type: 'varchar', length: 255 })
-  image_url: string;
+  image_key: string;
 
   @Column({ type: 'varchar', length: 500, default: '' })
   description: string;

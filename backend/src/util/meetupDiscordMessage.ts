@@ -1,6 +1,7 @@
 import config from '../config';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
+import { publicUrl } from './objectStorage';
 import {
   editEmbedMessage,
   type DiscordComponent,
@@ -97,7 +98,7 @@ export const buildMeetupEmbed = (
   title: meetup.name,
   description: meetup.description,
   url: `${config.webUrl}/meetup/${meetup.id}`,
-  image: { url: cropImageUrl(meetup.image_url) },
+  image: { url: cropImageUrl(publicUrl(meetup.image_key)) },
   fields: [
     {
       name: 'Date',

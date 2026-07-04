@@ -9,6 +9,7 @@ import { useFormik } from 'formik';
 import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import MeetupImageField from '../components/Meetups/MeetupImageField';
 import Page from '../components/Page/Page';
 import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
@@ -25,6 +26,7 @@ const NewMeetupPage = (): ReactNode => {
       duration: 0,
       capacity: 0,
       imageUrl: '',
+      imageKey: '',
       description: '',
       hasRaffle: true,
       defaultRaffleEntries: 1,
@@ -38,7 +40,7 @@ const NewMeetupPage = (): ReactNode => {
         address: formik.values.address,
         duration_hours: formik.values.duration,
         capacity: formik.values.capacity,
-        image_url: formik.values.imageUrl,
+        image_key: formik.values.imageKey,
         description: formik.values.description,
         has_raffle: formik.values.hasRaffle,
         default_raffle_entries: formik.values.hasRaffle
@@ -124,7 +126,13 @@ const NewMeetupPage = (): ReactNode => {
 
                 <FormField formik={formik} name="address" label="Address" />
 
-                <FormField formik={formik} name="imageUrl" label="Image URL" />
+                <MeetupImageField
+                  previewUrl={formik.values.imageUrl}
+                  onUploaded={(imageKey, imageUrl) => {
+                    void formik.setFieldValue('imageKey', imageKey);
+                    void formik.setFieldValue('imageUrl', imageUrl);
+                  }}
+                />
 
                 <Field>
                   <FieldLabel htmlFor="description">Description</FieldLabel>

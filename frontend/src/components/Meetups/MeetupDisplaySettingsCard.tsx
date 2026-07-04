@@ -11,6 +11,7 @@ import {
   useGetMeetupDisplayAssetsQuery,
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
+import { IMAGE_ACCEPT, useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
   meetupId: number;
@@ -22,6 +23,7 @@ const gridClass =
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup] = useEditMeetupMutation();
+  const { upload } = useMeetupImageUpload();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
   const [raffleBackgroundUrl, setRaffleBackgroundUrl] = useState<string>('');
@@ -36,25 +38,26 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
     );
   }, [displayAssets]);
 
-  const onChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    setUrls((urls) => {
-      const temp = [...urls];
-      temp[Number(event.target.id)] = event.target.value;
-      return temp;
-    });
+  // Uploads the selected file to R2 and hands the resulting preview URL back to
+  // `apply`. The backend recovers the object key from this URL on save.
+  const uploadAndSet = (
+    file: File | undefined,
+    apply: (url: string) => void
+  ): void => {
+    if (file != null) upload(file, (_imageKey, imageUrl) => apply(imageUrl));
   };
 
-  const onRaffleBackgroundChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setRaffleBackgroundUrl(event.target.value);
-  };
-
-  const onBatchRaffleBackgroundChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setBatchRaffleBackgroundUrl(event.target.value);
-  };
+  const onIdleFileChange =
+    (index: number) =>
+    (event: React.ChangeEvent<HTMLInputElement>): void => {
+      uploadAndSet(event.target.files?.[0], (url) => {
+        setUrls((urls) => {
+          const temp = [...urls];
+          temp[index] = url;
+          return temp;
+        });
+      });
+    };
 
   const onAdd = (): void => {
     setUrls((urls) => {
@@ -96,7 +99,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       await updateMeetup({
         meetupId,
         payload: {
-          display_idle_image_urls: urls,
+          display_idle_image_urls: urls.filter((url) => url !== ''),
           display_raffle_background_url: raffleBackgroundUrl,
           display_batch_raffle_background_url: batchRaffleBackgroundUrl,
         },
@@ -171,9 +174,10 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               {isEditable ? (
                 <Input
                   id={String(index)}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
                   className="mt-4"
-                  value={urls[index]}
-                  onChange={onChange}
+                  onChange={onIdleFileChange(index)}
                 />
               ) : null}
             </div>
@@ -211,11 +215,24 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
             </div>
           </AspectRatio>
           {isEditable ? (
-            <Input
-              className="mt-4"
-              value={raffleBackgroundUrl}
-              onChange={onRaffleBackgroundChange}
-            />
+            <div className="mt-4 flex items-center gap-2">
+              <Input
+                type="file"
+                accept={IMAGE_ACCEPT}
+                onChange={(event) =>
+                  uploadAndSet(event.target.files?.[0], setRaffleBackgroundUrl)
+                }
+              />
+              {raffleBackgroundUrl !== '' ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setRaffleBackgroundUrl('')}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -234,11 +251,27 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
             </div>
           </AspectRatio>
           {isEditable ? (
-            <Input
-              className="mt-4"
-              value={batchRaffleBackgroundUrl}
-              onChange={onBatchRaffleBackgroundChange}
-            />
+            <div className="mt-4 flex items-center gap-2">
+              <Input
+                type="file"
+                accept={IMAGE_ACCEPT}
+                onChange={(event) =>
+                  uploadAndSet(
+                    event.target.files?.[0],
+                    setBatchRaffleBackgroundUrl
+                  )
+                }
+              />
+              {batchRaffleBackgroundUrl !== '' ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setBatchRaffleBackgroundUrl('')}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
