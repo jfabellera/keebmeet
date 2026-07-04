@@ -49,6 +49,23 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+// Run the delete transaction callback against a no-op manager.
+jest.mock('../datasource', () => ({
+  AppDataSource: {
+    transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
+      cb({
+        remove: jest.fn().mockResolvedValue(undefined),
+        delete: jest.fn().mockResolvedValue(undefined),
+        createQueryBuilder: jest.fn(() => ({
+          delete: jest.fn().mockReturnThis(),
+          from: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          execute: jest.fn().mockResolvedValue(undefined),
+        })),
+      })
+    ),
+  },
+}));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
 jest.mock('../util/objectStorage', () => {
   const actual = jest.requireActual('../util/objectStorage');
@@ -593,6 +610,35 @@ describe('deleteMeetup', () => {
     await deleteMeetup(mockRequest({}, { meetup_id: '99' }), res);
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('deletes the meetup image and display image objects it owns', async () => {
+    const meetup = {
+      id: 10,
+      image_key: 'meetups/main.png',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: {
+        idle_image_urls: ['meetups/idle1.png', 'https://external/x.png'],
+        raffle_background_url: 'meetups/bg.png',
+        batch_raffle_background_url: null,
+      },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/main.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/idle1.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/bg.png');
+    // External URLs are not ours to delete.
+    expect(mockedDeleteObject).not.toHaveBeenCalledWith('https://external/x.png');
+    expect(res.statusCode).toBe(204);
   });
 
   // BUG: deleteMeetup re-fetches with `findOneBy`, which does NOT load the

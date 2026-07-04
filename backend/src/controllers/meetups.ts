@@ -745,6 +745,23 @@ export const deleteMeetup = async (
     await manager.remove(meetup);
   });
 
+  // Best-effort cleanup of the meetup's R2 image objects, after the DB delete
+  // commits. Skips external URLs (legacy/Eventbrite) and never blocks the
+  // response — orphaned objects are preferable to a failed deletion.
+  const imageKeys = [
+    meetup.image_key,
+    ...(meetup.displayRecord?.idle_image_urls ?? []),
+    meetup.displayRecord?.raffle_background_url ?? '',
+    meetup.displayRecord?.batch_raffle_background_url ?? '',
+  ].filter(isManagedKey);
+  await Promise.all(
+    imageKeys.map((key) =>
+      deleteObject(key).catch((error) =>
+        console.error(`Failed to delete meetup image "${key}":`, error)
+      )
+    )
+  );
+
   socket.emit('meetup:update', { meetupId });
 
   return res.status(204).end();
