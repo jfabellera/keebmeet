@@ -20,6 +20,7 @@ export interface RegisterPayload {
   nickName: string;
   password: string;
   requestOrganizer: boolean;
+  turnstileToken: string;
 }
 
 export interface DiscordLinkPayload {
@@ -236,6 +237,7 @@ export const register = createAsyncThunk(
         nick_name: payload.nickName,
         password: payload.password,
         is_organizer_requested: payload.requestOrganizer,
+        turnstile_token: payload.turnstileToken,
       });
     } catch (err: any) {
       if (err instanceof AxiosError && err.response != null) {

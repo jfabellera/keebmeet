@@ -24,6 +24,7 @@ interface Config {
   discordBotToken: string;
   discordRedirectUri: string;
   internalApiSecret: string;
+  turnstileSecretKey: string;
   apiUrl: string;
   socketUrl: string;
   webUrl: string;
@@ -53,6 +54,7 @@ const config: Config = {
     process.env.DISCORD_REDIRECT_URI ??
     'http://localhost:5173/auth/discord/callback',
   internalApiSecret: process.env.INTERNAL_API_SECRET ?? '',
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? '',
   apiUrl: process.env.KEEBMEET_API_URL ?? 'http://localhost:3000',
   socketUrl: process.env.KEEBMEET_SOCKET_URL ?? 'http://localhost:3002',
   webUrl: process.env.KEEBMEET_WEB_URL ?? 'http://localhost:5173',

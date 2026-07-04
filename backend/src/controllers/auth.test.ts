@@ -14,8 +14,12 @@ jest.mock('../config', () => ({
     discordClientSecret: 'client-secret',
     discordRedirectUri: 'http://localhost/cb',
     discordBotToken: 'bot-token',
+    turnstileSecretKey: 'test-turnstile-secret',
   },
 }));
+
+// Turnstile verification hits Cloudflare over HTTP; stub axios so it doesn't.
+jest.mock('axios');
 
 jest.mock('../entity/User', () => ({
   User: {
@@ -57,6 +61,7 @@ jest.mock('../util/emailVerification', () => ({
   verifyVerificationToken: jest.fn(),
 }));
 
+import axios from 'axios';
 import bcrypt from 'bcrypt';
 import {
   createUser,
@@ -84,6 +89,7 @@ const mockedSendVerificationEmail = jest.mocked(sendVerificationEmail);
 const mockedGenerateVerificationToken = jest.mocked(generateVerificationToken);
 const mockedBuildVerificationLink = jest.mocked(buildVerificationLink);
 const mockedVerifyVerificationToken = jest.mocked(verifyVerificationToken);
+const mockedAxios = jest.mocked(axios);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -133,6 +139,7 @@ const validCreateBody = (overrides: Record<string, unknown> = {}) => ({
   last_name: 'User',
   nick_name: 'newbie',
   password: 'password123',
+  turnstile_token: 'turnstile-token',
   ...overrides,
 });
 
@@ -148,6 +155,8 @@ beforeEach(() => {
   mockedBuildVerificationLink.mockImplementation(
     (token: string) => `https://app.test/verify-email?token=${token}`
   );
+  // Turnstile verification passes by default; individual tests override this.
+  mockedAxios.post.mockResolvedValue({ data: { success: true } });
 });
 
 // ---- createUser ------------------------------------------------------------
@@ -159,6 +168,48 @@ describe('createUser', () => {
 
     expect(res.statusCode).toBe(400);
     expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the Turnstile token is missing', async () => {
+    const res = mockResponse();
+    await createUser(
+      mockRequest(validCreateBody({ turnstile_token: undefined })),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when Turnstile verification fails', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { success: false } });
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({ message: 'Captcha verification failed.' });
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
+    expect(mockedUser.create).not.toHaveBeenCalled();
+  });
+
+  it('sends the token and secret to the Turnstile siteverify endpoint', async () => {
+    mockedUser.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await createUser(mockRequest(validCreateBody()), res);
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      expect.any(URLSearchParams),
+      expect.objectContaining({
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      })
+    );
+    const params = mockedAxios.post.mock.calls[0][1] as URLSearchParams;
+    expect(params.get('secret')).toBe('test-turnstile-secret');
+    expect(params.get('response')).toBe('turnstile-token');
   });
 
   it('returns 409 when the email is already taken', async () => {
