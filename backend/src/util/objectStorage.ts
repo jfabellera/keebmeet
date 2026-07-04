@@ -91,6 +91,22 @@ export const isManagedKey = (value: string): boolean =>
   value !== '' && !ABSOLUTE_URL.test(value);
 
 /**
+ * Inverse of {@link publicUrl}: recovers the stored object key from a value that
+ * may be a public URL for an object we own. Values not under our public base
+ * (external URLs, bare keys, empty) are returned unchanged. Lets a client
+ * round-trip a serialized `publicUrl` back to the key we persist — needed where
+ * a whole set of references is re-submitted (e.g. the idle-images array) rather
+ * than only the changed ones.
+ */
+export const toStoredKey = (value: string): string => {
+  const base = config.r2PublicBaseUrl.replace(/\/+$/, '');
+  if (base !== '' && value.startsWith(`${base}/`)) {
+    return value.slice(base.length + 1);
+  }
+  return value;
+};
+
+/**
  * Deletes an object from R2 by key. R2/S3 deletes are idempotent — deleting a
  * missing key is not an error.
  */

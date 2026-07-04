@@ -29,6 +29,7 @@ import {
   isManagedKey,
   promoteImage,
   publicUrl,
+  toStoredKey,
 } from './objectStorage';
 
 beforeEach(() => {
@@ -59,6 +60,18 @@ describe('publicUrl', () => {
 
   it('returns empty string for an empty key (no image)', () => {
     expect(publicUrl('')).toBe('');
+  });
+});
+
+describe('toStoredKey', () => {
+  it('recovers the object key from one of our public URLs', () => {
+    expect(toStoredKey('https://pub.r2.dev/meetups/x.png')).toBe('meetups/x.png');
+  });
+
+  it('leaves external URLs, bare keys, and empty strings unchanged', () => {
+    expect(toStoredKey('https://external/x.png')).toBe('https://external/x.png');
+    expect(toStoredKey('meetups/x.png')).toBe('meetups/x.png');
+    expect(toStoredKey('')).toBe('');
   });
 });
 

@@ -15,6 +15,7 @@ import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
+  type EditMeetupPayload,
   type EventbriteAttendee,
   type MeetupDisplayAssets,
   type MeetupInfo,
@@ -39,6 +40,7 @@ import {
   isManagedKey,
   promoteImage,
   publicUrl,
+  toStoredKey,
   upload,
 } from '../util/objectStorage';
 import { decrypt } from '../util/security';
@@ -446,6 +448,74 @@ export const createMeetupFromEventbrite = async (
   return res.status(201).end();
 };
 
+/**
+ * Applies display-image edits to a meetup's display record: promotes freshly
+ * uploaded temp images to permanent keys, persists the record, then deletes any
+ * managed objects that were replaced or removed. Throws if a promotion fails.
+ */
+const syncDisplayRecord = async (
+  meetup: Meetup,
+  data: EditMeetupPayload
+): Promise<void> => {
+  const prevIdle = meetup.displayRecord?.idle_image_urls ?? [];
+  const prevRaffle = meetup.displayRecord?.raffle_background_url ?? null;
+  const prevBatch = meetup.displayRecord?.batch_raffle_background_url ?? null;
+
+  if (meetup.displayRecord == null) {
+    meetup.displayRecord = MeetupDisplayRecord.create();
+  }
+  const record = meetup.displayRecord;
+
+  // Recover the stored key from a re-submitted public URL, then promote any
+  // freshly uploaded temp image to its permanent key.
+  const store = async (value: string): Promise<string> =>
+    promoteImage(toStoredKey(value));
+
+  if (data.display_idle_image_urls !== undefined) {
+    record.idle_image_urls = await Promise.all(
+      data.display_idle_image_urls.filter((value) => value !== '').map(store)
+    );
+  }
+  if (data.display_raffle_background_url !== undefined) {
+    record.raffle_background_url =
+      data.display_raffle_background_url === null
+        ? null
+        : await store(data.display_raffle_background_url);
+  }
+  if (data.display_batch_raffle_background_url !== undefined) {
+    record.batch_raffle_background_url =
+      data.display_batch_raffle_background_url === null
+        ? null
+        : await store(data.display_batch_raffle_background_url);
+  }
+
+  await record.save();
+
+  // Best-effort cleanup of images no longer referenced (skips external URLs).
+  const orphaned = [
+    ...prevIdle.filter(
+      (key) => isManagedKey(key) && !record.idle_image_urls.includes(key)
+    ),
+    ...(
+      [
+        [prevRaffle, record.raffle_background_url],
+        [prevBatch, record.batch_raffle_background_url],
+      ] as const
+    )
+      .filter(
+        ([prev, next]) => prev != null && isManagedKey(prev) && prev !== next
+      )
+      .map(([prev]) => prev as string),
+  ];
+  await Promise.all(
+    orphaned.map((key) =>
+      deleteObject(key).catch((error) =>
+        console.error(`Failed to delete removed display image "${key}":`, error)
+      )
+    )
+  );
+};
+
 export const updateMeetup = async (
   req: Request,
   res: Response
@@ -528,24 +598,13 @@ export const updateMeetup = async (
     result.data.display_raffle_background_url !== undefined ||
     result.data.display_batch_raffle_background_url !== undefined
   ) {
-    // Create display record if one does not exist
-    if (meetup.displayRecord == null) {
-      meetup.displayRecord = MeetupDisplayRecord.create();
+    try {
+      await syncDisplayRecord(meetup, result.data);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: 'Failed to store display image.' });
     }
-
-    if (result.data.display_idle_image_urls !== undefined)
-      meetup.displayRecord.idle_image_urls =
-        result.data.display_idle_image_urls;
-
-    if (result.data.display_raffle_background_url !== undefined)
-      meetup.displayRecord.raffle_background_url =
-        result.data.display_raffle_background_url;
-
-    if (result.data.display_batch_raffle_background_url !== undefined)
-      meetup.displayRecord.batch_raffle_background_url =
-        result.data.display_batch_raffle_background_url;
-
-    await meetup.displayRecord.save();
   }
 
   // TODO(jan): Implement this correctly with new typeorm entities
@@ -803,11 +862,16 @@ export const getMeetupDisplayAssets = async (
     return res.status(404).json({ message: 'Invalid meetupID.' });
   }
 
+  const display = meetup.displayRecord;
   return res.status(200).json({
-    idleImageUrls: meetup.displayRecord?.idle_image_urls ?? null,
+    idleImageUrls: display != null ? display.idle_image_urls.map(publicUrl) : null,
     raffleWinnerBackgroundImageUrl:
-      meetup.displayRecord?.raffle_background_url ?? null,
+      display?.raffle_background_url != null
+        ? publicUrl(display.raffle_background_url)
+        : null,
     batchRaffleWinnerBackgroundImageUrl:
-      meetup.displayRecord?.batch_raffle_background_url ?? null,
+      display?.batch_raffle_background_url != null
+        ? publicUrl(display.batch_raffle_background_url)
+        : null,
   } satisfies MeetupDisplayAssets);
 };

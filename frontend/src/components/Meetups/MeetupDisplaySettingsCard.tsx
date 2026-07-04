@@ -6,11 +6,15 @@ import { useBoolean } from '@/hooks/useBoolean';
 import type React from 'react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { toast } from 'sonner';
 import {
   useEditMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
+  useUploadMeetupImageMutation,
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
+
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
 
 interface Props {
   meetupId: number;
@@ -22,6 +26,7 @@ const gridClass =
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup] = useEditMeetupMutation();
+  const [uploadImage] = useUploadMeetupImageMutation();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
   const [raffleBackgroundUrl, setRaffleBackgroundUrl] = useState<string>('');
@@ -36,25 +41,37 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
     );
   }, [displayAssets]);
 
-  const onChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    setUrls((urls) => {
-      const temp = [...urls];
-      temp[Number(event.target.id)] = event.target.value;
-      return temp;
-    });
+  // Uploads the selected file to R2 and hands the resulting preview URL back to
+  // `apply`. The backend recovers the object key from this URL on save.
+  const uploadAndSet = (
+    file: File | undefined,
+    apply: (url: string) => void
+  ): void => {
+    if (file == null) return;
+    void (async () => {
+      const result = await uploadImage(file);
+      if ('error' in result && result.error != null) {
+        const data: any = 'data' in result.error ? result.error.data : null;
+        toast.error('Error uploading image', {
+          description: data?.message ?? 'Please try a different image.',
+        });
+        return;
+      }
+      apply(result.data.image_url);
+    })();
   };
 
-  const onRaffleBackgroundChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setRaffleBackgroundUrl(event.target.value);
-  };
-
-  const onBatchRaffleBackgroundChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setBatchRaffleBackgroundUrl(event.target.value);
-  };
+  const onIdleFileChange =
+    (index: number) =>
+    (event: React.ChangeEvent<HTMLInputElement>): void => {
+      uploadAndSet(event.target.files?.[0], (url) => {
+        setUrls((urls) => {
+          const temp = [...urls];
+          temp[index] = url;
+          return temp;
+        });
+      });
+    };
 
   const onAdd = (): void => {
     setUrls((urls) => {
@@ -96,7 +113,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       await updateMeetup({
         meetupId,
         payload: {
-          display_idle_image_urls: urls,
+          display_idle_image_urls: urls.filter((url) => url !== ''),
           display_raffle_background_url: raffleBackgroundUrl,
           display_batch_raffle_background_url: batchRaffleBackgroundUrl,
         },
@@ -171,9 +188,10 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               {isEditable ? (
                 <Input
                   id={String(index)}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
                   className="mt-4"
-                  value={urls[index]}
-                  onChange={onChange}
+                  onChange={onIdleFileChange(index)}
                 />
               ) : null}
             </div>
@@ -212,9 +230,12 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
           </AspectRatio>
           {isEditable ? (
             <Input
+              type="file"
+              accept={IMAGE_ACCEPT}
               className="mt-4"
-              value={raffleBackgroundUrl}
-              onChange={onRaffleBackgroundChange}
+              onChange={(event) =>
+                uploadAndSet(event.target.files?.[0], setRaffleBackgroundUrl)
+              }
             />
           ) : null}
         </div>
@@ -235,9 +256,15 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
           </AspectRatio>
           {isEditable ? (
             <Input
+              type="file"
+              accept={IMAGE_ACCEPT}
               className="mt-4"
-              value={batchRaffleBackgroundUrl}
-              onChange={onBatchRaffleBackgroundChange}
+              onChange={(event) =>
+                uploadAndSet(
+                  event.target.files?.[0],
+                  setBatchRaffleBackgroundUrl
+                )
+              }
             />
           ) : null}
         </div>
