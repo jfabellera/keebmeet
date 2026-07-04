@@ -34,9 +34,10 @@ import {
 } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
-  buildImageKey,
+  buildTempImageKey,
   deleteObject,
   isManagedKey,
+  promoteImage,
   publicUrl,
   upload,
 } from '../util/objectStorage';
@@ -241,7 +242,8 @@ export const uploadMeetupImage = async (
       .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
   }
 
-  const key = buildImageKey(ext);
+  // Stored under the temp prefix; promoted to permanent when a meetup is saved.
+  const key = buildTempImageKey(ext);
   await upload(key, file.buffer, file.mimetype);
 
   return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
@@ -312,6 +314,13 @@ export const createMeetup = async (
     .utc(newMeetup.date)
     .subtract(newMeetup.utc_offset, 'hour')
     .toISOString();
+
+  // Promote the uploaded image out of the temp prefix now that we're committing.
+  try {
+    newMeetup.image_key = await promoteImage(newMeetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
 
   await newMeetup.save();
 
@@ -561,6 +570,14 @@ export const updateMeetup = async (
   //     message: 'Only the head organizer can edit the organizer list.',
   //   });
   // }
+
+  // Promote a newly uploaded image out of the temp prefix (no-op if the image
+  // is unchanged or is an external URL).
+  try {
+    meetup.image_key = await promoteImage(meetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
 
   await meetup.save();
 

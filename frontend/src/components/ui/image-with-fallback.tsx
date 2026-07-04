@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FiImage } from 'react-icons/fi';
 
 interface ImageWithFallbackProps extends React.ComponentProps<'img'> {
@@ -16,6 +16,10 @@ export function ImageWithFallback({
   ...props
 }: ImageWithFallbackProps): ReactNode {
   const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    setErrored(false);
+  }, [src]);
 
   if (src == null || src === '' || errored) {
     return (

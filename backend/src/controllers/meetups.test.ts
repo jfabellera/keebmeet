@@ -57,6 +57,8 @@ jest.mock('../util/objectStorage', () => {
     ...actual,
     upload: jest.fn(),
     deleteObject: jest.fn(),
+    // Default: promotion is a passthrough (returns the key unchanged).
+    promoteImage: jest.fn(async (key: string) => key),
   };
 });
 
@@ -84,11 +86,12 @@ import {
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
-import { deleteObject } from '../util/objectStorage';
+import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedDeleteObject = jest.mocked(deleteObject);
+const mockedPromoteImage = jest.mocked(promoteImage);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
@@ -291,6 +294,41 @@ describe('createMeetup', () => {
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
   });
+
+  it('promotes the uploaded image out of the temp prefix', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/abc.png');
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/abc.png');
+    expect((res.body as any).image_key).toBe('meetups/abc.png');
+    expect((res.body as any).save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 500 if promoting the uploaded image fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      res
+    );
+
+    expect(res.statusCode).toBe(500);
+  });
 });
 
 // ---- updateMeetup ----------------------------------------------------------
@@ -380,6 +418,28 @@ describe('updateMeetup', () => {
       res
     );
 
+    expect(meetup.image_key).toBe('meetups/new.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('promotes a newly uploaded temp image and deletes the previous one', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/new.png');
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/tmp/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/new.png');
     expect(meetup.image_key).toBe('meetups/new.png');
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
     expect(res.statusCode).toBe(201);

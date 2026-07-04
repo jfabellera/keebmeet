@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -9,6 +10,12 @@ import config from '../config';
 const BUCKET = 'keebmeet';
 
 const ABSOLUTE_URL = /^https?:\/\//i;
+
+// Fresh uploads land under a temp prefix. They are "promoted" to the permanent
+// prefix only when a meetup that references them is saved; anything left under
+// the temp prefix (abandoned uploads) is reaped by an R2 bucket lifecycle rule.
+const IMAGE_PREFIX = 'meetups/';
+const TEMP_PREFIX = 'meetups/tmp/';
 
 let s3: S3Client | null = null;
 
@@ -91,7 +98,44 @@ export const deleteObject = async (key: string): Promise<void> => {
 };
 
 /**
- * Builds a unique object key for a meetup image, e.g. `meetups/<uuid>.png`.
+ * Builds a unique key for a freshly uploaded meetup image, under the temp
+ * prefix, e.g. `meetups/tmp/<uuid>.png`. It becomes permanent via
+ * {@link promoteImage} once a meetup referencing it is saved.
  */
-export const buildImageKey = (ext: string): string =>
-  `meetups/${randomUUID()}.${ext}`;
+export const buildTempImageKey = (ext: string): string =>
+  `${TEMP_PREFIX}${randomUUID()}.${ext}`;
+
+/**
+ * Promotes a freshly uploaded temp object to its permanent key by copying it
+ * out of the temp prefix and removing the temp copy. Returns the permanent key.
+ *
+ * A no-op for anything that isn't a temp key — permanent keys (an unchanged
+ * image on edit) and external absolute URLs (legacy/Eventbrite) are returned
+ * unchanged, so callers can pass whatever `image_key` they hold.
+ */
+export const promoteImage = async (keyOrUrl: string): Promise<string> => {
+  if (!keyOrUrl.startsWith(TEMP_PREFIX)) {
+    return keyOrUrl;
+  }
+
+  const permanentKey = `${IMAGE_PREFIX}${keyOrUrl.slice(TEMP_PREFIX.length)}`;
+
+  // The copy must succeed for the meetup to reference a valid object.
+  await getS3Client().send(
+    new CopyObjectCommand({
+      Bucket: BUCKET,
+      CopySource: `${BUCKET}/${keyOrUrl}`,
+      Key: permanentKey,
+    })
+  );
+
+  // Removing the temp copy is best-effort: the permanent copy already exists,
+  // and any leftover temp object is reaped by the bucket lifecycle rule.
+  try {
+    await deleteObject(keyOrUrl);
+  } catch (error) {
+    console.error(`Failed to delete promoted temp image "${keyOrUrl}":`, error);
+  }
+
+  return permanentKey;
+};
