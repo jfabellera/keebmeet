@@ -1,8 +1,14 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 import config from '../config';
 
 const BUCKET = 'keebmeet';
+
+const ABSOLUTE_URL = /^https?:\/\//i;
 
 let s3: S3Client | null = null;
 
@@ -60,11 +66,28 @@ export const upload = async (
  * base URL.
  */
 export const publicUrl = (keyOrUrl: string): string => {
-  if (/^https?:\/\//i.test(keyOrUrl)) {
+  if (ABSOLUTE_URL.test(keyOrUrl)) {
     return keyOrUrl;
   }
   const base = config.r2PublicBaseUrl.replace(/\/+$/, '');
   return `${base}/${keyOrUrl}`;
+};
+
+/**
+ * True when `value` is a bare R2 object key we own (not an external absolute
+ * URL such as a legacy or Eventbrite image, which must never be deleted).
+ */
+export const isManagedKey = (value: string): boolean =>
+  value !== '' && !ABSOLUTE_URL.test(value);
+
+/**
+ * Deletes an object from R2 by key. R2/S3 deletes are idempotent — deleting a
+ * missing key is not an error.
+ */
+export const deleteObject = async (key: string): Promise<void> => {
+  await getS3Client().send(
+    new DeleteObjectCommand({ Bucket: BUCKET, Key: key })
+  );
 };
 
 /**

@@ -49,6 +49,16 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+// Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
+jest.mock('../util/objectStorage', () => {
+  const actual = jest.requireActual('../util/objectStorage');
+  return {
+    __esModule: true,
+    ...actual,
+    upload: jest.fn(),
+    deleteObject: jest.fn(),
+  };
+});
 
 import {
   createMeetup,
@@ -74,9 +84,11 @@ import {
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { deleteObject } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
+const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
@@ -351,6 +363,83 @@ describe('updateMeetup', () => {
     );
 
     expect(res.statusCode).toBe(201);
+  });
+
+  it('deletes the previous image when replaced with a new upload', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.image_key).toBe('meetups/new.png');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not delete an external (legacy/Eventbrite) image on replace', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'https://external.example/photo.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedDeleteObject).not.toHaveBeenCalled();
+  });
+
+  it('does not delete anything when the image is unchanged', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/keep.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 6 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(mockedDeleteObject).not.toHaveBeenCalled();
+  });
+
+  it('still succeeds if deleting the replaced image fails', async () => {
+    const meetup = fakeMeetupRow({
+      image_key: 'meetups/old.png',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    mockedDeleteObject.mockRejectedValueOnce(new Error('R2 down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ image_key: 'meetups/new.png' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    errorSpy.mockRestore();
   });
 });
 

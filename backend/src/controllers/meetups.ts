@@ -33,7 +33,13 @@ import {
   type GeocodeResults,
 } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
-import { buildImageKey, publicUrl, upload } from '../util/objectStorage';
+import {
+  buildImageKey,
+  deleteObject,
+  isManagedKey,
+  publicUrl,
+  upload,
+} from '../util/objectStorage';
 import { decrypt } from '../util/security';
 import {
   createMeetupFromEventbriteSchema,
@@ -465,6 +471,9 @@ export const updateMeetup = async (
     return res.status(409).json({ message: 'Meetup name is taken.' });
   }
 
+  // Remember the current image so we can clean it up if it gets replaced.
+  const previousImageKey = meetup.image_key;
+
   meetup.name = req.body.name ?? meetup.name;
   meetup.duration_hours = req.body.duration_hours ?? meetup.duration_hours;
   meetup.has_raffle = req.body.has_raffle ?? meetup.has_raffle;
@@ -554,6 +563,22 @@ export const updateMeetup = async (
   // }
 
   await meetup.save();
+
+  // Best-effort cleanup of the replaced image. Runs only after a successful
+  // save, skips external URLs (legacy/Eventbrite), and never fails the edit.
+  if (
+    previousImageKey !== meetup.image_key &&
+    isManagedKey(previousImageKey)
+  ) {
+    try {
+      await deleteObject(previousImageKey);
+    } catch (error) {
+      console.error(
+        `Failed to delete replaced meetup image "${previousImageKey}":`,
+        error
+      );
+    }
+  }
 
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
