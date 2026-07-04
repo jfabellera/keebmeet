@@ -6,8 +6,14 @@ import { type Request, type Response } from 'express';
 jest.mock('../entity/User', () => ({
   User: {
     find: jest.fn(),
+    findBy: jest.fn(),
     findOneBy: jest.fn(),
   },
+}));
+
+jest.mock('../config', () => ({
+  __esModule: true,
+  default: { r2PublicBaseUrl: 'https://cdn.test' },
 }));
 
 jest.mock('../entity/OrganizerRequest', () => ({
@@ -20,7 +26,7 @@ jest.mock('../util/discord', () => ({
   fetchDiscordUsername: jest.fn(),
 }));
 
-import { getAllUsers, getUser } from './users';
+import { getAllUsers, getOrganizers, getUser } from './users';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { fetchDiscordUsername } from '../util/discord';
@@ -108,6 +114,79 @@ describe('getAllUsers', () => {
     await getAllUsers(mockRequest(), res);
 
     expect(res.body).toEqual([]);
+  });
+});
+
+// ---- getOrganizers ---------------------------------------------------------
+
+describe('getOrganizers', () => {
+  it('queries only for organizers', async () => {
+    mockedUser.findBy.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getOrganizers(mockRequest(), res);
+
+    expect(mockedUser.findBy).toHaveBeenCalledWith({ is_organizer: true });
+  });
+
+  it('maps organizers to the public organizer shape', async () => {
+    mockedUser.findBy.mockResolvedValue([
+      fakeUser({
+        id: 1,
+        nick_name: 'jane',
+        is_organizer: true,
+        photo_key: 'users/1.png',
+      }),
+      fakeUser({
+        id: 2,
+        nick_name: 'john',
+        is_organizer: true,
+        photo_key: null,
+      }),
+    ]);
+    const res = mockResponse();
+
+    await getOrganizers(mockRequest(), res);
+
+    const body = res.body as any[];
+    expect(body).toEqual([
+      {
+        id: 1,
+        display_name: 'jane',
+        photo_url: 'https://cdn.test/users/1.png',
+      },
+      { id: 2, display_name: 'john', photo_url: '' },
+    ]);
+  });
+
+  it('returns an empty array when there are no organizers', async () => {
+    mockedUser.findBy.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getOrganizers(mockRequest(), res);
+
+    expect(res.body).toEqual([]);
+  });
+
+  it('excludes non-organizers via the query filter', async () => {
+    // Make the mock honor the where-clause the controller passes, so a
+    // non-organizer in the underlying data is filtered out by the query.
+    const allUsers = [
+      fakeUser({ id: 1, nick_name: 'jane', is_organizer: true }),
+      fakeUser({ id: 2, nick_name: 'john', is_organizer: false }),
+    ];
+    mockedUser.findBy.mockImplementation(async (where: any) =>
+      allUsers.filter((user) => user.is_organizer === where.is_organizer)
+    );
+    const res = mockResponse();
+
+    await getOrganizers(mockRequest(), res);
+
+    const body = res.body as any[];
+    expect(mockedUser.findBy).toHaveBeenCalledWith({ is_organizer: true });
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({ id: 1, display_name: 'jane' });
+    expect(body.map((organizer) => organizer.id)).not.toContain(2);
   });
 });
 
