@@ -552,6 +552,19 @@ export const updateMeetup = async (
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
+  // Only the lead organizer may change the co-organizer list. Co-organizers can
+  // edit every other field, but altering who runs the meetup is reserved to the
+  // lead. Checked before any mutation so a forbidden request changes nothing.
+  const requestor = res.locals.requestor as User;
+  if (
+    result.data.organizer_ids != null &&
+    meetup.lead_organizer?.id !== requestor.id
+  ) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can update the organizers list.',
+    });
+  }
+
   // Check if meetup name is taken
   const existingMeetup = await Meetup.findOne({
     where: {

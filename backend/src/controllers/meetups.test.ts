@@ -503,6 +503,7 @@ describe('updateMeetup', () => {
         organizers: [{ id: 2 }, { id: 5 }],
       } as never); // organizers lookup
     const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
 
     await updateMeetup(
       mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
@@ -524,6 +525,7 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
     const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
 
     await updateMeetup(
       mockRequest({ organizer_ids: [1, 2, 3] }, { meetup_id: '10' }),
@@ -545,6 +547,7 @@ describe('updateMeetup', () => {
         organizers: [{ id: 2 }, { id: 3 }],
       } as never);
     const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
 
     await updateMeetup(
       mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
@@ -582,6 +585,7 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
     const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
 
     await updateMeetup(
       mockRequest({ organizer_ids: [2] }, { meetup_id: '10' }),
@@ -590,6 +594,46 @@ describe('updateMeetup', () => {
 
     // Desired set [2] matches the current co-organizers, so nothing is written.
     expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-lead organizer changing organizer_ids', async () => {
+    // fakeMeetupRow's lead is user 1; user 2 is a co-organizer, not the lead.
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup); // target lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Forbidden, and nothing is mutated: no save, no join-table write.
+    expect(res.statusCode).toBe(403);
+    expect(meetup.save).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('lets a non-lead organizer edit other fields', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 4 }, { meetup_id: '10' }),
+      res
+    );
+
+    // No organizer_ids in the payload, so the non-lead check doesn't fire.
+    expect(meetup.duration_hours).toBe(4);
+    expect(res.statusCode).toBe(201);
   });
 
   // BUG: the "name taken" guard matches the meetup being edited against itself,
