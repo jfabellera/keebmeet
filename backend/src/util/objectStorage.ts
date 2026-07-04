@@ -20,11 +20,12 @@ export const IMAGE_EXT_BY_MIME: Record<string, string> = {
 };
 export const ALLOWED_IMAGE_TYPES = Object.keys(IMAGE_EXT_BY_MIME);
 
-// Fresh uploads land under a temp prefix. They are "promoted" to the permanent
-// prefix only when a meetup that references them is saved; anything left under
-// the temp prefix (abandoned uploads) is reaped by an R2 bucket lifecycle rule.
-const IMAGE_PREFIX = 'meetups/';
-const TEMP_PREFIX = 'meetups/tmp/';
+// Fresh uploads land under a single root temp prefix ("tmp/<category>/..."),
+// e.g. tmp/meetups/ or tmp/users/. They are "promoted" to the permanent key
+// ("<category>/...") only when the record referencing them is saved. A single
+// R2 lifecycle rule on "tmp/" reaps every category's abandoned uploads, so new
+// image categories need no additional rule.
+const TEMP_PREFIX = 'tmp/';
 
 let s3: S3Client | null = null;
 
@@ -119,29 +120,30 @@ export const deleteObject = async (key: string): Promise<void> => {
 };
 
 /**
- * Builds a unique key for a freshly uploaded meetup image, under the temp
- * prefix, e.g. `meetups/tmp/<uuid>.png`. It becomes permanent via
- * {@link promoteImage} once a meetup referencing it is saved.
+ * Builds a unique key for a freshly uploaded image, under the given category's
+ * temp prefix, e.g. `buildTempImageKey('users', 'png')` -> `users/tmp/<uuid>.png`.
+ * It becomes permanent via {@link promoteImage} once the record is saved.
  */
-export const buildTempImageKey = (ext: string): string =>
-  `${TEMP_PREFIX}${randomUUID()}.${ext}`;
+export const buildTempImageKey = (category: string, ext: string): string =>
+  `${TEMP_PREFIX}${category}/${randomUUID()}.${ext}`;
 
 /**
  * Promotes a freshly uploaded temp object to its permanent key by copying it
- * out of the temp prefix and removing the temp copy. Returns the permanent key.
+ * out of the temp prefix (dropping the leading `tmp/`) and removing the temp
+ * copy. Returns the permanent key.
  *
  * A no-op for anything that isn't a temp key — permanent keys (an unchanged
  * image on edit) and external absolute URLs (legacy/Eventbrite) are returned
- * unchanged, so callers can pass whatever `image_key` they hold.
+ * unchanged, so callers can pass whatever key they hold.
  */
 export const promoteImage = async (keyOrUrl: string): Promise<string> => {
   if (!keyOrUrl.startsWith(TEMP_PREFIX)) {
     return keyOrUrl;
   }
 
-  const permanentKey = `${IMAGE_PREFIX}${keyOrUrl.slice(TEMP_PREFIX.length)}`;
+  const permanentKey = keyOrUrl.slice(TEMP_PREFIX.length);
 
-  // The copy must succeed for the meetup to reference a valid object.
+  // The copy must succeed for the record to reference a valid object.
   await getS3Client().send(
     new CopyObjectCommand({
       Bucket: BUCKET,

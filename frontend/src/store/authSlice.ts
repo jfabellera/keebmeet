@@ -21,6 +21,8 @@ export interface RegisterPayload {
   password: string;
   requestOrganizer: boolean;
   turnstileToken: string;
+  /** R2 key of a profile photo uploaded before submitting; optional. */
+  profilePhotoKey?: string;
 }
 
 export interface DiscordLinkPayload {
@@ -44,6 +46,11 @@ export interface UpdateProfilePayload {
   displayName: string;
   /** New password. Omit or leave empty to keep the current one. */
   password?: string;
+  /**
+   * New profile photo R2 key, or '' to remove the current photo. Omit
+   * (undefined) to leave the photo unchanged.
+   */
+  photoKey?: string;
 }
 
 /**
@@ -238,6 +245,9 @@ export const register = createAsyncThunk(
         password: payload.password,
         is_organizer_requested: payload.requestOrganizer,
         turnstile_token: payload.turnstileToken,
+        ...(payload.profilePhotoKey != null && payload.profilePhotoKey !== ''
+          ? { photo_key: payload.profilePhotoKey }
+          : {}),
       });
     } catch (err: any) {
       if (err instanceof AxiosError && err.response != null) {
@@ -350,6 +360,11 @@ export const updateProfile = createAsyncThunk(
           // Only send a password when the user actually entered a new one.
           ...(payload.password != null && payload.password !== ''
             ? { password: payload.password }
+            : {}),
+          // Send photo_key only when it changed (new upload) or was cleared ('');
+          // undefined means "leave the photo unchanged".
+          ...(payload.photoKey !== undefined
+            ? { photo_key: payload.photoKey }
             : {}),
         },
         { headers: { Authorization: `Bearer ${token ?? ''}` } }

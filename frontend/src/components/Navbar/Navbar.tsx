@@ -16,7 +16,10 @@ import { MdDashboardCustomize } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { useGetOrganizerRequestsQuery } from '../../store/userSlice';
+import {
+  useGetOrganizerRequestsQuery,
+  useGetUserQuery,
+} from '../../store/userSlice';
 
 /**
  * Adapted from https://chakra-templates.dev/navigation/navbar
@@ -90,6 +93,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
         <ModeToggle />
         {isLoggedIn && user != null ? (
           <NavbarDropdown
+            userId={user.id}
             nickname={user.displayName}
             isOrganizer={user.isOrganizer}
             isAdmin={user.isAdmin || user.isOwner}
@@ -131,19 +135,22 @@ const GuestButtons = (): ReactNode => {
 };
 
 interface NavbarDropdownProps {
+  userId: number;
   nickname: string;
   isOrganizer: boolean;
   isAdmin: boolean;
 }
 
 const NavbarDropdown = ({
+  userId,
   nickname,
   isOrganizer,
   isAdmin,
 }: NavbarDropdownProps): ReactNode => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const avatarSrc = ''; // TODO: add user avatar url when available
+  const { data: profile } = useGetUserQuery(userId);
+  const avatarSrc = profile?.photo_url ?? '';
 
   // Surface pending organizer requests to admins. The endpoint is admin-only,
   // so skip the query for everyone else.

@@ -13,6 +13,8 @@ import {
   verifyVerificationToken,
 } from '../util/emailVerification';
 import { notifyAdminsOfOrganizerRequest } from '../util/organizerRequestNotification';
+import { deleteManagedObjects } from '../util/imageCleanup';
+import { promoteImage } from '../util/objectStorage';
 import { claimDiscordTickets } from '../util/rsvp';
 import { toUserResponse } from '../util/userResponse';
 import {
@@ -112,11 +114,23 @@ export const createUser = async (
   // Hash password and create
   const password_hash = await hashPassword(req.body.password);
 
+  // Promote an uploaded profile photo out of the temp prefix. Best-effort: a
+  // storage hiccup shouldn't block signup, so fall back to no photo.
+  let photo_key = '';
+  if (result.data.photo_key != null && result.data.photo_key !== '') {
+    try {
+      photo_key = await promoteImage(result.data.photo_key);
+    } catch (error) {
+      console.error('Failed to store profile photo during registration:', error);
+    }
+  }
+
   const newUser = User.create({
     email: req.body.email,
     first_name: req.body.first_name,
     last_name: req.body.last_name,
     nick_name: req.body.nick_name,
+    photo_key,
     password_hash,
   });
   await newUser.save();
@@ -238,10 +252,14 @@ export const updateUser = async (
     }
   }
 
+  // Remember the current photo so we can clean it up if it's replaced/removed.
+  const previousPhotoKey = user.photo_key;
+
   user.email = req.body.email ?? user.email;
   user.first_name = req.body.first_name ?? user.first_name;
   user.last_name = req.body.last_name ?? user.last_name;
   user.nick_name = req.body.nick_name ?? user.nick_name;
+  user.photo_key = req.body.photo_key ?? user.photo_key;
 
   // Role changes require admin (or owner). The hierarchy is owner > admin >
   // organizer, so owners outrank admins.
@@ -277,7 +295,20 @@ export const updateUser = async (
     user.password_hash = await hashPassword(req.body.password);
   }
 
+  // Promote a newly uploaded photo out of the temp prefix (no-op if unchanged
+  // or removed). A storage failure here shouldn't block the rest of the edit.
+  try {
+    user.photo_key = await promoteImage(user.photo_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store profile photo.' });
+  }
+
   await user.save();
+
+  // Best-effort cleanup of the replaced/removed photo, after a successful save.
+  if (previousPhotoKey !== user.photo_key) {
+    await deleteManagedObjects([previousPhotoKey]);
+  }
 
   return res.status(201).json(toUserResponse(user));
 };
@@ -296,7 +327,12 @@ export const deleteUser = async (
     return res.status(404).json({ message: 'Invalid user ID.' });
   }
 
+  const photoKey = user.photo_key;
+
   await user.remove();
+
+  // Best-effort cleanup of the user's profile photo, after the row is gone.
+  await deleteManagedObjects([photoKey]);
 
   return res.status(204).end();
 };

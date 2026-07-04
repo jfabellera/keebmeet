@@ -111,6 +111,8 @@ export const createUserSchema = z.object({
   nick_name: z.string(),
   password: z.string(), // TODO(jan): check for password strength?
   is_organizer_requested: z.boolean().optional().default(false),
+  // Optional R2 key of a profile photo uploaded before registration.
+  photo_key: z.string().optional(),
   // Cloudflare Turnstile token, verified server-side to block bot signups.
   turnstile_token: z.string().min(1, 'Captcha verification is required'),
 });
@@ -131,6 +133,8 @@ export const editUserSchema = z.object({
   password: z.string().optional(), // TODO(jan): check for password strength?
   is_organizer: z.boolean().optional(),
   is_admin: z.boolean().optional(),
+  // R2 key of a newly uploaded profile photo, or '' to remove the current one.
+  photo_key: z.string().optional(),
   // The requestor's own password, required to confirm a change to is_admin.
   current_password: z.string().optional(),
 });

@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,10 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { type User } from '@keebmeet/shared';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { type User } from '@keebmeet/shared';
 import { setUserAccess } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useGetAllUsersQuery } from '../store/userSlice';
@@ -156,6 +157,7 @@ const AdminUsersPage = (): ReactNode => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead />
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="text-center">Organizer</TableHead>
@@ -174,6 +176,17 @@ const AdminUsersPage = (): ReactNode => {
               const canEditAdmin = isOwner || !user.is_owner;
               return (
                 <TableRow key={user.id}>
+                  <TableCell>
+                    <Avatar>
+                      <AvatarImage
+                        src={user.photo_url}
+                        alt={`${user.display_name}'s avatar`}
+                      />
+                      <AvatarFallback>
+                        {user.display_name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TableCell>
                   <TableCell className="font-medium">
                     {user.display_name}
                   </TableCell>

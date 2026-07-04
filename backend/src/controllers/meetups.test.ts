@@ -323,11 +323,11 @@ describe('createMeetup', () => {
     res.locals.requestor = { id: 1, nick_name: 'jane' };
 
     await createMeetup(
-      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
       res
     );
 
-    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/abc.png');
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/meetups/abc.png');
     expect((res.body as any).image_key).toBe('meetups/abc.png');
     expect((res.body as any).save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
@@ -342,7 +342,7 @@ describe('createMeetup', () => {
     res.locals.requestor = { id: 1, nick_name: 'jane' };
 
     await createMeetup(
-      mockRequest(validCreateBody({ image_key: 'meetups/tmp/abc.png' })),
+      mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
       res
     );
 
@@ -454,11 +454,11 @@ describe('updateMeetup', () => {
     const res = mockResponse();
 
     await updateMeetup(
-      mockRequest({ image_key: 'meetups/tmp/new.png' }, { meetup_id: '10' }),
+      mockRequest({ image_key: 'tmp/meetups/new.png' }, { meetup_id: '10' }),
       res
     );
 
-    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/new.png');
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/meetups/new.png');
     expect(meetup.image_key).toBe('meetups/new.png');
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
     expect(res.statusCode).toBe(201);
@@ -559,7 +559,7 @@ describe('updateMeetup', () => {
         {
           display_idle_image_urls: [
             'meetups/keep.png',
-            'meetups/tmp/new.png',
+            'tmp/meetups/new.png',
             '',
           ],
           display_raffle_background_url: 'meetups/newbg.png',
@@ -572,9 +572,9 @@ describe('updateMeetup', () => {
     // Empty entries dropped; each remaining entry promoted.
     expect(displayRecord.idle_image_urls).toEqual([
       'meetups/keep.png',
-      'meetups/tmp/new.png',
+      'tmp/meetups/new.png',
     ]);
-    expect(mockedPromoteImage).toHaveBeenCalledWith('meetups/tmp/new.png');
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/meetups/new.png');
     expect(displayRecord.save).toHaveBeenCalled();
     // Removed idle image and replaced raffle background are cleaned up.
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old1.png');
@@ -603,14 +603,14 @@ describe('updateMeetup', () => {
 
     await updateMeetup(
       mockRequest(
-        { display_idle_image_urls: ['meetups/tmp/a.png'] },
+        { display_idle_image_urls: ['tmp/meetups/a.png'] },
         { meetup_id: '10' }
       ),
       res
     );
 
     expect(mockedDisplayRecord.create).toHaveBeenCalled();
-    expect(created.idle_image_urls).toEqual(['meetups/tmp/a.png']);
+    expect(created.idle_image_urls).toEqual(['tmp/meetups/a.png']);
     expect(created.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(201);
   });

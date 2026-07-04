@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import * as Yup from 'yup';
 import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
+import ImageUploadField from '../components/shared/ImageUploadField';
+import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 
@@ -52,6 +54,9 @@ const RegisterPage = (): ReactNode => {
       confirmPassword: '',
       requestOrganizer: false,
       turnstileToken: '',
+      // profilePhotoUrl is the preview; profilePhotoKey is submitted.
+      profilePhotoKey: '',
+      profilePhotoUrl: '',
     },
     onSubmit: (values) => {
       dispatch(register(values))
@@ -89,6 +94,24 @@ const RegisterPage = (): ReactNode => {
           <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={formik.handleSubmit} noValidate>
               <div className="flex flex-col gap-4">
+                <div className="flex justify-center">
+                  <ImageUploadField
+                    className="w-40"
+                    label="Profile Photo (optional)"
+                    aspectRatio={1}
+                    rounded
+                    useUpload={useUserPhotoUpload}
+                    previewUrl={formik.values.profilePhotoUrl}
+                    onUploaded={(imageKey, imageUrl) => {
+                      void formik.setFieldValue('profilePhotoKey', imageKey);
+                      void formik.setFieldValue('profilePhotoUrl', imageUrl);
+                    }}
+                    onRemove={() => {
+                      void formik.setFieldValue('profilePhotoKey', '');
+                      void formik.setFieldValue('profilePhotoUrl', '');
+                    }}
+                  />
+                </div>
                 <div className="flex flex-row gap-2">
                   <FormField
                     formik={formik}

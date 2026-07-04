@@ -7,7 +7,9 @@ import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
 import Page from '../components/Page/Page';
+import ImageUploadField from '../components/shared/ImageUploadField';
 import config from '../config';
+import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { updateProfile } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -67,11 +69,26 @@ const AccountPage = (): ReactNode => {
       displayName: user?.display_name ?? '',
       password: '',
       confirmPassword: '',
+      // photoUrl is the preview; photoKey is only set on a new upload.
+      photoUrl: user?.photo_url ?? '',
+      photoKey: '',
     },
     enableReinitialize: true,
     validationSchema: ProfileSchema,
     onSubmit: (values) => {
       if (localUser == null) return;
+
+      // A new upload sets photoKey; clearing an existing photo empties photoUrl;
+      // otherwise leave it unchanged (undefined).
+      let photoKey: string | undefined;
+      if (values.photoKey !== '') {
+        photoKey = values.photoKey;
+      } else if (
+        values.photoUrl === '' &&
+        formik.initialValues.photoUrl !== ''
+      ) {
+        photoKey = '';
+      }
 
       void dispatch(
         updateProfile({
@@ -80,6 +97,7 @@ const AccountPage = (): ReactNode => {
           lastName: values.lastName,
           displayName: values.displayName,
           password: values.password,
+          photoKey,
         })
       )
         .then((action) => {
@@ -95,6 +113,8 @@ const AccountPage = (): ReactNode => {
                 displayName: values.displayName,
                 password: '',
                 confirmPassword: '',
+                photoUrl: values.photoUrl,
+                photoKey: '',
               },
             });
             toast.success('Profile updated');
@@ -113,6 +133,24 @@ const AccountPage = (): ReactNode => {
         <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
             <div className="flex flex-col gap-4">
+              <div className="flex justify-center">
+                <ImageUploadField
+                  className="w-40"
+                  label="Profile Photo"
+                  aspectRatio={1}
+                  rounded
+                  useUpload={useUserPhotoUpload}
+                  previewUrl={formik.values.photoUrl}
+                  onUploaded={(imageKey, imageUrl) => {
+                    void formik.setFieldValue('photoKey', imageKey);
+                    void formik.setFieldValue('photoUrl', imageUrl);
+                  }}
+                  onRemove={() => {
+                    void formik.setFieldValue('photoKey', '');
+                    void formik.setFieldValue('photoUrl', '');
+                  }}
+                />
+              </div>
               <FormField
                 formik={formik}
                 name="email"

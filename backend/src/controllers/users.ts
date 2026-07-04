@@ -3,7 +3,42 @@ import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { type User as UserInterface } from '@keebmeet/shared';
 import { fetchDiscordUsername } from '../util/discord';
+import {
+  IMAGE_EXT_BY_MIME,
+  buildTempImageKey,
+  publicUrl,
+  upload,
+} from '../util/objectStorage';
 import { toUserResponse } from '../util/userResponse';
+
+/**
+ * Accepts a single multipart image file, stores it in R2 under the users temp
+ * prefix, and returns the object key + URL. Unauthenticated (registration has
+ * no token yet); the key is promoted to permanent only when a user referencing
+ * it is saved, and abandoned temp uploads are reaped by the R2 lifecycle rule.
+ */
+export const uploadUserImage = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const file = req.file;
+
+  if (file == null) {
+    return res.status(400).json({ message: 'No image file provided.' });
+  }
+
+  const ext = IMAGE_EXT_BY_MIME[file.mimetype];
+  if (ext === undefined) {
+    return res
+      .status(400)
+      .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
+  }
+
+  const key = buildTempImageKey('users', ext);
+  await upload(key, file.buffer, file.mimetype);
+
+  return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
+};
 
 export const getAllUsers = async (
   req: Request,
