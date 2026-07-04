@@ -15,7 +15,7 @@ export interface MeetupInfo {
     country: string;
     postal_code?: string;
   };
-  organizers?: string[];
+  organizers?: { id: number; display_name: string }[];
   tickets?: {
     total: number;
     available: number;

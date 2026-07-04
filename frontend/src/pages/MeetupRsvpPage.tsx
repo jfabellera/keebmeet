@@ -383,7 +383,11 @@ const MeetupRsvpPage = (): ReactNode => {
                       <FiUser className="mt-1 shrink-0" />
                       <p>
                         Organized by{' '}
-                        {new Intl.ListFormat().format(meetup.organizers)}
+                        {new Intl.ListFormat().format(
+                          meetup.organizers.map(
+                            (organizer) => organizer.display_name
+                          )
+                        )}
                       </p>
                     </div>
                   ) : null}

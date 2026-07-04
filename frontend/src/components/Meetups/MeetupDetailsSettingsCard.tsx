@@ -1,3 +1,4 @@
+import { Field, FieldLabel } from '@/components/ui/field';
 import { useBoolean } from '@/hooks/useBoolean';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -13,6 +14,7 @@ import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
+import OrganizerCombobox from './OrganizerCombobox';
 
 dayjs.extend(customParseFormat);
 
@@ -36,6 +38,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       imageUrl: '',
       imageKey: '',
       description: '',
+      organizerIds: [] as number[],
     },
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};
@@ -64,6 +67,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       }
       if (formik.initialValues.description !== values.description)
         payload.description = values.description;
+      if (
+        JSON.stringify(formik.initialValues.organizerIds) !==
+        JSON.stringify(values.organizerIds)
+      )
+        payload.organizer_ids = values.organizerIds;
 
       const result = await editMeetup({ meetupId, payload });
 
@@ -94,6 +102,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         imageUrl: meetup?.image_url ?? '',
         imageKey: '',
         description: meetup?.description ?? '',
+        organizerIds: meetup?.organizers?.map((organizer) => organizer.id) ?? [],
       },
     });
   }, [meetup]);
@@ -169,6 +178,17 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.address}
         />
+        <Field className="py-2">
+          <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+          <OrganizerCombobox
+            id="organizers"
+            disabled={!isEditable}
+            value={formik.values.organizerIds}
+            onChange={(organizerIds) =>
+              void formik.setFieldValue('organizerIds', organizerIds)
+            }
+          />
+        </Field>
         <EditableFormField
           name={'Duration (hours)'}
           value={meetup?.duration_hours}

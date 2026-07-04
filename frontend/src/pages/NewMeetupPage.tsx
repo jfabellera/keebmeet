@@ -1,39 +1,22 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Combobox,
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxValue,
-  useComboboxAnchor,
-} from '@/components/ui/combobox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { useGetOrganizersQuery } from '@/store/userSlice';
 import { useFormik } from 'formik';
 import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
+import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
-import { useAppSelector } from '../store/hooks';
 import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
   const [createMeetup] = useCreateMeetupMutation();
-  const { data: organizers } = useGetOrganizersQuery();
-  const currentUserId = useAppSelector((state) => state.user.user?.id);
-  const organizerAnchor = useComboboxAnchor();
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -88,23 +71,6 @@ const NewMeetupPage = (): ReactNode => {
     // Truncate more than 500 characters
     event.target.value = event.target.value.substring(0, 500);
     formik.handleChange(event);
-  };
-
-  // The creator is added as an organizer automatically, so exclude them from
-  // the options offered in the combobox.
-  type OrganizerOption = NonNullable<typeof organizers>[number];
-  const organizerOptions = (organizers ?? []).filter(
-    (organizer) => organizer.id !== currentUserId
-  );
-  const selectedOrganizers = organizerOptions.filter((organizer) =>
-    formik.values.organizerIds.includes(organizer.id)
-  );
-
-  const onOrganizersChange = (value: OrganizerOption[]): void => {
-    void formik.setFieldValue(
-      'organizerIds',
-      value.map((organizer) => organizer.id)
-    );
   };
 
   return (
@@ -167,55 +133,13 @@ const NewMeetupPage = (): ReactNode => {
                   <FieldLabel htmlFor="organizers">
                     Additional Organizers
                   </FieldLabel>
-                  <Combobox
-                    items={organizerOptions}
-                    multiple
-                    autoHighlight
-                    value={selectedOrganizers}
-                    onValueChange={onOrganizersChange}
-                    itemToStringLabel={(organizer: OrganizerOption) =>
-                      organizer.display_name
+                  <OrganizerCombobox
+                    id="organizers"
+                    value={formik.values.organizerIds}
+                    onChange={(organizerIds) =>
+                      void formik.setFieldValue('organizerIds', organizerIds)
                     }
-                  >
-                    <ComboboxChips ref={organizerAnchor} className="w-full">
-                      <ComboboxValue>
-                        {(value: OrganizerOption[]) => (
-                          <>
-                            {value.map((organizer) => (
-                              <ComboboxChip key={organizer.id}>
-                                {organizer.display_name}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput
-                              id="organizers"
-                              placeholder={
-                                value.length > 0 ? '' : 'Add organizers'
-                              }
-                            />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent anchor={organizerAnchor}>
-                      <ComboboxEmpty>No organizers found.</ComboboxEmpty>
-                      <ComboboxList>
-                        {(organizer: OrganizerOption) => (
-                          <ComboboxItem key={organizer.id} value={organizer}>
-                            <Avatar>
-                              <AvatarImage
-                                src={organizer.photo_url}
-                                alt={organizer.display_name}
-                              />
-                              <AvatarFallback>
-                                {organizer.display_name[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {organizer.display_name}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  />
                 </Field>
 
                 <MeetupImageField

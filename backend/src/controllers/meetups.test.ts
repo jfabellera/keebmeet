@@ -50,22 +50,33 @@ jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
 // Run the delete transaction callback against a no-op manager.
-jest.mock('../datasource', () => ({
-  AppDataSource: {
-    transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
-      cb({
-        remove: jest.fn().mockResolvedValue(undefined),
-        delete: jest.fn().mockResolvedValue(undefined),
-        createQueryBuilder: jest.fn(() => ({
-          delete: jest.fn().mockReturnThis(),
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue(undefined),
-        })),
-      })
-    ),
-  },
-}));
+jest.mock('../datasource', () => {
+  // A single shared relation builder so tests can assert on addAndRemove.
+  const relationBuilder = {
+    relation: jest.fn().mockReturnThis(),
+    of: jest.fn().mockReturnThis(),
+    addAndRemove: jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    AppDataSource: {
+      transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
+        cb({
+          remove: jest.fn().mockResolvedValue(undefined),
+          delete: jest.fn().mockResolvedValue(undefined),
+          createQueryBuilder: jest.fn(() => ({
+            delete: jest.fn().mockReturnThis(),
+            from: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            execute: jest.fn().mockResolvedValue(undefined),
+          })),
+        })
+      ),
+      // Relation query builder used to update a meetup's organizers join table.
+      createQueryBuilder: jest.fn(() => relationBuilder),
+    },
+  };
+});
+
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
@@ -97,6 +108,7 @@ import {
 } from './meetups';
 import { socket } from '../Server';
 import { In } from 'typeorm';
+import { AppDataSource } from '../datasource';
 import { Meetup } from '../entity/Meetup';
 import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
@@ -115,6 +127,11 @@ import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedUser = jest.mocked(User);
+const mockedDataSource = jest.mocked(AppDataSource);
+// The shared relation builder returned by createQueryBuilder (see the mock).
+const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
+  addAndRemove: jest.Mock;
+};
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
@@ -220,7 +237,7 @@ describe('getAllMeetups', () => {
 
     const body = res.body as any[];
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
-    expect(body[0].organizers).toEqual(['jane']);
+    expect(body[0].organizers).toEqual([{ id: 1, display_name: 'jane' }]);
   });
 });
 
@@ -467,6 +484,132 @@ describe('updateMeetup', () => {
     });
     expect(mockedRefresh).toHaveBeenCalledWith(10);
     expect(res.statusCode).toBe(201);
+  });
+
+  it('adds new organizers via the join table, keeping the requestor', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup (no organizers relation)
+      .mockResolvedValueOnce(null) // name-collision lookup
+      .mockResolvedValueOnce({ organizers: [{ id: 1 }] } as never); // organizers lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Only the newly added ids are inserted; nothing is removed.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([2, 3], []);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('does not re-add the requestor when included in organizer_ids', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ organizers: [{ id: 1 }] } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [1, 2] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Requestor (1) is already linked, so only 2 is added.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([2], []);
+  });
+
+  it('removes co-organizers when organizer_ids is empty, keeping the requestor', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        organizers: [{ id: 1 }, { id: 2 }],
+      } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Requestor (1) is kept; co-organizer 2 is unlinked.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2]);
+  });
+
+  it('keeps the requestor even when they are not first in the stored order', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    // Requestor (1) is stored second; removing co-organizer 2 must not drop 1.
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        organizers: [{ id: 2 }, { id: 1 }, { id: 3 }],
+      } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Desired [1, 3]; only co-organizer 2 is unlinked, requestor 1 is kept.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2]);
+  });
+
+  it('leaves organizers untouched when organizer_ids is not provided', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 5 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('does not touch the join table when the organizer set is unchanged', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        organizers: [{ id: 1 }, { id: 2 }],
+      } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Desired set [1, 2] matches the current set, so nothing is written.
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
   });
 
   // BUG: the "name taken" guard matches the meetup being edited against itself,

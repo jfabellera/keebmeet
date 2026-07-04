@@ -83,9 +83,10 @@ const mapMeetupInfo = async (
     meetupInfo.location.full_address = meetup.address;
     meetupInfo.description = meetup.description;
 
-    meetupInfo.organizers = meetup.organizers.map(
-      (organizer) => organizer.nick_name
-    );
+    meetupInfo.organizers = meetup.organizers.map((organizer) => ({
+      id: organizer.id,
+      display_name: organizer.nick_name,
+    }));
 
     // Get ticket details
     const ticketCount = await Ticket.count({
@@ -597,29 +598,6 @@ export const updateMeetup = async (
     }
   }
 
-  // TODO(jan): Implement this correctly with new typeorm entities
-
-  // Only allow "head" organizer to update organizer list
-  // if (
-  //   meetup.organizer_ids[0] === parseInt(res.locals.requestor.id) &&
-  //   organizer_ids != null
-  // ) {
-  //   meetup.organizer_ids = organizer_ids;
-
-  //   // Cast as number[]
-  //   meetup.organizer_ids = meetup.organizer_ids.map((value) => Number(value));
-
-  //   // Add requestor to front of organizer list (prevent head organizer from removing themselves)
-  //   meetup.organizer_ids.unshift(parseInt(res.locals.requestor.id));
-
-  //   // Remove duplicates
-  //   meetup.organizer_ids = Array.from(new Set(meetup.organizer_ids));
-  // } else if (organizer_ids != null) {
-  //   return res.status(401).json({
-  //     message: 'Only the head organizer can edit the organizer list.',
-  //   });
-  // }
-
   // Promote a newly uploaded image out of the temp prefix (no-op if the image
   // is unchanged or is an external URL).
   try {
@@ -629,6 +607,35 @@ export const updateMeetup = async (
   }
 
   await meetup.save();
+
+  // Update the organizer list. The requestor (the organizer making the edit) is
+  // always kept — the client's organizer picker excludes the current user, so
+  // their id never appears in organizer_ids and must be preserved here. We read
+  // the current organizers in a separate query: the ManyToMany relation is
+  // deliberately NOT loaded on the saved entity above, since save()ing an entity
+  // with the relation loaded re-inserts the join rows and trips the join table's
+  // primary key. The join table is instead updated via the relation builder.
+  if (result.data.organizer_ids != null) {
+    const requestor = res.locals.requestor as User;
+    const withOrganizers = await Meetup.findOne({
+      relations: { organizers: true },
+      where: { id: meetup.id },
+    });
+    const currentIds = (withOrganizers?.organizers ?? []).map(
+      (organizer) => organizer.id
+    );
+    const desiredIds = Array.from(
+      new Set([requestor.id, ...result.data.organizer_ids])
+    );
+    const toAdd = desiredIds.filter((id) => !currentIds.includes(id));
+    const toRemove = currentIds.filter((id) => !desiredIds.includes(id));
+    if (toAdd.length > 0 || toRemove.length > 0) {
+      await AppDataSource.createQueryBuilder()
+        .relation(Meetup, 'organizers')
+        .of(meetup.id)
+        .addAndRemove(toAdd, toRemove);
+    }
+  }
 
   // Best-effort cleanup of the replaced image, after a successful save.
   if (previousImageKey !== meetup.image_key) {
