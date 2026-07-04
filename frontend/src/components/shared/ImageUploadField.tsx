@@ -83,7 +83,10 @@ const ImageUploadField = ({
   return (
     <Field className={cn('max-w-sm min-w-0 py-2', className)}>
       {label != null && label !== '' ? (
-        <FieldLabel htmlFor={inputId} className="line-clamp-1">
+        <FieldLabel
+          htmlFor={inputId}
+          className={cn('line-clamp-1', rounded && 'w-full text-center')}
+        >
           {label}
         </FieldLabel>
       ) : null}
