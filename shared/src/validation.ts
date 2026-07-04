@@ -111,6 +111,8 @@ export const createUserSchema = z.object({
   nick_name: z.string(),
   password: z.string(), // TODO(jan): check for password strength?
   is_organizer_requested: z.boolean().optional().default(false),
+  // Cloudflare Turnstile token, verified server-side to block bot signups.
+  turnstile_token: z.string().min(1, 'Captcha verification is required'),
 });
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;

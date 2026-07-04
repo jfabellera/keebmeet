@@ -2,9 +2,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
@@ -33,12 +34,14 @@ const RegisterSchema = Yup.object().shape({
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password')], 'Passwords must match')
     .required('Required'),
+  turnstileToken: Yup.string().required('Captcha verification is required'),
 });
 
 const RegisterPage = (): ReactNode => {
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((state) => state.user);
   const navigate = useNavigate();
+  const turnstileRef = useRef<TurnstileInstance>(null);
   const formik = useFormik({
     initialValues: {
       email: '',
@@ -48,6 +51,7 @@ const RegisterPage = (): ReactNode => {
       password: '',
       confirmPassword: '',
       requestOrganizer: false,
+      turnstileToken: '',
     },
     onSubmit: (values) => {
       dispatch(register(values))
@@ -63,6 +67,10 @@ const RegisterPage = (): ReactNode => {
           } else if (register.rejected.match(action)) {
             // Failed to register, show an error message
             // TODO(jan)
+            // Turnstile tokens are single-use, so reset the widget to let the
+            // user try again with a fresh one.
+            turnstileRef.current?.reset();
+            void formik.setFieldValue('turnstileToken', '');
           }
         })
         .catch(() => {});
@@ -137,6 +145,21 @@ const RegisterPage = (): ReactNode => {
                     }
                   />
                   <span>Yes</span>
+                </div>
+                <div className="flex items-center justify-center pt-2">
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey="0x4AAAAAADvKnjEaFlmjd5Yq"
+                    onSuccess={(token) => {
+                      void formik.setFieldValue('turnstileToken', token);
+                    }}
+                    onExpire={() => {
+                      void formik.setFieldValue('turnstileToken', '');
+                    }}
+                    onError={() => {
+                      void formik.setFieldValue('turnstileToken', '');
+                    }}
+                  />
                 </div>
                 <div className="flex flex-col gap-10 pt-2">
                   <Button
