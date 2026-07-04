@@ -56,6 +56,10 @@ describe('publicUrl', () => {
   it('returns absolute URLs unchanged', () => {
     expect(publicUrl('https://cdn/x.png')).toBe('https://cdn/x.png');
   });
+
+  it('returns empty string for an empty key (no image)', () => {
+    expect(publicUrl('')).toBe('');
+  });
 });
 
 describe('buildTempImageKey', () => {

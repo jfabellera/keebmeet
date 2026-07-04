@@ -73,6 +73,9 @@ export const upload = async (
  * base URL.
  */
 export const publicUrl = (keyOrUrl: string): string => {
+  if (keyOrUrl === '') {
+    return '';
+  }
   if (ABSOLUTE_URL.test(keyOrUrl)) {
     return keyOrUrl;
   }
