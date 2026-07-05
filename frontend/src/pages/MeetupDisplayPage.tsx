@@ -5,7 +5,7 @@ import {
   useMotionValue,
 } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import useMeasure from 'react-use-measure';
 import { socket } from '../socket';
 import { useGetMeetupDisplayAssetsQuery } from '../store/meetupSlice';
@@ -21,6 +21,14 @@ const shuffleArray = (array: any[]): any[] => {
 
 const MeetupDisplayPage = (): ReactNode => {
   const { meetupId } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const parsedInterval = Number(searchParams.get('interval'));
+  const idleIntervalMs =
+    Number.isFinite(parsedInterval) && parsedInterval > 0
+      ? parsedInterval * 1000
+      : 15000;
+
   const [displayState, setDisplayState] = useState<'idle' | 'raffle winner'>(
     'idle'
   );
@@ -77,12 +85,12 @@ const MeetupDisplayPage = (): ReactNode => {
       setIdleImageIndex(
         (previousIndex) => (previousIndex + 1) % idleImageCount
       );
-    }, 15000);
+    }, idleIntervalMs);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [displayAssets, displayState]);
+  }, [displayAssets, displayState, idleIntervalMs]);
 
   useEffect(() => {
     if (height === 0) return;
