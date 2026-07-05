@@ -50,20 +50,36 @@ jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
 // Run the delete transaction callback against a no-op manager.
-jest.mock('../datasource', () => ({
-  AppDataSource: {
-    transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
-      cb({
-        remove: jest.fn().mockResolvedValue(undefined),
-        delete: jest.fn().mockResolvedValue(undefined),
-        createQueryBuilder: jest.fn(() => ({
-          delete: jest.fn().mockReturnThis(),
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue(undefined),
-        })),
-      })
-    ),
+jest.mock('../datasource', () => {
+  // A single shared relation builder so tests can assert on addAndRemove.
+  const relationBuilder = {
+    relation: jest.fn().mockReturnThis(),
+    of: jest.fn().mockReturnThis(),
+    addAndRemove: jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    AppDataSource: {
+      transaction: jest.fn(async (cb: (manager: unknown) => Promise<unknown>) =>
+        cb({
+          remove: jest.fn().mockResolvedValue(undefined),
+          delete: jest.fn().mockResolvedValue(undefined),
+          createQueryBuilder: jest.fn(() => ({
+            delete: jest.fn().mockReturnThis(),
+            from: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            execute: jest.fn().mockResolvedValue(undefined),
+          })),
+        })
+      ),
+      // Relation query builder used to update a meetup's organizers join table.
+      createQueryBuilder: jest.fn(() => relationBuilder),
+    },
+  };
+});
+
+jest.mock('../entity/User', () => ({
+  User: {
+    findBy: jest.fn(),
   },
 }));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
@@ -91,7 +107,10 @@ import {
   updateMeetup,
 } from './meetups';
 import { socket } from '../Server';
+import { In } from 'typeorm';
+import { AppDataSource } from '../datasource';
 import { Meetup } from '../entity/Meetup';
+import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { Ticket } from '../entity/Ticket';
@@ -107,6 +126,12 @@ import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedMeetup = jest.mocked(Meetup);
+const mockedUser = jest.mocked(User);
+const mockedDataSource = jest.mocked(AppDataSource);
+// The shared relation builder returned by createQueryBuilder (see the mock).
+const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
+  addAndRemove: jest.Mock;
+};
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
@@ -161,6 +186,7 @@ const fakeMeetupRow = (overrides = {}): any => ({
   capacity: 100,
   image_key: 'http://img',
   organizers: [{ id: 1, nick_name: 'jane' }],
+  lead_organizer: { id: 1, nick_name: 'jane' },
   eventbriteRecord: null,
   ...overrides,
 });
@@ -212,7 +238,8 @@ describe('getAllMeetups', () => {
 
     const body = res.body as any[];
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
-    expect(body[0].organizers).toEqual(['jane']);
+    expect(body[0].organizers).toEqual([{ id: 1, display_name: 'jane' }]);
+    expect(body[0].lead_organizer).toEqual({ id: 1, display_name: 'jane' });
   });
 });
 
@@ -309,9 +336,76 @@ describe('createMeetup', () => {
 
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
-    expect(created.organizers).toContainEqual({ id: 1, nick_name: 'jane' });
+    // The requestor is the lead, tracked separately — not in the co-organizers.
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.organizers).toEqual([]);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('sets the selected additional organizers as co-organizers (lead separate)', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedUser.findBy.mockResolvedValue([
+      { id: 2, nick_name: 'john' },
+      { id: 3, nick_name: 'jill' },
+    ] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ organizer_ids: [2, 3] })),
+      res
+    );
+
+    expect(mockedUser.findBy).toHaveBeenCalledWith({ id: In([2, 3]) });
+    const created = res.body as any;
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.organizers).toEqual([
+      { id: 2, nick_name: 'john' },
+      { id: 3, nick_name: 'jill' },
+    ]);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('keeps the lead out of the co-organizers when included in organizer_ids', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    // Mirrors the DB returning the requestor row for their own id.
+    mockedUser.findBy.mockResolvedValue([
+      { id: 1, nick_name: 'jane' },
+      { id: 2, nick_name: 'john' },
+    ] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ organizer_ids: [1, 2] })),
+      res
+    );
+
+    const created = res.body as any;
+    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.organizers).toEqual([{ id: 2, nick_name: 'john' }]);
+  });
+
+  it('does not query for organizers when none are selected', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1, nick_name: 'jane' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(mockedUser.findBy).not.toHaveBeenCalled();
+    expect((res.body as any).organizers).toEqual([]);
+    expect((res.body as any).lead_organizer).toEqual({
+      id: 1,
+      nick_name: 'jane',
+    });
   });
 
   it('promotes the uploaded image out of the temp prefix', async () => {
@@ -395,6 +489,150 @@ describe('updateMeetup', () => {
       meetupId: 10,
     });
     expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('sets the co-organizer join table to match organizer_ids', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup (lead_organizer loaded)
+      .mockResolvedValueOnce(null) // name-collision lookup
+      .mockResolvedValueOnce({
+        organizers: [{ id: 2 }, { id: 5 }],
+      } as never); // organizers lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Add 3, remove 5; 2 is unchanged.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], [5]);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('never adds the lead to the co-organizer list', async () => {
+    // fakeMeetupRow's lead is user 1; a client that includes it is ignored.
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [1, 2, 3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Lead (1) is filtered out; only co-organizer 3 is added.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], []);
+  });
+
+  it('removes all co-organizers when organizer_ids is empty', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        organizers: [{ id: 2 }, { id: 3 }],
+      } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
+      res
+    );
+
+    // The lead lives in its own column and is untouched here.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2, 3]);
+  });
+
+  it('leaves organizers untouched when organizer_ids is not provided', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 };
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 5 }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('does not touch the join table when the organizer set is unchanged', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: 1 }; // the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Desired set [2] matches the current co-organizers, so nothing is written.
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-lead organizer changing organizer_ids', async () => {
+    // fakeMeetupRow's lead is user 1; user 2 is a co-organizer, not the lead.
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup); // target lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Forbidden, and nothing is mutated: no save, no join-table write.
+    expect(res.statusCode).toBe(403);
+    expect(meetup.save).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('lets a non-lead organizer edit other fields', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ duration_hours: 4 }, { meetup_id: '10' }),
+      res
+    );
+
+    // No organizer_ids in the payload, so the non-lead check doesn't fire.
+    expect(meetup.duration_hours).toBe(4);
     expect(res.statusCode).toBe(201);
   });
 
@@ -668,6 +906,7 @@ describe('deleteMeetup', () => {
         raffle_background_url: 'meetups/bg.png',
         batch_raffle_background_url: null,
       },
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
@@ -684,43 +923,47 @@ describe('deleteMeetup', () => {
     expect(res.statusCode).toBe(204);
   });
 
-  // BUG: deleteMeetup re-fetches with `findOneBy`, which does NOT load the
-  // `organizers` relation, then reads `meetup.organizers[0].id` — that throws a
-  // TypeError (organizers is undefined), crashing every delete. It should either
-  // load the relation or reuse `res.locals.meetup` (authChecker already loaded
-  // it with organizers). These assert the intended authorization outcome; remove
-  // `.failing` once the relation is available.
-  it.failing('lets the head organizer delete the meetup', async () => {
-    // findOneBy realistically returns the row WITHOUT relations.
+  it('lets the lead organizer delete the meetup', async () => {
     const meetup = {
       id: 10,
-      organizers: undefined,
+      image_key: 'meetups/main.png',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
-    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
     res.locals.requestor = { id: 1 };
-    res.locals.meetup = { id: 10, organizers: [{ id: 1 }] };
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(204);
   });
 
-  it.failing('rejects a non-head organizer with 401', async () => {
+  it('rejects a non-lead organizer with 403', async () => {
     const meetup = {
       id: 10,
-      organizers: undefined,
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
-    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 2 };
-    res.locals.meetup = { id: 10, organizers: [{ id: 1 }, { id: 2 }] };
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(403);
+    // Nothing is destroyed for a forbidden request.
+    expect(meetup.remove).not.toHaveBeenCalled();
   });
 });
 

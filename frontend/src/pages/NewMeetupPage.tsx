@@ -5,17 +5,20 @@ import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useAppSelector } from '@/store/hooks';
 import { useFormik } from 'formik';
 import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
+import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
 import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
   const [createMeetup] = useCreateMeetupMutation();
+  const currentUserId = useAppSelector((state) => state.user.user?.id);
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -30,6 +33,7 @@ const NewMeetupPage = (): ReactNode => {
       description: '',
       hasRaffle: true,
       defaultRaffleEntries: 1,
+      organizerIds: [] as number[],
     },
     onSubmit: async (values) => {
       const result = await createMeetup({
@@ -46,6 +50,7 @@ const NewMeetupPage = (): ReactNode => {
         default_raffle_entries: formik.values.hasRaffle
           ? formik.values.defaultRaffleEntries
           : formik.initialValues.defaultRaffleEntries,
+        organizer_ids: formik.values.organizerIds,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -88,6 +93,21 @@ const NewMeetupPage = (): ReactNode => {
                 >
                   Use Eventbrite
                 </span>
+
+                <Field>
+                  <FieldLabel htmlFor="organizers">
+                    Additional Organizers
+                  </FieldLabel>
+                  <OrganizerCombobox
+                    id="organizers"
+                    value={formik.values.organizerIds}
+                    onChange={(organizerIds) =>
+                      void formik.setFieldValue('organizerIds', organizerIds)
+                    }
+                    excludeIds={currentUserId ? [currentUserId] : []}
+                  />
+                </Field>
+
                 <FormField formik={formik} name="name" label="Meetup Name" />
 
                 <div className="flex gap-2">

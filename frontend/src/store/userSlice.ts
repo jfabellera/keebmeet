@@ -1,16 +1,16 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import {
   type DiscordChannel,
   type DiscordServer,
   type OrganizerRequestInfo,
   type User,
 } from '@keebmeet/shared';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { type RootState } from './store';
 
 export const userSlice = createApi({
   reducerPath: 'userSlice',
-  tagTypes: ['User', 'Users', 'OrganizerRequests'],
+  tagTypes: ['User', 'Users', 'Organizers', 'OrganizerRequests'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -47,6 +47,12 @@ export const userSlice = createApi({
         url: `/users`,
       }),
       providesTags: ['Users'],
+    }),
+    getOrganizers: builder.query<User[], void>({
+      query: () => ({
+        url: `/users/organizers`,
+      }),
+      providesTags: ['Organizers'],
     }),
     getUserDiscordServers: builder.query<DiscordServer[], number>({
       query: (userId) => ({
@@ -108,6 +114,7 @@ export const {
   useGetUserQuery,
   useUploadUserImageMutation,
   useGetAllUsersQuery,
+  useGetOrganizersQuery,
   useGetUserDiscordServersQuery,
   useGetUserDiscordServerChannelsQuery,
   useAuthorizeEventbriteMutation,

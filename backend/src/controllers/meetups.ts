@@ -1,8 +1,23 @@
+import {
+  createMeetupFromEventbriteSchema,
+  createMeetupSchema,
+  editMeetupSchema,
+  type EditMeetupPayload,
+  type EventbriteAttendee,
+  type MeetupDisplayAssets,
+  type MeetupInfo,
+  type TicketInfo,
+} from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { type Request, type Response } from 'express';
 import { type ParsedQs } from 'qs';
-import { ILike, In, type FindOptionsOrder, type FindOptionsWhere } from 'typeorm';
+import {
+  ILike,
+  In,
+  type FindOptionsOrder,
+  type FindOptionsWhere,
+} from 'typeorm';
 import { socket } from '../Server';
 import config from '../config';
 import { AppDataSource } from '../datasource';
@@ -12,15 +27,8 @@ import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
-import { type User } from '../entity/User';
+import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
-import {
-  type EditMeetupPayload,
-  type EventbriteAttendee,
-  type MeetupDisplayAssets,
-  type MeetupInfo,
-  type TicketInfo,
-} from '@keebmeet/shared';
 import {
   createEventbriteWebhook,
   getEventbriteAttendees,
@@ -33,6 +41,7 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
+import { deleteManagedObjects } from '../util/imageCleanup';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   IMAGE_EXT_BY_MIME,
@@ -42,13 +51,7 @@ import {
   toStoredKey,
   upload,
 } from '../util/objectStorage';
-import { deleteManagedObjects } from '../util/imageCleanup';
 import { decrypt } from '../util/security';
-import {
-  createMeetupFromEventbriteSchema,
-  createMeetupSchema,
-  editMeetupSchema,
-} from '@keebmeet/shared';
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
@@ -83,9 +86,16 @@ const mapMeetupInfo = async (
     meetupInfo.location.full_address = meetup.address;
     meetupInfo.description = meetup.description;
 
-    meetupInfo.organizers = meetup.organizers.map(
-      (organizer) => organizer.nick_name
-    );
+    meetupInfo.organizers = meetup.organizers.map((organizer) => ({
+      id: Number(organizer.id),
+      display_name: organizer.nick_name,
+    }));
+    if (meetup.lead_organizer != null) {
+      meetupInfo.lead_organizer = {
+        id: Number(meetup.lead_organizer.id),
+        display_name: meetup.lead_organizer.nick_name,
+      };
+    }
 
     // Get ticket details
     const ticketCount = await Ticket.count({
@@ -105,15 +115,10 @@ const mapMeetupInfo = async (
   return meetupInfo;
 };
 
-const createMeetupsFilter = (query: ParsedQs): FindOptionsWhere<Meetup> => {
+const createMeetupsFilter = (
+  query: ParsedQs
+): FindOptionsWhere<Meetup> | FindOptionsWhere<Meetup>[] => {
   const findOptionsWhere: FindOptionsWhere<Meetup> = {};
-
-  if (query.by_organizer_id != null) {
-    const organizerId = Number(query.by_organizer_id);
-    findOptionsWhere.organizers = {
-      id: organizerId,
-    };
-  }
 
   if (query.by_city != null) {
     const city = String(query.by_city);
@@ -128,6 +133,14 @@ const createMeetupsFilter = (query: ParsedQs): FindOptionsWhere<Meetup> => {
   if (query.by_country != null) {
     const country = String(query.by_country);
     findOptionsWhere.country = ILike(country);
+  }
+
+  if (query.by_organizer_id != null) {
+    const organizerId = Number(query.by_organizer_id);
+    return [
+      { ...findOptionsWhere, organizers: { id: organizerId } },
+      { ...findOptionsWhere, lead_organizer: { id: organizerId } },
+    ];
   }
 
   return findOptionsWhere;
@@ -172,6 +185,7 @@ export const getAllMeetups = async (
     await Meetup.find({
       relations: {
         organizers: true,
+        lead_organizer: true,
         eventbriteRecord: true,
       },
       where: findOptionsWhere,
@@ -200,6 +214,7 @@ export const getMeetup = async (
   const meetup = await Meetup.findOne({
     relations: {
       organizers: true,
+      lead_organizer: true,
       eventbriteRecord: true,
     },
     where: {
@@ -268,11 +283,25 @@ export const createMeetup = async (
     default_raffle_entries: result.data.default_raffle_entries,
   });
 
-  // Add requestor to front of organizer list
-  newMeetup.organizers.unshift(res.locals.requestor);
+  const requestor = res.locals.requestor as User;
 
-  // Remove duplicates
-  newMeetup.organizers = Array.from(new Set(newMeetup.organizers));
+  // The creator owns the meetup as its lead organizer. `organizers` holds only
+  // the additional (co-)organizers, so the requestor is not added there.
+  newMeetup.lead_organizer = requestor;
+
+  // Add any additional organizers selected by the requestor, excluding the
+  // requestor themselves (they're the lead, tracked separately).
+  if (
+    result.data.organizer_ids != null &&
+    result.data.organizer_ids.length > 0
+  ) {
+    const additionalOrganizers = await User.findBy({
+      id: In(result.data.organizer_ids),
+    });
+    newMeetup.organizers.push(
+      ...additionalOrganizers.filter((user) => user.id !== requestor.id)
+    );
+  }
 
   // Check if meetup name is taken
   const existingMeetup = await Meetup.findOne({
@@ -407,8 +436,9 @@ export const createMeetupFromEventbrite = async (
       default_raffle_entries: result.data.default_raffle_entries,
     });
 
-    newMeetup.organizers.unshift(user);
-    newMeetup.organizers = Array.from(new Set(newMeetup.organizers));
+    // The creator owns the meetup as its lead organizer; `organizers` holds only
+    // additional co-organizers (none for an Eventbrite import).
+    newMeetup.lead_organizer = user;
     newMeetup.utc_offset = utcOffset;
 
     await newMeetup.save();
@@ -511,12 +541,28 @@ export const updateMeetup = async (
   const meetup = await Meetup.findOne({
     relations: {
       displayRecord: true,
+      // ManyToOne — safe to load on the saved entity (unlike the organizers
+      // ManyToMany). Used to keep the lead out of the co-organizer list.
+      lead_organizer: true,
     },
     where: { id: parseInt(meetup_id) },
   });
 
   if (meetup == null) {
     return res.status(404).json({ message: 'Invalid meetup ID.' });
+  }
+
+  // Only the lead organizer may change the co-organizer list. Co-organizers can
+  // edit every other field, but altering who runs the meetup is reserved to the
+  // lead. Checked before any mutation so a forbidden request changes nothing.
+  const requestor = res.locals.requestor as User;
+  if (
+    result.data.organizer_ids != null &&
+    meetup.lead_organizer?.id !== requestor.id
+  ) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can update the organizers list.',
+    });
   }
 
   // Check if meetup name is taken
@@ -587,29 +633,6 @@ export const updateMeetup = async (
     }
   }
 
-  // TODO(jan): Implement this correctly with new typeorm entities
-
-  // Only allow "head" organizer to update organizer list
-  // if (
-  //   meetup.organizer_ids[0] === parseInt(res.locals.requestor.id) &&
-  //   organizer_ids != null
-  // ) {
-  //   meetup.organizer_ids = organizer_ids;
-
-  //   // Cast as number[]
-  //   meetup.organizer_ids = meetup.organizer_ids.map((value) => Number(value));
-
-  //   // Add requestor to front of organizer list (prevent head organizer from removing themselves)
-  //   meetup.organizer_ids.unshift(parseInt(res.locals.requestor.id));
-
-  //   // Remove duplicates
-  //   meetup.organizer_ids = Array.from(new Set(meetup.organizer_ids));
-  // } else if (organizer_ids != null) {
-  //   return res.status(401).json({
-  //     message: 'Only the head organizer can edit the organizer list.',
-  //   });
-  // }
-
   // Promote a newly uploaded image out of the temp prefix (no-op if the image
   // is unchanged or is an external URL).
   try {
@@ -619,6 +642,36 @@ export const updateMeetup = async (
   }
 
   await meetup.save();
+
+  // Update the co-organizer list to match organizer_ids. `organizers` holds
+  // co-organizers only — the lead is tracked separately and is filtered out
+  // here so it can never be added to (or removed from) this list. We read the
+  // current organizers in a separate query: the ManyToMany relation is
+  // deliberately NOT loaded on the saved entity above, since save()ing an entity
+  // with the relation loaded re-inserts the join rows and trips the join table's
+  // primary key. The join table is instead updated via the relation builder.
+  if (result.data.organizer_ids != null) {
+    const withOrganizers = await Meetup.findOne({
+      relations: { organizers: true },
+      where: { id: meetup.id },
+    });
+    const currentIds = (withOrganizers?.organizers ?? []).map((organizer) =>
+      Number(organizer.id)
+    );
+    const leadId =
+      meetup.lead_organizer != null ? Number(meetup.lead_organizer.id) : null;
+    const desiredIds = Array.from(new Set(result.data.organizer_ids)).filter(
+      (id) => id !== leadId
+    );
+    const toAdd = desiredIds.filter((id) => !currentIds.includes(id));
+    const toRemove = currentIds.filter((id) => !desiredIds.includes(id));
+    if (toAdd.length > 0 || toRemove.length > 0) {
+      await AppDataSource.createQueryBuilder()
+        .relation(Meetup, 'organizers')
+        .of(meetup.id)
+        .addAndRemove(toAdd, toRemove);
+    }
+  }
 
   // Best-effort cleanup of the replaced image, after a successful save.
   if (previousImageKey !== meetup.image_key) {
@@ -644,6 +697,7 @@ export const deleteMeetup = async (
       discordMessage: true,
       eventbriteRecord: true,
       displayRecord: true,
+      lead_organizer: true,
     },
     where: { id: meetupId },
   });
@@ -652,8 +706,15 @@ export const deleteMeetup = async (
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
-  // The auth middleware has already verified that the requestor is an organizer
-  // of this meetup, so no further authorization check is needed here.
+  // The auth middleware verifies the requestor is an organizer of this meetup,
+  // but deletion is reserved to the lead organizer alone — co-organizers can
+  // manage the meetup but not destroy it.
+  const requestor = res.locals.requestor as User;
+  if (meetup.lead_organizer?.id !== requestor.id) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can delete this meetup.',
+    });
+  }
 
   // Best-effort removal of the announcement embed from Discord before we drop
   // our own record of it. A failure here shouldn't block deleting the meetup.
@@ -842,7 +903,8 @@ export const getMeetupDisplayAssets = async (
 
   const display = meetup.displayRecord;
   return res.status(200).json({
-    idleImageUrls: display != null ? display.idle_image_urls.map(publicUrl) : null,
+    idleImageUrls:
+      display != null ? display.idle_image_urls.map(publicUrl) : null,
     raffleWinnerBackgroundImageUrl:
       display?.raffle_background_url != null
         ? publicUrl(display.raffle_background_url)

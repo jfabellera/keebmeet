@@ -32,6 +32,7 @@ const checkMeetupOrganizer = async (
 ): Promise<boolean> => {
   const meetup = await Meetup.findOne({
     relations: {
+      lead_organizer: true,
       organizers: true,
     },
     where: {
@@ -41,7 +42,9 @@ const checkMeetupOrganizer = async (
 
   if (
     meetup != null &&
-    meetup.organizers.filter((organizer) => organizer.id === userId).length > 0
+    (meetup.lead_organizer?.id === userId ||
+      meetup.organizers.filter((organizer) => organizer.id === userId).length >
+        0)
   ) {
     return true;
   }
@@ -102,8 +105,7 @@ export const authChecker =
         // Account type requires
         if (rules.includes(Rule.requireOrganizer) && !user.is_organizer)
           return reject(res);
-        if (rules.includes(Rule.requireAdmin) && !isAdmin)
-          return reject(res);
+        if (rules.includes(Rule.requireAdmin) && !isAdmin) return reject(res);
       }
 
       // If accessing a user, check that the requestor is the user
@@ -168,6 +170,7 @@ export const authChecker =
       if (req.params.meetup_id != null) {
         const meetup = await Meetup.findOne({
           relations: {
+            lead_organizer: true,
             organizers: true,
             eventbriteRecord: true,
           },
@@ -184,6 +187,7 @@ export const authChecker =
 
         if (
           (rules == null || !rules.includes(Rule.ignoreMeetupOrganizer)) &&
+          meetup.lead_organizer?.id !== user.id &&
           meetup.organizers.find((organizer) => organizer.id === user.id) ==
             null
         ) {

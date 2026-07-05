@@ -423,7 +423,9 @@ const getUserFromToken = (token: string): User | null => {
 
     const user: User = {
       token,
-      id: decoded.id,
+      // Older tokens embedded the bigint id as a string; coerce so the id is
+      // consistently a number throughout the app.
+      id: Number(decoded.id),
       displayName: decoded.nick_name,
       isOrganizer: decoded.is_organizer,
       isAdmin: decoded.is_admin,

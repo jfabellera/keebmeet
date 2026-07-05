@@ -1,10 +1,13 @@
+import { Badge } from '@/components/ui/badge';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { useBoolean } from '@/hooks/useBoolean';
+import { useAppSelector } from '@/store/hooks';
+import { type EditMeetupPayload } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { type EditMeetupPayload } from '@keebmeet/shared';
 import {
   useEditMeetupMutation,
   useGetMeetupQuery,
@@ -13,6 +16,7 @@ import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
+import OrganizerCombobox from './OrganizerCombobox';
 
 dayjs.extend(customParseFormat);
 
@@ -22,6 +26,7 @@ interface Props {
 
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
+  const currentUserId = useAppSelector((state) => state.user.user?.id);
   const hasStarted = meetup != null ? hasMeetupStarted(meetup) : false;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup] = useEditMeetupMutation();
@@ -36,6 +41,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       imageUrl: '',
       imageKey: '',
       description: '',
+      organizerIds: [] as number[],
     },
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};
@@ -64,6 +70,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       }
       if (formik.initialValues.description !== values.description)
         payload.description = values.description;
+      if (
+        JSON.stringify(formik.initialValues.organizerIds) !==
+        JSON.stringify(values.organizerIds)
+      )
+        payload.organizer_ids = values.organizerIds;
 
       const result = await editMeetup({ meetupId, payload });
 
@@ -94,6 +105,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         imageUrl: meetup?.image_url ?? '',
         imageKey: '',
         description: meetup?.description ?? '',
+        organizerIds:
+          meetup?.organizers?.map((organizer) => organizer.id) ?? [],
       },
     });
   }, [meetup]);
@@ -121,6 +134,36 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       isFormInvalid={false}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {meetup?.lead_organizer != null ? (
+              <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
+            ) : null}
+
+            {!isEditable &&
+              meetup?.organizers?.map((organizer) => (
+                <Badge variant="secondary" key={organizer.id}>
+                  {organizer.display_name}
+                </Badge>
+              ))}
+          </div>
+          {isEditable && (
+            <OrganizerCombobox
+              id="organizers"
+              disabled={
+                !isEditable || currentUserId !== meetup?.lead_organizer?.id
+              }
+              excludeIds={
+                meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
+              }
+              value={formik.values.organizerIds}
+              onChange={(organizerIds) =>
+                void formik.setFieldValue('organizerIds', organizerIds)
+              }
+            />
+          )}
+        </Field>
         <EditableFormField
           name={'Meetup Name'}
           value={meetup?.name}
