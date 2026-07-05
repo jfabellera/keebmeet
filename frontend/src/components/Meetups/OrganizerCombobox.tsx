@@ -51,7 +51,9 @@ const OrganizerCombobox = ({
   const options = (organizers ?? []).filter(
     (organizer) => !excludeIds.includes(organizer.id)
   );
-  const selected = options.filter((organizer) => value.includes(organizer.id));
+  const selected = value
+    .map((id) => options.find((organizer) => organizer.id === id))
+    .filter((organizer): organizer is Organizer => organizer != null);
 
   return (
     <Combobox
