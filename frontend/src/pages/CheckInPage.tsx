@@ -22,12 +22,12 @@ import {
 } from '@/components/ui/tooltip';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
+import { type TicketInfo } from '@keebmeet/shared';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type TicketInfo } from '@keebmeet/shared';
 import {
   useCheckInAttendeeMutation,
   useEditAttendeeMutation,
@@ -77,6 +77,11 @@ const CheckInPage = (): ReactNode => {
           ) ||
           Boolean(
             attendee.ticket_holder_last_name
+              .toLowerCase()
+              .includes(searchValue.toLowerCase())
+          ) ||
+          Boolean(
+            attendee.qr_code_value
               .toLowerCase()
               .includes(searchValue.toLowerCase())
           )
