@@ -79,6 +79,25 @@ export const sendOrganizerDeniedEmail = async (email: string) => {
   }
 };
 
+export const sendOrganizerAddedEmail = async (
+  email: string,
+  meetupName: string,
+  leadOrganizerName: string,
+  manageLink: string
+) => {
+  const { error } = await getResendClient().emails.send({
+    from: 'KeebMeet <noreply@keebmeet.com>',
+    to: [email],
+    subject: `You've been added as an organizer for ${meetupName}`,
+    html: `<p>${leadOrganizerName} added you as an organizer for ${meetupName}.</p>
+           <p>Manage the meetup <a href="${manageLink}">here</a>.</p>`,
+  });
+
+  if (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
 export const sendRsvpConfirmationEmail = async (
   email: string,
   meetupName: string,

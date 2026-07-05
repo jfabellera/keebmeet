@@ -43,6 +43,7 @@ import {
 } from '../util/externalApis';
 import { deleteManagedObjects } from '../util/imageCleanup';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
 import {
   IMAGE_EXT_BY_MIME,
   buildTempImageKey,
@@ -671,6 +672,15 @@ export const updateMeetup = async (
         .of(meetup.id)
         .addAndRemove(toAdd, toRemove);
     }
+
+    // Email newly added co-organizers (verified users only). Best-effort: a
+    // mail failure shouldn't fail the update.
+    await notifyAddedOrganizers(
+      toAdd,
+      meetup.id,
+      meetup.name,
+      meetup.lead_organizer?.nick_name ?? 'A lead organizer'
+    );
   }
 
   // Best-effort cleanup of the replaced image, after a successful save.
