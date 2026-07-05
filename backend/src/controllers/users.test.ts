@@ -57,7 +57,7 @@ const mockRequest = (params: Record<string, string> = {}): Request =>
   ({ params }) as unknown as Request;
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   email: 'user@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -81,8 +81,8 @@ beforeEach(() => {
 describe('getAllUsers', () => {
   it('maps every user to the public shape', async () => {
     mockedUser.find.mockResolvedValue([
-      fakeUser({ id: 1, discord_id: '123', encrypted_eventbrite_token: 'tok' }),
-      fakeUser({ id: 2 }),
+      fakeUser({ id: '1', discord_id: '123', encrypted_eventbrite_token: 'tok' }),
+      fakeUser({ id: '2' }),
     ]);
     const res = mockResponse();
 
@@ -91,7 +91,7 @@ describe('getAllUsers', () => {
     const body = res.body as any[];
     expect(body).toHaveLength(2);
     expect(body[0]).toEqual({
-      id: 1,
+      id: '1',
       email: 'user@example.com',
       display_name: 'jane',
       first_name: 'Jane',
@@ -132,13 +132,13 @@ describe('getOrganizers', () => {
   it('maps organizers to the public organizer shape', async () => {
     mockedUser.findBy.mockResolvedValue([
       fakeUser({
-        id: 1,
+        id: '1',
         nick_name: 'jane',
         is_organizer: true,
         photo_key: 'users/1.png',
       }),
       fakeUser({
-        id: 2,
+        id: '2',
         nick_name: 'john',
         is_organizer: true,
         photo_key: null,
@@ -151,11 +151,11 @@ describe('getOrganizers', () => {
     const body = res.body as any[];
     expect(body).toEqual([
       {
-        id: 1,
+        id: '1',
         display_name: 'jane',
         photo_url: 'https://cdn.test/users/1.png',
       },
-      { id: 2, display_name: 'john', photo_url: '' },
+      { id: '2', display_name: 'john', photo_url: '' },
     ]);
   });
 
@@ -172,8 +172,8 @@ describe('getOrganizers', () => {
     // Make the mock honor the where-clause the controller passes, so a
     // non-organizer in the underlying data is filtered out by the query.
     const allUsers = [
-      fakeUser({ id: 1, nick_name: 'jane', is_organizer: true }),
-      fakeUser({ id: 2, nick_name: 'john', is_organizer: false }),
+      fakeUser({ id: '1', nick_name: 'jane', is_organizer: true }),
+      fakeUser({ id: '2', nick_name: 'john', is_organizer: false }),
     ];
     mockedUser.findBy.mockImplementation(async (where: any) =>
       allUsers.filter((user) => user.is_organizer === where.is_organizer)
@@ -185,8 +185,8 @@ describe('getOrganizers', () => {
     const body = res.body as any[];
     expect(mockedUser.findBy).toHaveBeenCalledWith({ is_organizer: true });
     expect(body).toHaveLength(1);
-    expect(body[0]).toMatchObject({ id: 1, display_name: 'jane' });
-    expect(body.map((organizer) => organizer.id)).not.toContain(2);
+    expect(body[0]).toMatchObject({ id: '1', display_name: 'jane' });
+    expect(body.map((organizer) => organizer.id)).not.toContain('2');
   });
 });
 
@@ -204,20 +204,20 @@ describe('getUser', () => {
   });
 
   it('returns the public shape without a Discord handle when unlinked', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     const res = mockResponse();
 
     await getUser(mockRequest({ user_id: '1' }), res);
 
     const body = res.body as any;
-    expect(body.id).toBe(1);
+    expect(body.id).toBe('1');
     expect(body.is_discord_linked).toBe(false);
     expect(body).not.toHaveProperty('discord_username');
     expect(mockedFetchDiscordUsername).not.toHaveBeenCalled();
   });
 
   it('resolves the live Discord handle when linked', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, discord_id: '123' }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1', discord_id: '123' }));
     mockedFetchDiscordUsername.mockResolvedValue('janediscord');
     const res = mockResponse();
 
@@ -230,7 +230,7 @@ describe('getUser', () => {
   });
 
   it('reports has_organizer_request false when there is no pending request', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedOrganizerRequest.findOne.mockResolvedValue(null);
     const res = mockResponse();
 
@@ -238,14 +238,14 @@ describe('getUser', () => {
 
     const body = res.body as any;
     expect(mockedOrganizerRequest.findOne).toHaveBeenCalledWith({
-      where: { user: { id: 1 } },
+      where: { user: { id: '1' } },
     });
     expect(body.has_organizer_request).toBe(false);
   });
 
   it('reports has_organizer_request true when a request is pending', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
-    mockedOrganizerRequest.findOne.mockResolvedValue({ id: 5 } as never);
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
+    mockedOrganizerRequest.findOne.mockResolvedValue({ id: '5' } as never);
     const res = mockResponse();
 
     await getUser(mockRequest({ user_id: '1' }), res);

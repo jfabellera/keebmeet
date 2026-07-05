@@ -86,7 +86,7 @@ const mockRequest = (
 ): Request => ({ params, body }) as unknown as Request;
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   name: 'Meetup',
   description: 'desc',
   date: '2026-07-01T00:00:00Z',
@@ -241,7 +241,7 @@ describe('createMeetupDiscordMessage', () => {
       res
     );
 
-    expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
+    expect(mockedGetAttendeeNames).toHaveBeenCalledWith('1');
     expect(mockedBuildEmbed).toHaveBeenCalled();
     expect(mockedCreateEmbed).toHaveBeenCalledWith('c1', { embed: true }, [
       { row: true },
@@ -290,7 +290,7 @@ describe('updateMeetupDiscordMessage', () => {
 
     await updateMeetupDiscordMessage(mockRequest({ meetup_id: '1' }), res);
 
-    expect(mockedGetAttendeeNames).toHaveBeenCalledWith(1);
+    expect(mockedGetAttendeeNames).toHaveBeenCalledWith('1');
     expect(mockedEditEmbed).toHaveBeenCalledWith('c1', 'm1', { embed: true }, [
       { row: true },
     ]);

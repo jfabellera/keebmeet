@@ -33,7 +33,7 @@ const mockedTicket = jest.mocked(Ticket);
 const mockedEditEmbed = jest.mocked(editEmbedMessage);
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   name: 'Meetup',
   description: 'desc',
   date: '2026-07-01T00:00:00Z',

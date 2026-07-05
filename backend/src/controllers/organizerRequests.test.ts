@@ -72,7 +72,7 @@ const mockRequest = (params: Record<string, string> = {}): Request =>
   ({ params }) as unknown as Request;
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   email: 'user@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -87,7 +87,7 @@ const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
 
 /** A fake request row with a stubbed remove() and (optionally) a user. */
 const fakeRequest = (overrides: Record<string, unknown> = {}): any => ({
-  id: 10,
+  id: '10',
   created_at: new Date('2026-01-01T00:00:00.000Z'),
   user: fakeUser(),
   remove: jest.fn().mockResolvedValue(undefined),
@@ -149,9 +149,9 @@ describe('getOrganizerRequests', () => {
   it('maps each request to its public shape, oldest first', async () => {
     mockedOrganizerRequest.find.mockResolvedValue([
       fakeRequest({
-        id: 10,
+        id: '10',
         created_at: new Date('2026-01-01T00:00:00.000Z'),
-        user: fakeUser({ id: 1, nick_name: 'jane' }),
+        user: fakeUser({ id: '1', nick_name: 'jane' }),
       }),
     ] as never);
     const res = mockResponse();
@@ -165,9 +165,9 @@ describe('getOrganizerRequests', () => {
     const body = res.body as any[];
     expect(body).toHaveLength(1);
     expect(body[0]).toEqual({
-      id: 10,
+      id: '10',
       created_at: '2026-01-01T00:00:00.000Z',
-      user: expect.objectContaining({ id: 1, display_name: 'jane' }),
+      user: expect.objectContaining({ id: '1', display_name: 'jane' }),
     });
     // The mapped user must not leak sensitive columns.
     expect(body[0].user).not.toHaveProperty('password_hash');
@@ -197,8 +197,8 @@ describe('approveOrganizerRequest', () => {
   });
 
   it('grants organizer access, removes the request, and emails the user', async () => {
-    const user = fakeUser({ id: 1, is_organizer: false });
-    const request = fakeRequest({ id: 10, user });
+    const user = fakeUser({ id: '1', is_organizer: false });
+    const request = fakeRequest({ id: '10', user });
     mockedOrganizerRequest.findOne.mockResolvedValue(request as never);
     const res = mockResponse();
 
@@ -213,7 +213,7 @@ describe('approveOrganizerRequest', () => {
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual(
-      expect.objectContaining({ id: 1, is_organizer: true })
+      expect.objectContaining({ id: '1', is_organizer: true })
     );
   });
 });
@@ -232,8 +232,8 @@ describe('denyOrganizerRequest', () => {
   });
 
   it('removes the request, emails the user, and returns 204', async () => {
-    const user = fakeUser({ id: 1, email: 'denied@example.com' });
-    const request = fakeRequest({ id: 10, user });
+    const user = fakeUser({ id: '1', email: 'denied@example.com' });
+    const request = fakeRequest({ id: '10', user });
     mockedOrganizerRequest.findOne.mockResolvedValue(request as never);
     const res = mockResponse();
 

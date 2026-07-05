@@ -80,7 +80,7 @@ const hoursFromNow = (hours: number): string =>
   new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 
 const fakeMeetup = (overrides = {}): any => ({
-  id: 10,
+  id: '10',
   default_raffle_entries: 2,
   date: hoursFromNow(1),
   duration_hours: 2,
@@ -88,7 +88,7 @@ const fakeMeetup = (overrides = {}): any => ({
 });
 
 const fakeRequestor = (overrides = {}): any => ({
-  id: 1,
+  id: '1',
   nick_name: 'jane',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -133,12 +133,12 @@ beforeEach(() => {
 
 describe('getAllTickets', () => {
   it('returns every ticket', async () => {
-    mockedTicket.find.mockResolvedValue([{ id: 1 }, { id: 2 }] as any);
+    mockedTicket.find.mockResolvedValue([{ id: '1' }, { id: '2' }] as any);
     const res = mockResponse();
 
     await getAllTickets(mockRequest(), res);
 
-    expect(res.body).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(res.body).toEqual([{ id: '1' }, { id: '2' }]);
   });
 });
 
@@ -153,12 +153,12 @@ describe('getTicket', () => {
   });
 
   it('returns the ticket when found', async () => {
-    mockedTicket.findOneBy.mockResolvedValue({ id: 5 } as any);
+    mockedTicket.findOneBy.mockResolvedValue({ id: '5' } as any);
     const res = mockResponse();
 
     await getTicket(mockRequest({}, { ticket_id: '5' }), res);
 
-    expect(res.body).toEqual({ id: 5 });
+    expect(res.body).toEqual({ id: '5' });
   });
 });
 
@@ -176,7 +176,7 @@ describe('createTicket', () => {
   });
 
   it('returns 409 when the user already has a ticket for the meetup', async () => {
-    mockedTicket.findOne.mockResolvedValue({ id: 99 } as any);
+    mockedTicket.findOne.mockResolvedValue({ id: '99' } as any);
     const res = mockResponse();
     res.locals.meetup = fakeMeetup();
     res.locals.requestor = fakeRequestor();
@@ -265,9 +265,9 @@ describe('createTicket', () => {
       })
     );
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
-    expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.statusCode).toBe(201);
   });
 
@@ -374,17 +374,17 @@ describe('updateTicket', () => {
 
   it('updates the provided fields, saves, and emits', async () => {
     const ticket = {
-      id: 5,
+      id: '5',
       is_checked_in: false,
       raffle_entries: 1,
       raffle_wins: 0,
-      meetup: { id: 10, organizers: [{ id: 13 }] },
+      meetup: { id: '10', organizers: [{ id: '13' }] },
       save: jest.fn().mockResolvedValue(undefined),
     };
     mockedTicket.findOne.mockResolvedValue(ticket as any);
     const res = mockResponse();
     // An organizer of the meetup is allowed to change check-in status and raffle data.
-    res.locals.requestor = fakeRequestor({ id: 13, is_organizer: true });
+    res.locals.requestor = fakeRequestor({ id: '13', is_organizer: true });
 
     await updateTicket(
       mockRequest(
@@ -399,26 +399,26 @@ describe('updateTicket', () => {
     expect(ticket.raffle_wins).toBe(0); // untouched
     expect(ticket.save).toHaveBeenCalled();
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
     expect(res.statusCode).toBe(201);
   });
 
   it('does not let a non-organizer modify their own check-in status, raffle wins, or raffle entries', async () => {
     const ticket = {
-      id: 5,
+      id: '5',
       is_checked_in: false,
       raffle_entries: 1,
       raffle_wins: 0,
-      user: { id: 1 },
-      meetup: { id: 10 },
+      user: { id: '1' },
+      meetup: { id: '10' },
       save: jest.fn().mockResolvedValue(undefined),
     };
     mockedTicket.findOne.mockResolvedValue(ticket as any);
     const res = mockResponse();
     // A regular attendee editing their own ticket.
     res.locals.requestor = fakeRequestor({
-      id: 1,
+      id: '1',
       is_organizer: false,
       is_admin: false,
     });
@@ -439,12 +439,12 @@ describe('updateTicket', () => {
 
   it('updates the ticket holder details when a full ticket_holder is provided', async () => {
     const ticket = {
-      id: 5,
+      id: '5',
       ticket_holder_display_name: 'old',
       ticket_holder_first_name: 'Old',
       ticket_holder_last_name: 'Name',
       ticket_holder_email: 'old@example.com',
-      meetup: { id: 10 },
+      meetup: { id: '10' },
       save: jest.fn().mockResolvedValue(undefined),
     };
     mockedTicket.findOne.mockResolvedValue(ticket as any);
@@ -485,7 +485,7 @@ describe('deleteTicket', () => {
   it('returns 400 when the meetup has fully ended (past its date + duration)', async () => {
     const ticket = {
       // Started 3h ago, ran for 2h -> ended 1h ago.
-      meetup: { id: 10, date: hoursFromNow(-3), duration_hours: 2 },
+      meetup: { id: '10', date: hoursFromNow(-3), duration_hours: 2 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -501,7 +501,7 @@ describe('deleteTicket', () => {
   it('removes the ticket while the meetup is happening (started but not yet ended)', async () => {
     const ticket = {
       // Started 1h ago, runs for 2h -> still has 1h left.
-      meetup: { id: 10, date: hoursFromNow(-1), duration_hours: 2 },
+      meetup: { id: '10', date: hoursFromNow(-1), duration_hours: 2 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -511,9 +511,9 @@ describe('deleteTicket', () => {
 
     expect(ticket.remove).toHaveBeenCalled();
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
-    expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.statusCode).toBe(204);
   });
 });
@@ -523,16 +523,16 @@ describe('deleteTicket', () => {
 describe('getUserTickets', () => {
   it("maps a user's tickets to id + meetup_id", async () => {
     mockedTicket.find.mockResolvedValue([
-      { id: 1, meetup: { id: 10 } },
-      { id: 2, meetup: { id: 11 } },
+      { id: '1', meetup: { id: '10' } },
+      { id: '2', meetup: { id: '11' } },
     ] as any);
     const res = mockResponse();
 
     await getUserTickets(mockRequest({}, { user_id: '1' }), res);
 
     expect(res.body).toEqual([
-      { id: 1, meetup_id: 10 },
-      { id: 2, meetup_id: 11 },
+      { id: '1', meetup_id: '10' },
+      { id: '2', meetup_id: '11' },
     ]);
   });
 });
@@ -572,7 +572,7 @@ describe('checkInTicket', () => {
       eventbrite_attendee_id: null,
       is_checked_in: false,
       checked_in_at: null,
-      meetup: { id: 10 },
+      meetup: { id: '10' },
       save: jest.fn().mockResolvedValue(undefined),
     };
     const res = mockResponse();
@@ -584,7 +584,7 @@ describe('checkInTicket', () => {
     expect(ticket.checked_in_at).toBeInstanceOf(Date);
     expect(ticket.save).toHaveBeenCalled();
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
     expect(res.statusCode).toBe(200);
   });
@@ -594,7 +594,7 @@ describe('checkInTicket', () => {
 
 describe('syncEventbriteAttendee', () => {
   const meetup = {
-    id: 10,
+    id: '10',
     default_raffle_entries: 2,
     eventbriteRecord: { ticket_class_id: 'tc-1' },
   } as any;
@@ -703,7 +703,7 @@ describe('updateTicketViaWebhook', () => {
 
   it('returns 500 when fetching the attendee fails', async () => {
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
+      id: '10',
       eventbriteRecord: {
         ticket_class_id: 'tc-1',
         display_name_question_id: 'q',
@@ -723,7 +723,7 @@ describe('updateTicketViaWebhook', () => {
 
   it('returns 400 when no attendee is resolved', async () => {
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
+      id: '10',
       eventbriteRecord: {
         ticket_class_id: 'tc-1',
         display_name_question_id: 'q',
@@ -742,7 +742,7 @@ describe('updateTicketViaWebhook', () => {
 
   it('syncs the attendee and emits an update on success', async () => {
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
+      id: '10',
       eventbriteRecord: {
         ticket_class_id: 'tc-1',
         display_name_question_id: 'q',
@@ -762,7 +762,7 @@ describe('updateTicketViaWebhook', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
   });
 });

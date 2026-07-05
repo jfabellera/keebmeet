@@ -110,8 +110,7 @@ export const authChecker =
 
       // If accessing a user, check that the requestor is the user
       if (req.params.user_id != null) {
-        // For some reason requires Number() to work with !== even though it's already a number
-        if (Number(user.id) !== parseInt(req.params.user_id as string)) {
+        if (user.id !== req.params.user_id) {
           return reject(res);
         }
 

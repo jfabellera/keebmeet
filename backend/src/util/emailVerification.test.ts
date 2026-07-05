@@ -20,7 +20,7 @@ describe('generateVerificationToken / verifyVerificationToken', () => {
 
   it('rejects a token signed with a different secret', () => {
     const forged = jwt.sign(
-      { user_id: 42, purpose: 'email_verify' },
+      { user_id: '42', purpose: 'email_verify' },
       'wrong-secret'
     );
     expect(verifyVerificationToken(forged)).toBeNull();
@@ -28,7 +28,7 @@ describe('generateVerificationToken / verifyVerificationToken', () => {
 
   it('rejects a token with the wrong purpose', () => {
     const other = jwt.sign(
-      { user_id: 42, purpose: 'discord_link' },
+      { user_id: '42', purpose: 'discord_link' },
       'test-secret'
     );
     expect(verifyVerificationToken(other)).toBeNull();
@@ -36,7 +36,7 @@ describe('generateVerificationToken / verifyVerificationToken', () => {
 
   it('rejects an expired token', () => {
     const expired = jwt.sign(
-      { user_id: 42, purpose: 'email_verify' },
+      { user_id: '42', purpose: 'email_verify' },
       'test-secret',
       { expiresIn: -10 }
     );

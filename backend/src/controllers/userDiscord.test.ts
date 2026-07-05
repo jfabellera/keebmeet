@@ -53,7 +53,7 @@ const mockRequest = (params: Record<string, string> = {}): Request =>
   ({ params }) as unknown as Request;
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   discord_id: null,
   ...overrides,
 });

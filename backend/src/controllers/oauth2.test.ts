@@ -44,7 +44,7 @@ const mockResponse = (): MockResponse => {
 };
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   encrypted_eventbrite_token: null,
   save: jest.fn().mockResolvedValue(undefined),
   ...overrides,
