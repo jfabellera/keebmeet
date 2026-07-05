@@ -33,6 +33,7 @@ interface Config {
   r2JurisdictionUrl: string;
   r2PublicBaseUrl: string;
   r2Bucket: string;
+  qrCodeKey: string;
 }
 
 const config: Config = {
@@ -68,6 +69,7 @@ const config: Config = {
   r2JurisdictionUrl: process.env.R2_JURISDICTION_URL ?? '',
   r2PublicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? '',
   r2Bucket: process.env.R2_BUCKET ?? 'keebmeet',
+  qrCodeKey: process.env.QR_CODE_KEY ?? '',
 };
 
 export default config;

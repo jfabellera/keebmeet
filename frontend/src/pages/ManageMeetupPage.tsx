@@ -115,8 +115,8 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       sidebarValue={sidebarValue}
       setSidebarValue={setSidebarValue}
     >
-      <div className="flex h-full flex-col overflow-scroll">
-        <h1 className="mt-4 line-clamp-2 w-full px-6 text-center text-3xl font-bold">
+      <div className="flex h-full flex-col">
+        <h1 className="mt-4 line-clamp-2 w-full shrink-0 px-6 text-center text-3xl font-bold">
           {meetup?.name}
         </h1>
         <div className="grow">{children}</div>

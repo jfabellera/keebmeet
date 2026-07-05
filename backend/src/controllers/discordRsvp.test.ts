@@ -24,6 +24,9 @@ jest.mock('../util/rsvp', () => ({
   getMeetupEnd: jest.fn(),
   isMeetupAtCapacity: jest.fn(),
 }));
+jest.mock('../util/qrCode', () => ({
+  generateQrCodeBuffer: jest.fn(),
+}));
 
 import { handleDiscordRsvp } from './discordRsvp';
 import { Meetup } from '../entity/Meetup';
@@ -32,8 +35,10 @@ import { User } from '../entity/User';
 import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
+import { generateQrCodeBuffer } from '../util/qrCode';
 
 const mockedMeetup = jest.mocked(Meetup);
+const mockedGenerateQrCode = jest.mocked(generateQrCodeBuffer);
 const mockedTicket = jest.mocked(Ticket);
 const mockedUser = jest.mocked(User);
 const mockedDiscordMsg = jest.mocked(MeetupDiscordMessage);
@@ -90,8 +95,10 @@ beforeEach(() => {
   mockedDiscordMsg.findOneBy.mockResolvedValue(null);
   mockedTicket.create.mockImplementation((attrs: any) => ({
     ...attrs,
+    id: 'ticket-1',
     save: jest.fn().mockResolvedValue(undefined),
   }));
+  mockedGenerateQrCode.mockResolvedValue(Buffer.from('qr-png-bytes'));
 });
 
 describe('handleDiscordRsvp', () => {
@@ -146,11 +153,13 @@ describe('handleDiscordRsvp', () => {
       })
     );
     expect(mockedRefresh).toHaveBeenCalledWith('10');
+    expect(mockedGenerateQrCode).toHaveBeenCalledWith('ticket-1');
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
       status: 'created',
       meetup_name: 'Test Meetup',
       message_url: 'https://discord.com/channels/g/c/m',
+      qr_code: Buffer.from('qr-png-bytes').toString('base64'),
     });
   });
 
@@ -181,6 +190,7 @@ describe('handleDiscordRsvp', () => {
       status: 'created',
       meetup_name: 'Test Meetup',
       message_url: null,
+      qr_code: Buffer.from('qr-png-bytes').toString('base64'),
     });
   });
 
@@ -195,7 +205,12 @@ describe('handleDiscordRsvp', () => {
 
     expect(ticket.remove).not.toHaveBeenCalled();
     expect(mockedTicket.create).not.toHaveBeenCalled();
-    expect(res.body).toEqual({ status: 'already' });
+    expect(res.body).toEqual({
+      status: 'already',
+      meetup_name: 'Test Meetup',
+      message_url: null,
+      qr_code: Buffer.from('qr-png-bytes').toString('base64'),
+    });
   });
 
   it('cancels an existing RSVP on a cancel action', async () => {

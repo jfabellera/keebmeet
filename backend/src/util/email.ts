@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { generateQrCodeBuffer } from './qrCode';
 
 let resend: Resend | null = null;
 
@@ -102,15 +103,28 @@ export const sendRsvpConfirmationEmail = async (
   email: string,
   meetupName: string,
   meetupDate: string,
-  meetupLocation: string
+  meetupLocation: string,
+  ticketId: string
 ) => {
+  const qrCode = await generateQrCodeBuffer(ticketId);
+
   const { error } = await getResendClient().emails.send({
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: `RSVP Confirmation for ${meetupName}`,
     html: `<p>Thank you for RSVPing to ${meetupName}!</p>
            <p>Date: ${meetupDate}</p>
-           <p>Location: ${meetupLocation}</p>`,
+           <p>Location: ${meetupLocation}</p>
+           <br/>
+            <p>If asked, please present this QR code at the event:</p>
+           <p><img src="cid:qr-code" alt="QR Code"></p>`,
+    attachments: [
+      {
+        filename: 'qr-code.png',
+        content: qrCode,
+        contentId: 'qr-code',
+      },
+    ],
   });
 
   if (error) {

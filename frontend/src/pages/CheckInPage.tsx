@@ -1,3 +1,5 @@
+import QrScanner from '@/components/shared/QrScanner';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,12 +24,13 @@ import {
 } from '@/components/ui/tooltip';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
+import { type TicketInfo } from '@keebmeet/shared';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
+import { MdQrCodeScanner } from 'react-icons/md';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type TicketInfo } from '@keebmeet/shared';
 import {
   useCheckInAttendeeMutation,
   useEditAttendeeMutation,
@@ -60,6 +63,8 @@ const CheckInPage = (): ReactNode => {
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
+  const [useCamera, setUseCamera] = useState<boolean>(false);
+
   const filteredAttendees = useMemo(() => {
     if (attendees == null) return [];
     const filtered = attendees
@@ -79,7 +84,8 @@ const CheckInPage = (): ReactNode => {
             attendee.ticket_holder_last_name
               .toLowerCase()
               .includes(searchValue.toLowerCase())
-          )
+          ) ||
+          Boolean(attendee.qr_code_value.includes(searchValue))
       )
       .sort((a, b) => {
         return a.ticket_holder_display_name.toLowerCase() <
@@ -97,30 +103,18 @@ const CheckInPage = (): ReactNode => {
     return filtered;
   }, [attendees, searchValue]);
 
-  const handleSelectAttendee = (attendee: TicketInfo): void => {
-    if (attendee.is_checked_in) {
-      toast.warning('Already checked in', {
-        description: `${attendee.ticket_holder_display_name} is already checked in`,
-      });
-      return;
-    }
-    setTicket(attendee);
-    setAction('checkin');
-    onOpen();
-  };
-
-  const handleCheckIn = (): void => {
+  const handleCheckIn = (attendee: TicketInfo | null = ticket): void => {
     void (async () => {
-      if (ticket != null) {
-        const result = await checkInAttendee(ticket.id);
+      if (attendee != null) {
+        const result = await checkInAttendee(attendee.id);
 
         if ('error' in result) {
           toast.error('Error', {
-            description: `Could not check ${ticket.ticket_holder_display_name} in`,
+            description: `Could not check ${attendee.ticket_holder_display_name} in`,
           });
         } else {
           toast.success('Success', {
-            description: `${ticket.ticket_holder_display_name} checked in`,
+            description: `${attendee.ticket_holder_display_name} checked in`,
           });
         }
       }
@@ -163,6 +157,46 @@ const CheckInPage = (): ReactNode => {
       onClose();
     })();
   };
+
+  const handleSelectAttendee = (
+    attendee: TicketInfo,
+    bypassConfirm: boolean = false
+  ): void => {
+    if (attendee.is_checked_in) {
+      toast.warning('Already checked in', {
+        description: `${attendee.ticket_holder_display_name} is already checked in`,
+      });
+      if (bypassConfirm) {
+        setSearchValue('');
+      } else {
+        searchRef.current?.select();
+      }
+      return;
+    }
+
+    setTicket(attendee);
+    setAction('checkin');
+
+    if (bypassConfirm) {
+      handleCheckIn(attendee);
+      return;
+    }
+
+    onOpen();
+  };
+
+  // If whole search value matches a QR code, automatically check in the
+  // attendee without requiring a confirmation dialog. Useful for barcode
+  // scanners. Scanners don't need to be configured to press enter after
+  // scanning, but if they do there shouldn't be any issues.
+  useEffect(() => {
+    if (
+      filteredAttendees.length === 1 &&
+      searchValue === filteredAttendees[0].qr_code_value
+    ) {
+      handleSelectAttendee(filteredAttendees[0], true);
+    }
+  }, [searchValue, filteredAttendees]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -233,7 +267,13 @@ const CheckInPage = (): ReactNode => {
   return (
     <div className="flex h-full flex-col gap-2 p-4 text-center">
       <h2 className="mb-2 text-center text-2xl font-medium">Check-in</h2>
-      <div className="bg-card text-card-foreground rounded-md p-2 shadow-sm">
+
+      {useCamera && (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <QrScanner onScan={setSearchValue} />
+        </div>
+      )}
+      <div className="bg-card text-card-foreground flex flex-row items-center gap-2 rounded-md p-2 shadow-sm">
         <Input
           ref={searchRef}
           className="border-0 shadow-none focus-visible:ring-0"
@@ -241,6 +281,13 @@ const CheckInPage = (): ReactNode => {
           value={searchValue}
           onChange={handleSearchChange}
         />
+        <Button
+          size="icon-lg"
+          variant="outline"
+          onClick={() => setUseCamera(!useCamera)}
+        >
+          <MdQrCodeScanner />
+        </Button>
       </div>
       <div className="bg-card text-card-foreground rounded-md p-4 shadow-sm">
         <Table>
@@ -354,7 +401,11 @@ const CheckInPage = (): ReactNode => {
                 autoFocus={action === 'checkin'}
                 disabled={!canConfirm}
                 onClick={
-                  action === 'uncheckin' ? handleUncheckIn : handleCheckIn
+                  action === 'uncheckin'
+                    ? handleUncheckIn
+                    : () => {
+                        handleCheckIn();
+                      }
                 }
               >
                 Confirm

@@ -39,6 +39,7 @@ export interface TicketInfo {
   ticket_holder_email: string;
   raffle_entries: number;
   raffle_wins: number;
+  qr_code_value: string;
 }
 
 export interface SimpleTicketInfo {

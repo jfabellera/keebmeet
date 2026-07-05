@@ -1,6 +1,7 @@
 // Require the necessary discord.js classes
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   Client,
@@ -43,6 +44,8 @@ interface RsvpResponse {
   status?: string;
   meetup_name?: string;
   message_url?: string;
+  // Base64-encoded PNG of the RSVP's QR code, present on a 'created' response.
+  qr_code?: string;
 }
 
 // Calls the backend to record an RSVP action and returns the response object,
@@ -72,6 +75,49 @@ const postRsvp = async (
     console.error('Failed to record Discord RSVP:', error);
     return { status: 'error' };
   }
+};
+
+// The red "Cancel RSVP" button we attach to confirmation replies/DMs. Its
+// custom_id is handled by the same interaction listener (action `rsvp-cancel`).
+const cancelRow = (meetupId: string): ActionRowBuilder<ButtonBuilder> =>
+  new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`rsvp-cancel:${meetupId}`)
+      .setLabel('Cancel RSVP')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+// The note appended to the ephemeral confirmation about the QR code: point the
+// user to their DM copy if one was delivered, otherwise nudge them to save it
+// since the ephemeral reply can be dismissed.
+const qrNote = (dmDelivered: boolean): string =>
+  dmDelivered
+    ? '\n\nIf asked, present this QR code at the event. A copy has been sent to your DMs.'
+    : "\n\nSave your QR code in case it's needed — this message can be dismissed.";
+
+// Wraps the QR code (a base64 PNG from the backend) as a discord.js attachment
+// so it displays inline, mirroring the email RSVP flow. Empty when there's no
+// QR code, so it can be spread into any message's `files`.
+const qrAttachment = (qrCode: string | undefined): AttachmentBuilder[] =>
+  qrCode
+    ? [
+        new AttachmentBuilder(Buffer.from(qrCode, 'base64'), {
+          name: 'qr-code.png',
+        }),
+      ]
+    : [];
+
+// DMs the user a durable copy of their RSVP confirmation with the QR code
+// attached. Throws if the DM can't be delivered — e.g. the user's privacy
+// settings block direct messages from this server (DiscordAPIError 50007) — so
+// callers can decide how to handle that.
+const sendQrDm = async (
+  interaction: ButtonInteraction,
+  content: string,
+  qrCode: string | undefined
+): Promise<void> => {
+  const dm = await interaction.user.createDM();
+  await dm.send({ content, files: qrAttachment(qrCode) });
 };
 
 // Create a new client instance
@@ -107,51 +153,65 @@ client.on(Events.InteractionCreate, (interaction) => {
     const status = rsvpResponse.status ?? 'error';
     const meetupName = rsvpResponse.meetup_name ?? 'the meetup';
     const messageUrl = rsvpResponse.message_url;
+    const qrCode = rsvpResponse.qr_code;
 
-    // Already RSVP'd: offer an ephemeral confirm button rather than cancelling.
+    // Cancelling is done by pressing RSVP again on the announcement (the
+    // 'already' path then offers a Cancel button), so tell the user that here.
+    const cancelHint = messageUrl
+      ? `\n\nTo cancel, press **RSVP** again on the [meetup announcement](${messageUrl}).`
+      : '\n\nTo cancel, press **RSVP** again on the meetup announcement.';
+
+    // Already RSVP'd: just re-show the QR code in the confirmation reply with a
+    // cancel button — no DM. Since this reply can be dismissed, tell them to
+    // save it.
     if (status === 'already') {
-      const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`rsvp-cancel:${meetupId}`)
-          .setLabel('Cancel RSVP')
-          .setStyle(ButtonStyle.Danger)
-      );
-
       await interaction.editReply({
-        content:
-          "You're already RSVP'd to this meetup. Press **Cancel RSVP** to cancel it.",
-        components: [confirmRow],
+        content: `You're already RSVP'd for **${meetupName}**.${
+          qrCode ? qrNote(false) : ''
+        }\n\nPress **Cancel RSVP** to cancel it.`,
+        components: [cancelRow(meetupId)],
+        files: qrAttachment(qrCode),
       });
       return;
     }
 
-    // Any terminal status: replace the message and clear the confirm button.
+    // A newly created RSVP: DM a durable copy of the QR code, then show it in
+    // the confirmation reply. Whether the DM landed decides if we point the
+    // user to their DMs or tell them to save it (this reply can be dismissed).
+    if (status === 'created') {
+      let dmDelivered = false;
+      try {
+        await sendQrDm(
+          interaction,
+          `# ✅ ${meetupName} RSVP Confirmation\n\nYou're RSVP'd! Keep this QR code for the event.${cancelHint}`,
+          qrCode
+        );
+        dmDelivered = true;
+      } catch (error) {
+        console.warn('Could not send RSVP DM:', error);
+      }
+
+      await interaction.editReply({
+        content: `✅ You're RSVP'd for **${meetupName}**!${
+          qrCode ? qrNote(dmDelivered) : ''
+        }${cancelHint}`,
+        files: qrAttachment(qrCode),
+      });
+      return;
+    }
+
+    // Any other terminal status: replace the message and clear the button.
     await interaction.editReply({
       content:
         RSVP_MESSAGES[status] ?? 'Something went wrong. Please try again.',
       components: [],
     });
 
-    // Send a DM to confirm the RSVP or cancellation.
-    try {
-      const dm = await interaction.user.createDM();
-      const linkText = messageUrl
-        ? `\n\n[View meetup announcement](${messageUrl})`
-        : '';
-
-      if (status === 'created') {
-        const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`rsvp-cancel:${meetupId}`)
-            .setLabel('Cancel RSVP')
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        await dm.send({
-          content: `✅ You're RSVP'd for **${meetupName}**! If you need to cancel, use the button below.${linkText}`,
-          components: [cancelRow],
-        });
-      } else if (status === 'cancelled') {
+    // A cancellation: the ephemeral reply already confirms it, so a failed DM
+    // here is harmless — just log it.
+    if (status === 'cancelled') {
+      try {
+        const dm = await interaction.user.createDM();
         const rsvpAgainText = messageUrl
           ? `You can RSVP again from the [meetup announcement](${messageUrl}).`
           : 'You can RSVP again from the meetup announcement.';
@@ -159,10 +219,9 @@ client.on(Events.InteractionCreate, (interaction) => {
         await dm.send({
           content: `Your RSVP for **${meetupName}** has been cancelled. ${rsvpAgainText}`,
         });
+      } catch (error) {
+        console.warn('Could not send RSVP DM:', error);
       }
-    } catch (error) {
-      // DMs may be disabled — don't let that break the flow.
-      console.warn('Could not send RSVP DM:', error);
     }
   })();
 });
