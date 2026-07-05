@@ -102,7 +102,8 @@ export const createTicket = async (
     newTicket.ticket_holder_email,
     meetup.name,
     meetup.date,
-    meetup.address
+    meetup.address,
+    newTicket.id
   );
 
   return res.status(201).json(newTicket);
