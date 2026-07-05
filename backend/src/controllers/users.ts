@@ -65,7 +65,7 @@ export const getOrganizers = async (
   const response: OrganizerInterface[] = organizers.map(
     (user) =>
       ({
-        id: user.id,
+        id: Number(user.id),
         display_name: user.nick_name,
         photo_url: publicUrl(user.photo_key ?? ''),
       }) satisfies OrganizerInterface

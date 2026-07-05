@@ -87,12 +87,12 @@ const mapMeetupInfo = async (
     meetupInfo.description = meetup.description;
 
     meetupInfo.organizers = meetup.organizers.map((organizer) => ({
-      id: organizer.id,
+      id: Number(organizer.id),
       display_name: organizer.nick_name,
     }));
     if (meetup.lead_organizer != null) {
       meetupInfo.lead_organizer = {
-        id: meetup.lead_organizer.id,
+        id: Number(meetup.lead_organizer.id),
         display_name: meetup.lead_organizer.nick_name,
       };
     }
@@ -655,11 +655,13 @@ export const updateMeetup = async (
       relations: { organizers: true },
       where: { id: meetup.id },
     });
-    const currentIds = (withOrganizers?.organizers ?? []).map(
-      (organizer) => organizer.id
+    const currentIds = (withOrganizers?.organizers ?? []).map((organizer) =>
+      Number(organizer.id)
     );
+    const leadId =
+      meetup.lead_organizer != null ? Number(meetup.lead_organizer.id) : null;
     const desiredIds = Array.from(new Set(result.data.organizer_ids)).filter(
-      (id) => id !== meetup.lead_organizer?.id
+      (id) => id !== leadId
     );
     const toAdd = desiredIds.filter((id) => !currentIds.includes(id));
     const toRemove = currentIds.filter((id) => !desiredIds.includes(id));
