@@ -111,7 +111,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditSubmit={onSubmit}
       isFormInvalid={false}
     >
-      <h3 className="mb-1 text-xl font-medium">Idle Images</h3>
+      <h3 className="mb-1 text-lg font-medium">Idle Images</h3>
       <div className={gridClass}>
         {(urls.length > 0 ? urls : ['']).map((imageUrl, index, idleUrls) => (
           <ImageUploadField
@@ -173,36 +173,44 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
         ) : null}
       </div>
 
-      <h3 className="mt-4 mb-1 text-xl font-medium">
-        Raffle Winner Background
-      </h3>
-      <div className={gridClass}>
-        <ImageUploadField
-          previewUrl={raffleBackgroundUrl}
-          editable={isEditable}
-          aspectRatio={16 / 9}
-          className="max-w-none py-0"
-          useUpload={useMeetupImageUpload}
-          onUploaded={(_imageKey, imageUrl) => setRaffleBackgroundUrl(imageUrl)}
-          onRemove={() => setRaffleBackgroundUrl('')}
-        />
-      </div>
+      <div className="flex flex-wrap justify-around gap-4">
+        <div className="flex-1">
+          <h3 className="mt-4 mb-1 text-lg font-medium">
+            Raffle Winner Background
+          </h3>
+          <div className={gridClass}>
+            <ImageUploadField
+              previewUrl={raffleBackgroundUrl}
+              editable={isEditable}
+              aspectRatio={16 / 9}
+              className="max-w-none py-0"
+              useUpload={useMeetupImageUpload}
+              onUploaded={(_imageKey, imageUrl) =>
+                setRaffleBackgroundUrl(imageUrl)
+              }
+              onRemove={() => setRaffleBackgroundUrl('')}
+            />
+          </div>
+        </div>
 
-      <h3 className="mt-4 mb-1 text-xl font-medium">
-        Raffle Winner Background (Batch)
-      </h3>
-      <div className={gridClass}>
-        <ImageUploadField
-          previewUrl={batchRaffleBackgroundUrl}
-          editable={isEditable}
-          aspectRatio={16 / 9}
-          className="max-w-none py-0"
-          useUpload={useMeetupImageUpload}
-          onUploaded={(_imageKey, imageUrl) =>
-            setBatchRaffleBackgroundUrl(imageUrl)
-          }
-          onRemove={() => setBatchRaffleBackgroundUrl('')}
-        />
+        <div className="flex-1">
+          <h3 className="mt-4 mb-1 text-lg font-medium">
+            Raffle Winner Background (Batch)
+          </h3>
+          <div className={gridClass}>
+            <ImageUploadField
+              previewUrl={batchRaffleBackgroundUrl}
+              editable={isEditable}
+              aspectRatio={16 / 9}
+              className="max-w-none py-0"
+              useUpload={useMeetupImageUpload}
+              onUploaded={(_imageKey, imageUrl) =>
+                setBatchRaffleBackgroundUrl(imageUrl)
+              }
+              onRemove={() => setBatchRaffleBackgroundUrl('')}
+            />
+          </div>
+        </div>
       </div>
     </EditableFormCard>
   );

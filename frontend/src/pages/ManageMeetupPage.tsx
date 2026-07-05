@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { FiGift, FiHome, FiSettings, FiUsers } from 'react-icons/fi';
+import { FiGift, FiHome, FiMonitor, FiSettings, FiUsers } from 'react-icons/fi';
 import { IoTicketOutline } from 'react-icons/io5';
 import { useLocation, useParams } from 'react-router-dom';
 import Page from '../components/Page/Page';
@@ -75,6 +75,12 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       value: 'raffle',
       icon: FiGift,
       url: `/meetup/${meetupId}/manage/raffle`,
+    },
+    {
+      name: 'Display',
+      value: 'display',
+      icon: FiMonitor,
+      url: `/meetup/${meetupId}/manage/display`,
     },
     {
       name: 'Attendees',
