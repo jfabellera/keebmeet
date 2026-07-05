@@ -265,12 +265,14 @@ const CheckInPage = (): ReactNode => {
 
       {useCamera && (
         <div className="flex flex-col items-center justify-center gap-2">
-          <div className="relative max-w-lg">
+          <div className="bg-muted relative aspect-square w-full max-w-lg overflow-hidden rounded-md">
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">Loading camera...</p>
             </div>
-            <div className="relative z-10">
+            <div className="absolute inset-0 z-10">
               <BarcodeScanner
+                width="100%"
+                height="100%"
                 onUpdate={(_, result) => {
                   if (result) {
                     setSearchValue(result.getText());
@@ -281,6 +283,14 @@ const CheckInPage = (): ReactNode => {
                   facingMode: 'environment',
                 }}
               />
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                <div className="relative aspect-square w-2/3">
+                  <div className="border-secondary absolute top-0 left-0 h-8 w-8 rounded-tl-lg border-t-6 border-l-6" />
+                  <div className="border-secondary absolute top-0 right-0 h-8 w-8 rounded-tr-lg border-t-6 border-r-6" />
+                  <div className="border-secondary absolute bottom-0 left-0 h-8 w-8 rounded-bl-lg border-b-6 border-l-6" />
+                  <div className="border-secondary absolute right-0 bottom-0 h-8 w-8 rounded-br-lg border-r-6 border-b-4" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
