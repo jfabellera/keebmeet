@@ -1020,6 +1020,10 @@ describe('getMeetupAttendees', () => {
     const body = res.body as any[];
     expect(body[0].checked_in_at).toBe(checkedInAt);
     expect(body[1]).not.toHaveProperty('checked_in_at');
+    // Each ticket carries the HMAC the check-in scanner matches against —
+    // hmacTicket(id) keyed by the mocked qrCodeKey ('test-qr-code-key').
+    expect(body[0].qr_code_value).toBe('FYV1JPYuvbsvII');
+    expect(body[1].qr_code_value).toBe('-lJJWER4d4wNFh');
   });
 });
 

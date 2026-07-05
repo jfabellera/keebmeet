@@ -31,6 +31,7 @@ import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
+import { sendRsvpConfirmationEmail } from '../util/email';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   checkInTicket,
@@ -49,6 +50,7 @@ const mockedMeetup = jest.mocked(Meetup);
 const mockedGetAttendee = jest.mocked(getEventbriteAttendeeByUri);
 const mockedSocket = jest.mocked(socket);
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
+const mockedSendRsvpEmail = jest.mocked(sendRsvpConfirmationEmail);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -121,10 +123,16 @@ const fakeAttendee = (overrides = {}): any => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockedTicket.create.mockImplementation((attrs: any) => ({
-    ...attrs,
-    save: jest.fn().mockResolvedValue(undefined),
-  }));
+  mockedTicket.create.mockImplementation((attrs: any) => {
+    // Mirror the DB assigning the id on save, so newTicket.id is available
+    // afterwards (e.g. for the RSVP confirmation email / QR code).
+    const ticket: any = { ...attrs };
+    ticket.save = jest.fn().mockImplementation(() => {
+      ticket.id = 'new-ticket-id';
+      return Promise.resolve(undefined);
+    });
+    return ticket;
+  });
   // Default: meetup is below capacity.
   mockedTicket.count.mockResolvedValue(0);
 });
@@ -268,6 +276,24 @@ describe('createTicket', () => {
       meetupId: '10',
     });
     expect(mockedRefresh).toHaveBeenCalledWith('10');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('sends the RSVP confirmation email with the saved ticket id (used for the QR code)', async () => {
+    mockedTicket.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = fakeMeetup({ name: 'Keeb Night', address: '123 Main St' });
+    res.locals.requestor = fakeRequestor();
+
+    await createTicket(mockRequest(), res);
+
+    expect(mockedSendRsvpEmail).toHaveBeenCalledWith(
+      'jane@example.com',
+      'Keeb Night',
+      expect.any(String),
+      '123 Main St',
+      'new-ticket-id'
+    );
     expect(res.statusCode).toBe(201);
   });
 
