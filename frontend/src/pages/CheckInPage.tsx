@@ -80,11 +80,7 @@ const CheckInPage = (): ReactNode => {
               .toLowerCase()
               .includes(searchValue.toLowerCase())
           ) ||
-          Boolean(
-            attendee.qr_code_value
-              .toLowerCase()
-              .includes(searchValue.toLowerCase())
-          )
+          Boolean(attendee.qr_code_value.includes(searchValue))
       )
       .sort((a, b) => {
         return a.ticket_holder_display_name.toLowerCase() <
