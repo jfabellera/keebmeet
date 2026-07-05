@@ -43,7 +43,6 @@ import {
 } from '../util/externalApis';
 import { deleteManagedObjects } from '../util/imageCleanup';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
-import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
 import {
   IMAGE_EXT_BY_MIME,
   buildTempImageKey,
@@ -52,6 +51,8 @@ import {
   toStoredKey,
   upload,
 } from '../util/objectStorage';
+import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
+import { hmacTicket } from '../util/qrCode';
 import { decrypt } from '../util/security';
 import { syncEventbriteAttendee } from './tickets';
 
@@ -832,6 +833,8 @@ export const getMeetupAttendees = async (
   }
 
   const response = meetup.tickets.map((ticket) => {
+    const qrCodeValue = hmacTicket(ticket.id);
+
     const ticketInfo: TicketInfo = {
       id: ticket.id,
       created_at: ticket.created_at,
@@ -842,6 +845,7 @@ export const getMeetupAttendees = async (
       ticket_holder_email: ticket.ticket_holder_email,
       raffle_entries: ticket.raffle_entries,
       raffle_wins: ticket.raffle_wins,
+      qr_code_value: qrCodeValue,
     };
 
     if (ticket.is_checked_in) {
