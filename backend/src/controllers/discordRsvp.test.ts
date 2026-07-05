@@ -205,7 +205,12 @@ describe('handleDiscordRsvp', () => {
 
     expect(ticket.remove).not.toHaveBeenCalled();
     expect(mockedTicket.create).not.toHaveBeenCalled();
-    expect(res.body).toEqual({ status: 'already' });
+    expect(res.body).toEqual({
+      status: 'already',
+      meetup_name: 'Test Meetup',
+      message_url: null,
+      qr_code: Buffer.from('qr-png-bytes').toString('base64'),
+    });
   });
 
   it('cancels an existing RSVP on a cancel action', async () => {

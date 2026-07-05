@@ -79,7 +79,17 @@ export const handleDiscordRsvp = async (
 
   // action === 'rsvp'
   if (existingTicket != null) {
-    return res.json({ status: 'already' });
+    // Re-send the existing ticket's QR code so the bot can re-deliver it (e.g.
+    // if the original confirmation DM couldn't reach a user with DMs disabled).
+    const qrCode = (await generateQrCodeBuffer(existingTicket.id)).toString(
+      'base64'
+    );
+    return res.json({
+      status: 'already',
+      meetup_name: meetup.name,
+      message_url: messageUrl,
+      qr_code: qrCode,
+    });
   }
 
   if (getMeetupEnd(meetup) < new Date()) {
