@@ -1,3 +1,4 @@
+import QrScanner from '@/components/shared/QrScanner';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import QrScanner from '@/components/shared/QrScanner';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
 import { type TicketInfo } from '@keebmeet/shared';
@@ -103,46 +103,6 @@ const CheckInPage = (): ReactNode => {
     return filtered;
   }, [attendees, searchValue]);
 
-  // If whole search value matches a QR code, automatically check in the
-  // attendee without requiring a confirmation dialog. Useful for barcode
-  // scanners. Scanners don't need to be configured to press enter after
-  // scanning, but if they do there shouldn't be any issues.
-  useEffect(() => {
-    if (
-      filteredAttendees.length === 1 &&
-      searchValue === filteredAttendees[0].qr_code_value
-    ) {
-      handleSelectAttendee(filteredAttendees[0], true);
-    }
-  }, [searchValue, filteredAttendees]);
-
-  const handleSelectAttendee = (
-    attendee: TicketInfo,
-    bypassConfirm: boolean = false
-  ): void => {
-    if (attendee.is_checked_in) {
-      toast.warning('Already checked in', {
-        description: `${attendee.ticket_holder_display_name} is already checked in`,
-      });
-      if (bypassConfirm) {
-        setSearchValue('');
-      } else {
-        searchRef.current?.select();
-      }
-      return;
-    }
-
-    setTicket(attendee);
-    setAction('checkin');
-
-    if (bypassConfirm) {
-      handleCheckIn(attendee);
-      return;
-    }
-
-    onOpen();
-  };
-
   const handleCheckIn = (attendee: TicketInfo | null = ticket): void => {
     void (async () => {
       if (attendee != null) {
@@ -197,6 +157,46 @@ const CheckInPage = (): ReactNode => {
       onClose();
     })();
   };
+
+  const handleSelectAttendee = (
+    attendee: TicketInfo,
+    bypassConfirm: boolean = false
+  ): void => {
+    if (attendee.is_checked_in) {
+      toast.warning('Already checked in', {
+        description: `${attendee.ticket_holder_display_name} is already checked in`,
+      });
+      if (bypassConfirm) {
+        setSearchValue('');
+      } else {
+        searchRef.current?.select();
+      }
+      return;
+    }
+
+    setTicket(attendee);
+    setAction('checkin');
+
+    if (bypassConfirm) {
+      handleCheckIn(attendee);
+      return;
+    }
+
+    onOpen();
+  };
+
+  // If whole search value matches a QR code, automatically check in the
+  // attendee without requiring a confirmation dialog. Useful for barcode
+  // scanners. Scanners don't need to be configured to press enter after
+  // scanning, but if they do there shouldn't be any issues.
+  useEffect(() => {
+    if (
+      filteredAttendees.length === 1 &&
+      searchValue === filteredAttendees[0].qr_code_value
+    ) {
+      handleSelectAttendee(filteredAttendees[0], true);
+    }
+  }, [searchValue, filteredAttendees]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
