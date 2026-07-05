@@ -183,7 +183,7 @@ client.on(Events.InteractionCreate, (interaction) => {
       try {
         await sendQrDm(
           interaction,
-          `✅ You're RSVP'd for **${meetupName}**! Keep this QR code for the event.${cancelHint}`,
+          `# ✅ ${meetupName} RSVP Confirmation\n\nYou're RSVP'd! Keep this QR code for the event.${cancelHint}`,
           qrCode
         );
         dmDelivered = true;
