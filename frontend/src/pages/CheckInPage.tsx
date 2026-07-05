@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import QrScanner from '@/components/shared/QrScanner';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
 import { type TicketInfo } from '@keebmeet/shared';
@@ -28,7 +29,6 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { MdQrCodeScanner } from 'react-icons/md';
-import BarcodeScanner from 'react-qr-barcode-scanner';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -36,8 +36,6 @@ import {
   useEditAttendeeMutation,
   useGetMeetupAttendeesQuery,
 } from '../store/organizerSlice';
-
-const SCAN_COOLDOWN_MS = 1000;
 
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
@@ -49,30 +47,6 @@ const CheckInPage = (): ReactNode => {
 
   const [searchValue, setSearchValue] = useState<string>('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const [isCoolingDown, setIsCoolingDown] = useState<boolean>(false);
-  const cooldownRef = useRef<boolean>(false);
-  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const beginCooldown = (): void => {
-    cooldownRef.current = true;
-    setIsCoolingDown(true);
-    if (cooldownTimerRef.current != null) {
-      clearTimeout(cooldownTimerRef.current);
-    }
-    cooldownTimerRef.current = setTimeout(() => {
-      cooldownRef.current = false;
-      cooldownTimerRef.current = null;
-      setIsCoolingDown(false);
-    }, SCAN_COOLDOWN_MS);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (cooldownTimerRef.current != null) {
-        clearTimeout(cooldownTimerRef.current);
-      }
-    };
-  }, []);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -135,11 +109,9 @@ const CheckInPage = (): ReactNode => {
   // scanning, but if they do there shouldn't be any issues.
   useEffect(() => {
     if (
-      !cooldownRef.current &&
       filteredAttendees.length === 1 &&
       searchValue === filteredAttendees[0].qr_code_value
     ) {
-      beginCooldown();
       handleSelectAttendee(filteredAttendees[0], true);
     }
   }, [searchValue, filteredAttendees]);
@@ -298,59 +270,7 @@ const CheckInPage = (): ReactNode => {
 
       {useCamera && (
         <div className="flex flex-col items-center justify-center gap-2">
-          <div className="bg-muted relative aspect-square w-full max-w-lg overflow-hidden rounded-md">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Loading camera...</p>
-            </div>
-            <div className="absolute inset-0 z-10">
-              <BarcodeScanner
-                width="100%"
-                height="100%"
-                onUpdate={(_, result) => {
-                  if (result) {
-                    const text = result.getText();
-                    if (cooldownRef.current) {
-                      beginCooldown();
-                      return;
-                    }
-                    setSearchValue(text);
-                  }
-                }}
-                videoConstraints={{
-                  aspectRatio: 1,
-                  facingMode: 'environment',
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                <div className="relative aspect-square w-2/3">
-                  <div
-                    className={cn(
-                      'absolute top-0 left-0 h-8 w-8 rounded-tl-lg border-t-6 border-l-6 transition-colors',
-                      isCoolingDown ? 'border-green-500' : 'border-secondary'
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      'absolute top-0 right-0 h-8 w-8 rounded-tr-lg border-t-6 border-r-6 transition-colors',
-                      isCoolingDown ? 'border-green-500' : 'border-secondary'
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      'absolute bottom-0 left-0 h-8 w-8 rounded-bl-lg border-b-6 border-l-6 transition-colors',
-                      isCoolingDown ? 'border-green-500' : 'border-secondary'
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      'absolute right-0 bottom-0 h-8 w-8 rounded-br-lg border-r-6 border-b-6 transition-colors',
-                      isCoolingDown ? 'border-green-500' : 'border-secondary'
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <QrScanner onScan={setSearchValue} />
         </div>
       )}
       <div className="bg-card text-card-foreground flex flex-row items-center gap-2 rounded-md p-2 shadow-sm">
