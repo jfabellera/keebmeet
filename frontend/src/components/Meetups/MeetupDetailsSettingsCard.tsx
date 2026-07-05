@@ -134,26 +134,35 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       isFormInvalid={false}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
-        <Field className="py-2">
+        <Field className="max-w-sm min-w-0 py-2">
           <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
-          {meetup?.lead_organizer != null ? (
-            <Badge variant="secondary" className="w-fit">
-              {meetup.lead_organizer.display_name} · Lead
-            </Badge>
-          ) : null}
-          <OrganizerCombobox
-            id="organizers"
-            disabled={
-              !isEditable || currentUserId !== meetup?.lead_organizer?.id
-            }
-            excludeIds={
-              meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
-            }
-            value={formik.values.organizerIds}
-            onChange={(organizerIds) =>
-              void formik.setFieldValue('organizerIds', organizerIds)
-            }
-          />
+          <div className="flex flex-wrap gap-2">
+            {meetup?.lead_organizer != null ? (
+              <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
+            ) : null}
+
+            {!isEditable &&
+              meetup?.organizers?.map((organizer) => (
+                <Badge variant="secondary" key={organizer.id}>
+                  {organizer.display_name}
+                </Badge>
+              ))}
+          </div>
+          {isEditable && (
+            <OrganizerCombobox
+              id="organizers"
+              disabled={
+                !isEditable || currentUserId !== meetup?.lead_organizer?.id
+              }
+              excludeIds={
+                meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
+              }
+              value={formik.values.organizerIds}
+              onChange={(organizerIds) =>
+                void formik.setFieldValue('organizerIds', organizerIds)
+              }
+            />
+          )}
         </Field>
         <EditableFormField
           name={'Meetup Name'}
