@@ -63,7 +63,7 @@ const mockRequest = (body: unknown): Request =>
   ({ body }) as unknown as Request;
 
 const validBody = {
-  meetup_id: 10,
+  meetup_id: '10',
   discord_id: 'd-1',
   display_name: 'Discord Dan',
   action: 'rsvp',
@@ -72,7 +72,7 @@ const validBody = {
 const cancelBody = { ...validBody, action: 'cancel' };
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
-  id: 10,
+  id: '10',
   name: 'Test Meetup',
   capacity: 100,
   default_raffle_entries: 2,
@@ -156,7 +156,7 @@ describe('handleDiscordRsvp', () => {
 
   it('links the ticket to an account when one has the discord id', async () => {
     const user = {
-      id: 7,
+      id: '7',
       nick_name: 'janed',
       first_name: 'Jane',
       last_name: 'Doe',

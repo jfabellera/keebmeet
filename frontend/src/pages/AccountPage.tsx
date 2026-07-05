@@ -41,7 +41,7 @@ const ProfileSchema = Yup.object().shape({
 const AccountPage = (): ReactNode => {
   const dispatch = useAppDispatch();
   const { user: localUser, loading } = useAppSelector((state) => state.user);
-  const { data: user, refetch } = useGetUserQuery(localUser?.id ?? NaN, {
+  const { data: user, refetch } = useGetUserQuery(localUser?.id ?? '', {
     skip: localUser == null,
   });
   const [requestOrganizer, { isLoading: isRequestingOrganizer }] =

@@ -24,7 +24,7 @@ dayjs.extend(RelativeTime);
 
 interface Props extends React.ComponentProps<'div'> {
   raffleRecord: RaffleRecordResponse;
-  onCardClick: (raffleRecordId: number) => void;
+  onCardClick: (raffleRecordId: string) => void;
 }
 
 const RaffleHistoryCard = ({
@@ -58,12 +58,12 @@ const RaffleHistoryCard = ({
   }, [isOpen, cooldown]);
 
   const handleClick = (): void => {
-    onCardClick(Number(raffleRecord.id)); // TODO(jan): id is actually a string
+    onCardClick(raffleRecord.id);
   };
 
   const handleDelete = async (): Promise<void> => {
     try {
-      await deleteRaffleRecord(Number(raffleRecord.id)).unwrap();
+      await deleteRaffleRecord(raffleRecord.id).unwrap();
     } catch {
       toast.error('Error', {
         description: 'Failed to delete raffle roll',

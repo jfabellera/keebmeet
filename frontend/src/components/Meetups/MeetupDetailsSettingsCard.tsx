@@ -21,7 +21,7 @@ import OrganizerCombobox from './OrganizerCombobox';
 dayjs.extend(customParseFormat);
 
 interface Props {
-  meetupId: number;
+  meetupId: string;
 }
 
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
@@ -41,7 +41,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       imageUrl: '',
       imageKey: '',
       description: '',
-      organizerIds: [] as number[],
+      organizerIds: [] as string[],
     },
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};

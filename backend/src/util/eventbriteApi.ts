@@ -36,7 +36,7 @@ export const getEventbriteOrganizations = async (
 
 export const getEventbriteEvents = async (
   accessToken: string,
-  organizationId: number
+  organizationId: string
 ): Promise<EventbriteEvent[]> => {
   try {
     const response = await axios.get(
@@ -63,7 +63,7 @@ export const getEventbriteEvents = async (
 
 export const getEventbriteEvent = async (
   accessToken: string,
-  eventId: number
+  eventId: string
 ): Promise<EventbriteEvent | undefined> => {
   try {
     const response = await axios.get(
@@ -93,7 +93,7 @@ export const getEventbriteEvent = async (
 
 export const getEventbriteVenue = async (
   accessToken: string,
-  venueId: number
+  venueId: string
 ): Promise<EventbriteVenue | undefined> => {
   try {
     const response = await axios.get(
@@ -115,7 +115,7 @@ export const getEventbriteVenue = async (
 
 export const getEventbriteTickets = async (
   accessToken: string,
-  eventId: number
+  eventId: string
 ): Promise<EventbriteTicket[]> => {
   try {
     const response = await axios.get(
@@ -144,8 +144,8 @@ export const getEventbriteTickets = async (
 
 export const getEventbriteTicket = async (
   accessToken: string,
-  eventId: number,
-  ticketId: number
+  eventId: string,
+  ticketId: string
 ): Promise<EventbriteTicket | undefined> => {
   try {
     const response = await axios.get(
@@ -170,7 +170,7 @@ export const getEventbriteTicket = async (
 
 export const getEventbriteQuestions = async (
   accessToken: string,
-  eventId: number
+  eventId: string
 ): Promise<EventbriteQuestion[]> => {
   try {
     const response = await axios.get(
@@ -199,9 +199,9 @@ export const getEventbriteQuestions = async (
 
 export const getEventbriteAttendees = async (
   accessToken: string,
-  eventId: number,
-  ticketClassId: number,
-  questionId: number
+  eventId: string,
+  ticketClassId: string,
+  questionId: string
 ): Promise<EventbriteAttendee[]> => {
   let hasMoreItems = false;
   let attendees: EventbriteAttendee[] = [];
@@ -250,9 +250,9 @@ export const getEventbriteAttendees = async (
 
 export const getEventbriteAttendee = async (
   accessToken: string,
-  eventId: number,
-  attendeeId: number,
-  questionId: number
+  eventId: string,
+  attendeeId: string,
+  questionId: string
 ): Promise<EventbriteAttendee | null> => {
   try {
     const response = await axios.get(
@@ -287,7 +287,7 @@ export const getEventbriteAttendee = async (
 export const getEventbriteAttendeeByUri = async (
   accessToken: string,
   resourceUri: string,
-  questionId: number
+  questionId: string
 ): Promise<EventbriteAttendee | undefined> => {
   try {
     const response = await axios.get(resourceUri, {
@@ -317,8 +317,8 @@ export const getEventbriteAttendeeByUri = async (
 
 export const createEventbriteWebhook = async (
   accessToken: string,
-  organizationId: number,
-  eventId: number,
+  organizationId: string,
+  eventId: string,
   endpointUrl: string,
   actions: Array<
     'attendee.checked_in' | 'attendee.checked_out' | 'attendee.updated'
@@ -326,7 +326,7 @@ export const createEventbriteWebhook = async (
 ): Promise<EventbriteWebhook | undefined> => {
   try {
     const data = new FormData();
-    data.append('event_id', String(eventId));
+    data.append('event_id', eventId);
     data.append('endpoint_url', endpointUrl);
     data.append('actions', actions.join(','));
 

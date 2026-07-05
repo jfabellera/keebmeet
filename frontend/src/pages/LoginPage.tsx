@@ -20,7 +20,7 @@ const LoginPage = (): ReactNode => {
     password: '',
   });
   const [loginFailed, setLoginFailed] = useState<boolean>(false);
-  const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(null);
+  const [unverifiedUserId, setUnverifiedUserId] = useState<string | null>(null);
   const [resending, setResending] = useState<boolean>(false);
   const { loading } = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();

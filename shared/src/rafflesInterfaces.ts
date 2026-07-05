@@ -1,5 +1,5 @@
 export interface RaffleWinnerInfo {
-  ticketId: number;
+  ticketId: string;
   displayName: string;
   firstName: string;
   lastName: string;
@@ -8,7 +8,7 @@ export interface RaffleWinnerInfo {
 }
 
 export interface RaffleRecordResponse {
-  id: number;
+  id: string;
   isBatchRoll: boolean;
   winners: RaffleWinnerInfo[];
   wasDisplayed: boolean;

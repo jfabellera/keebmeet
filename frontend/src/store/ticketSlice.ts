@@ -7,19 +7,19 @@ import { type RootState } from './store';
 export type TicketHolder = NonNullable<CreateTicketPayload['ticket_holder']>;
 
 export interface CreateTicketOptions {
-  meetupId: number;
+  meetupId: string;
   /** Optional override; when omitted the requestor's own details are used. */
   ticketHolder?: TicketHolder;
 }
 
 export interface UpdateTicketOptions {
-  ticketId: number;
+  ticketId: string;
   ticketHolder: TicketHolder;
 }
 
 /** Subset of the Ticket entity the RSVP page needs to prefill its form. */
 export interface TicketDetails {
-  id: number;
+  id: string;
   ticket_holder_display_name: string;
   ticket_holder_first_name: string;
   ticket_holder_last_name: string;
@@ -42,13 +42,13 @@ export const ticketSlice = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getTickets: builder.query<SimpleTicketInfo[], number>({
+    getTickets: builder.query<SimpleTicketInfo[], string>({
       query: (userId) => ({
         url: `users/${userId}/tickets`,
       }),
       providesTags: ['Tickets'],
     }),
-    getTicket: builder.query<TicketDetails, number>({
+    getTicket: builder.query<TicketDetails, string>({
       query: (ticketId) => ({
         url: `tickets/${ticketId}`,
       }),
@@ -76,7 +76,7 @@ export const ticketSlice = createApi({
         { type: 'Tickets', id: ticketId },
       ],
     }),
-    deleteTicket: builder.mutation<void, number>({
+    deleteTicket: builder.mutation<void, string>({
       query: (ticketId) => ({
         url: `tickets/${ticketId}`,
         method: 'DELETE',

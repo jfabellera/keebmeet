@@ -15,7 +15,7 @@ interface ManageMeetupPageProps {
 
 const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
   const { meetupId } = useParams();
-  const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
+  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
   const location = useLocation();
   const dispatch = useAppDispatch();
 
@@ -24,7 +24,7 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
    * cache for the fetched meetup and attendees whenever a meetup is updated.
    */
   useEffect(() => {
-    const onMeetupUpdate = (meetupId: number): void => {
+    const onMeetupUpdate = (meetupId: string): void => {
       console.log(meetupId);
       dispatch(
         meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetupId }])
@@ -42,7 +42,7 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       );
     };
 
-    socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
+    socket.emit('meetup:subscribe', { meetupId });
 
     socket.on('meetup:update', (payload) => {
       onMeetupUpdate(payload.id);
@@ -50,8 +50,8 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
 
     // Resubscribe and force update on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
-      onMeetupUpdate(Number(meetupId));
+      socket.emit('meetup:subscribe', { meetupId });
+      onMeetupUpdate(meetupId ?? '');
     });
 
     // Stay subscribed to updates in case user comes back to page

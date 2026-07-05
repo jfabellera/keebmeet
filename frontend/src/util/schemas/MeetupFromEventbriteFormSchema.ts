@@ -1,10 +1,10 @@
 import * as Yup from 'yup';
 
 const MeetupFromEventbriteFormSchema = Yup.object().shape({
-  organizationId: Yup.number().required(),
-  eventId: Yup.number().required(),
-  ticketClassId: Yup.number().required(),
-  customQuestionId: Yup.number().required(),
+  organizationId: Yup.string().required(),
+  eventId: Yup.string().required(),
+  ticketClassId: Yup.string().required(),
+  customQuestionId: Yup.string().required(),
   defaultRaffleEntries: Yup.number()
     .min(0, 'Must be non-negative')
     .required('Required'),

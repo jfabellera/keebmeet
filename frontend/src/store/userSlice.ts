@@ -24,7 +24,7 @@ export const userSlice = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getUser: builder.query<User, number>({
+    getUser: builder.query<User, string>({
       query: (userId) => ({
         url: `/users/${userId}`,
       }),
@@ -54,7 +54,7 @@ export const userSlice = createApi({
       }),
       providesTags: ['Organizers'],
     }),
-    getUserDiscordServers: builder.query<DiscordServer[], number>({
+    getUserDiscordServers: builder.query<DiscordServer[], string>({
       query: (userId) => ({
         url: `/users/${userId}/discord/servers`,
       }),
@@ -62,7 +62,7 @@ export const userSlice = createApi({
     }),
     getUserDiscordServerChannels: builder.query<
       DiscordChannel[],
-      { userId: number; serverId: string }
+      { userId: string; serverId: string }
     >({
       query: ({ userId, serverId }) => ({
         url: `/users/${userId}/discord/servers/${serverId}/channels`,
@@ -93,14 +93,14 @@ export const userSlice = createApi({
       }),
       providesTags: ['OrganizerRequests'],
     }),
-    approveOrganizerRequest: builder.mutation<void, number>({
+    approveOrganizerRequest: builder.mutation<void, string>({
       query: (requestId) => ({
         url: `/organizer-requests/${requestId}/approve`,
         method: 'POST',
       }),
       invalidatesTags: ['OrganizerRequests', 'User'],
     }),
-    denyOrganizerRequest: builder.mutation<void, number>({
+    denyOrganizerRequest: builder.mutation<void, string>({
       query: (requestId) => ({
         url: `/organizer-requests/${requestId}`,
         method: 'DELETE',

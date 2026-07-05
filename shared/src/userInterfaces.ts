@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string;
   email: string;
   display_name: string;
   first_name: string;
@@ -18,13 +18,13 @@ export interface User {
 }
 
 export interface Organizer {
-  id: number;
+  id: string;
   display_name: string;
   photo_url: string;
 }
 
 export interface OrganizerRequestInfo {
-  id: number;
+  id: string;
   created_at: string;
   user: User;
 }

@@ -26,7 +26,7 @@ const MeetupDisplayPage = (): ReactNode => {
   );
   const [raffleType, setRaffleType] = useState<'single' | 'batch'>('single');
   const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(
-    Number(meetupId)
+    meetupId ?? ''
   );
   const [idleImageIndex, setIdleImageIndex] = useState<number>(0);
   const [winners, setWinners] = useState<string[] | null>(null);
@@ -40,10 +40,10 @@ const MeetupDisplayPage = (): ReactNode => {
   const [raffleWinnerActive, setRaffleWinnerActive] = useState<boolean>(true);
 
   useEffect(() => {
-    socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
+    socket.emit('meetup:subscribe', { meetupId: meetupId ?? '' });
     // Resubscribe on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
+      socket.emit('meetup:subscribe', { meetupId: meetupId ?? '' });
     });
 
     socket.on('meetup:display', (payload) => {

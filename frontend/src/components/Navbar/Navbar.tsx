@@ -135,7 +135,7 @@ const GuestButtons = (): ReactNode => {
 };
 
 interface NavbarDropdownProps {
-  userId: number;
+  userId: string;
   nickname: string;
   isOrganizer: boolean;
   isAdmin: boolean;

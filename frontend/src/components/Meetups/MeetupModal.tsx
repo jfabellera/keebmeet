@@ -38,7 +38,7 @@ import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 dayjs.extend(customParseFormat);
 
 export interface MeetupModalProps {
-  meetupId: number;
+  meetupId: string;
   isLoggedIn: boolean;
   ticket: SimpleTicketInfo | null;
   isOpen: boolean;
@@ -53,7 +53,7 @@ export const MeetupModal = ({
   onClose,
 }: MeetupModalProps): ReactNode => {
   const { data: meetup, error } = useGetMeetupQuery(meetupId, {
-    skip: meetupId < 1,
+    skip: meetupId === '',
   });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -74,13 +74,13 @@ export const MeetupModal = ({
   useEffect(() => {
     if (meetup == null) return;
 
-    const onMeetupUpdate = (meetupId: number): void => {
+    const onMeetupUpdate = (meetupId: string): void => {
       dispatch(
         meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetupId }])
       );
     };
 
-    socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
+    socket.emit('meetup:subscribe', { meetupId });
 
     socket.on('meetup:update', (payload) => {
       onMeetupUpdate(payload.meetupId);
@@ -88,8 +88,8 @@ export const MeetupModal = ({
 
     // Resubscribe and force update on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId: Number(meetupId) });
-      onMeetupUpdate(Number(meetupId));
+      socket.emit('meetup:subscribe', { meetupId });
+      onMeetupUpdate(meetupId);
     });
 
     // Stay subscribed to updates in case user comes back to page

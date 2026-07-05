@@ -43,10 +43,7 @@ export const getEventbriteEventsEndpoint = async (
 
   try {
     const ebToken = decrypt(user.encrypted_eventbrite_token);
-    const events = await getEventbriteEvents(
-      ebToken,
-      parseInt(organization_id)
-    );
+    const events = await getEventbriteEvents(ebToken, organization_id);
 
     return res.status(200).json(events);
   } catch (error: any) {
@@ -65,7 +62,7 @@ export const getEventbriteTicketsEndpoint = async (
 
   try {
     const ebToken = decrypt(user.encrypted_eventbrite_token);
-    const tickets = await getEventbriteTickets(ebToken, parseInt(event_id));
+    const tickets = await getEventbriteTickets(ebToken, event_id);
 
     return res.status(200).json(tickets);
   } catch (error: any) {
@@ -84,7 +81,7 @@ export const getEventbriteQuestionsEndpoint = async (
 
   try {
     const ebToken = decrypt(user.encrypted_eventbrite_token);
-    const questions = await getEventbriteQuestions(ebToken, parseInt(event_id));
+    const questions = await getEventbriteQuestions(ebToken, event_id);
 
     return res.status(200).json(questions);
   } catch (error: any) {

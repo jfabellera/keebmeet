@@ -43,7 +43,7 @@ const colorClass = (color: StateColor): string =>
 
 const RafflePage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
-  const meetupId = parseInt(meetupIdParam ?? '');
+  const meetupId = meetupIdParam ?? '';
   const [
     rollRaffleWinner,
     {
@@ -71,11 +71,11 @@ const RafflePage = (): ReactNode => {
   ] = useUnClaimRaffleWinnerMutation();
   const [markRaffleAsDisplayed] = useMarkRaffleAsDisplayedMutation();
 
-  const [raffleRecordId, setRaffleRecordId] = useState<number | null>(null);
+  const [raffleRecordId, setRaffleRecordId] = useState<string | null>(null);
   const [isDisplayed, setIsDisplayed] = useState<boolean>(false);
   const [isAllIn, setIsAllIn] = useState<boolean>(false);
   const { data: getRaffleRecordResult, error: getRaffleRecordError } =
-    useGetRaffleRecordQuery(raffleRecordId ?? 0, {
+    useGetRaffleRecordQuery(raffleRecordId ?? '', {
       skip: raffleRecordId == null,
     });
   const [raffleRecord, setRaffleRecord] = useState<RaffleRecordResponse | null>(
@@ -133,7 +133,7 @@ const RafflePage = (): ReactNode => {
       if (raffleRecordId != null && raffleRecord != null) {
         await claimRaffleWinner({
           ticketId: raffleRecord.winners[winnerIndex].ticketId,
-          payload: { raffleRecordId: Number(raffleRecord.id), force: isAllIn }, // TODO(jan): id is a string
+          payload: { raffleRecordId: raffleRecord.id, force: isAllIn },
         });
       }
     })();
@@ -146,8 +146,8 @@ const RafflePage = (): ReactNode => {
         await unclaimRaffleWinner({
           raffleRecordId: raffleRecord.id,
           payload: {
-            ticketId: Number(raffleRecord.winners[winnerIndex].ticketId),
-          }, // TODO(jan): id is a string
+            ticketId: raffleRecord.winners[winnerIndex].ticketId,
+          },
         });
       }
     })();
@@ -177,7 +177,7 @@ const RafflePage = (): ReactNode => {
     socket.emit('meetup:display', { meetupId, winner: null });
   };
 
-  const handleRaffleRecordSelect = (raffleRecordId: number): void => {
+  const handleRaffleRecordSelect = (raffleRecordId: string): void => {
     setRaffleRecordId(raffleRecordId);
     setIsRollable(true);
     onHistoryClose();
@@ -209,7 +209,7 @@ const RafflePage = (): ReactNode => {
           position: 'top-center',
         });
       } else {
-        setRaffleRecordId(Number(rollResult.raffleRecord.id)); // TODO(jan): shouldn't have to cast
+        setRaffleRecordId(rollResult.raffleRecord.id);
         setRaffleRecord(rollResult.raffleRecord);
         setLosers(rollResult.losers);
 
@@ -260,7 +260,7 @@ const RafflePage = (): ReactNode => {
         <div className="w-full grow overflow-scroll text-center">
           {raffleRecordId != null &&
           raffleRecord != null &&
-          raffleRecordId === Number(raffleRecord.id) && // TODO(jan): id is a string
+          raffleRecordId === raffleRecord.id &&
           raffleRecord.winners.length > 0 ? (
             raffleRecord.winners.length > 1 ? (
               <div>
@@ -510,7 +510,7 @@ const RafflePage = (): ReactNode => {
           </SheetHeader>
           <div className="overflow-y-auto px-4 pb-4">
             <RaffleHistoryList
-              meetupId={Number(meetupId)}
+              meetupId={meetupId}
               onCardClick={handleRaffleRecordSelect}
             />
           </div>

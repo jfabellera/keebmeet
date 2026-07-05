@@ -204,8 +204,8 @@ export const getUserTickets = async (
 
   const ticketsInfo: SimpleTicketInfo[] = tickets.map((ticket) => {
     const ticketInfo: SimpleTicketInfo = {
-      id: Number(ticket.id),
-      meetup_id: Number(ticket.meetup.id),
+      id: ticket.id,
+      meetup_id: ticket.meetup.id,
     };
     return ticketInfo;
   });
@@ -243,16 +243,13 @@ export const syncEventbriteAttendee = async (
   attendee: EventbriteAttendee,
   meetup: Meetup
 ): Promise<void> => {
-  // ticket_class_id is a bigint column (string); the attendee's id is a number.
-  if (
-    String(attendee.ticketClassId) !== meetup.eventbriteRecord?.ticket_class_id
-  ) {
+  if (attendee.ticketClassId !== meetup.eventbriteRecord?.ticket_class_id) {
     // Ignore attendees that do not match the specified ticket class
     return;
   }
 
   const ticket = await Ticket.findOne({
-    where: { eventbrite_attendee_id: String(attendee.id) },
+    where: { eventbrite_attendee_id: attendee.id },
   });
 
   if (ticket == null) {
@@ -264,7 +261,7 @@ export const syncEventbriteAttendee = async (
     // Create ticket for new attendee
     const newTicket = Ticket.create({
       meetup,
-      eventbrite_attendee_id: String(attendee.id),
+      eventbrite_attendee_id: attendee.id,
       created_at: attendee.createdAt,
       raffle_entries: meetup.default_raffle_entries,
       ticket_holder_display_name: attendee.displayName,
@@ -333,7 +330,7 @@ export const updateTicketViaWebhook = async (
       attendee = await getEventbriteAttendeeByUri(
         String(token),
         api_url,
-        Number(meetup.eventbriteRecord.display_name_question_id)
+        meetup.eventbriteRecord.display_name_question_id
       );
     } catch (error: any) {
       return res

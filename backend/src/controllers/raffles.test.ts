@@ -201,7 +201,7 @@ describe('claimRaffleWinner', () => {
     const res = mockResponse();
     res.locals.ticket = fakeTicket(5, 'eve');
 
-    await claimRaffleWinner(mockRequest({ raffleRecordId: 1 }), res);
+    await claimRaffleWinner(mockRequest({ raffleRecordId: '1' }), res);
 
     expect(res.statusCode).toBe(404);
   });
@@ -214,7 +214,7 @@ describe('claimRaffleWinner', () => {
     const res = mockResponse();
     res.locals.ticket = fakeTicket(5, 'eve');
 
-    await claimRaffleWinner(mockRequest({ raffleRecordId: 1 }), res);
+    await claimRaffleWinner(mockRequest({ raffleRecordId: '1' }), res);
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({
@@ -230,7 +230,7 @@ describe('claimRaffleWinner', () => {
     const res = mockResponse();
     res.locals.ticket = fakeTicket(5, 'eve');
 
-    await claimRaffleWinner(mockRequest({ raffleRecordId: 1 }), res);
+    await claimRaffleWinner(mockRequest({ raffleRecordId: '1' }), res);
 
     expect(res.statusCode).toBe(400);
   });
@@ -248,7 +248,7 @@ describe('claimRaffleWinner', () => {
     const res = mockResponse();
     res.locals.ticket = ticket;
 
-    await claimRaffleWinner(mockRequest({ raffleRecordId: 1 }), res);
+    await claimRaffleWinner(mockRequest({ raffleRecordId: '1' }), res);
 
     expect(winner.claimed).toBe(true);
     expect(winner.save).toHaveBeenCalled();
@@ -391,7 +391,7 @@ describe('unclaimRaffleWinner', () => {
     const res = mockResponse();
 
     await unclaimRaffleWinner(
-      mockRequest({ ticketId: 5 }, { raffle_id: '3' }),
+      mockRequest({ ticketId: '5' }, { raffle_id: '3' }),
       res
     );
 
@@ -401,12 +401,12 @@ describe('unclaimRaffleWinner', () => {
   it('returns 400 when the ticket is not part of the record', async () => {
     mockedRaffleRecord.findOne.mockResolvedValue({
       meetup: { id: 10 },
-      winners: [{ ticket: { id: 99 }, claimed: true }],
+      winners: [{ ticket: { id: '99' }, claimed: true }],
     } as any);
     const res = mockResponse();
 
     await unclaimRaffleWinner(
-      mockRequest({ ticketId: 5 }, { raffle_id: '3' }),
+      mockRequest({ ticketId: '5' }, { raffle_id: '3' }),
       res
     );
 
@@ -419,12 +419,12 @@ describe('unclaimRaffleWinner', () => {
   it('returns 400 when the ticket has not been claimed', async () => {
     mockedRaffleRecord.findOne.mockResolvedValue({
       meetup: { id: 10 },
-      winners: [{ ticket: { id: 5 }, claimed: false }],
+      winners: [{ ticket: { id: '5' }, claimed: false }],
     } as any);
     const res = mockResponse();
 
     await unclaimRaffleWinner(
-      mockRequest({ ticketId: 5 }, { raffle_id: '3' }),
+      mockRequest({ ticketId: '5' }, { raffle_id: '3' }),
       res
     );
 
@@ -433,7 +433,7 @@ describe('unclaimRaffleWinner', () => {
 
   it('unclaims the winner, decrements wins, and emits on success', async () => {
     const ticket = {
-      id: 5,
+      id: '5',
       raffle_wins: 3,
       save: jest.fn().mockResolvedValue(undefined),
     };
@@ -445,7 +445,7 @@ describe('unclaimRaffleWinner', () => {
     const res = mockResponse();
 
     await unclaimRaffleWinner(
-      mockRequest({ ticketId: 5 }, { raffle_id: '3' }),
+      mockRequest({ ticketId: '5' }, { raffle_id: '3' }),
       res
     );
 

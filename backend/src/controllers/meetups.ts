@@ -66,7 +66,7 @@ const mapMeetupInfo = async (
   type: MeetupInfoDetailLevel
 ): Promise<MeetupInfo> => {
   const meetupInfo: MeetupInfo = {
-    id: Number(meetup.id),
+    id: meetup.id,
     name: meetup.name,
     date: dayjs(meetup.date).utcOffset(meetup.utc_offset).format(),
     duration_hours: meetup.duration_hours,
@@ -87,12 +87,12 @@ const mapMeetupInfo = async (
     meetupInfo.description = meetup.description;
 
     meetupInfo.organizers = meetup.organizers.map((organizer) => ({
-      id: Number(organizer.id),
+      id: organizer.id,
       display_name: organizer.nick_name,
     }));
     if (meetup.lead_organizer != null) {
       meetupInfo.lead_organizer = {
-        id: Number(meetup.lead_organizer.id),
+        id: meetup.lead_organizer.id,
         display_name: meetup.lead_organizer.nick_name,
       };
     }
@@ -445,11 +445,9 @@ export const createMeetupFromEventbrite = async (
 
     // Create Eventbrite record
     const newEventbriteRecord = EventbriteRecord.create({
-      // These external Eventbrite ids arrive as numbers (zod); the columns are
-      // bigint (string), so store them as strings.
-      event_id: String(result.data.eventbrite_event_id),
-      ticket_class_id: String(result.data.eventbrite_ticket_id),
-      display_name_question_id: String(result.data.eventbrite_question_id),
+      event_id: result.data.eventbrite_event_id,
+      ticket_class_id: result.data.eventbrite_ticket_id,
+      display_name_question_id: result.data.eventbrite_question_id,
       url: ebEvent?.url,
       meetup: newMeetup,
     });
@@ -462,8 +460,7 @@ export const createMeetupFromEventbrite = async (
       ['attendee.updated']
     );
 
-    if (ebWebhook != null)
-      newEventbriteRecord.webhook_id = String(ebWebhook.id);
+    if (ebWebhook != null) newEventbriteRecord.webhook_id = ebWebhook.id;
 
     await newEventbriteRecord.save();
   } catch (error: any) {
@@ -658,11 +655,11 @@ export const updateMeetup = async (
       relations: { organizers: true },
       where: { id: meetup.id },
     });
-    const currentIds = (withOrganizers?.organizers ?? []).map((organizer) =>
-      Number(organizer.id)
+    const currentIds = (withOrganizers?.organizers ?? []).map(
+      (organizer) => organizer.id
     );
     const leadId =
-      meetup.lead_organizer != null ? Number(meetup.lead_organizer.id) : null;
+      meetup.lead_organizer != null ? meetup.lead_organizer.id : null;
     const desiredIds = Array.from(new Set(result.data.organizer_ids)).filter(
       (id) => id !== leadId
     );
@@ -826,7 +823,7 @@ export const getMeetupAttendees = async (
 
   const response = meetup.tickets.map((ticket) => {
     const ticketInfo: TicketInfo = {
-      id: Number(ticket.id),
+      id: ticket.id,
       created_at: ticket.created_at,
       is_checked_in: ticket.is_checked_in,
       ticket_holder_display_name: ticket.ticket_holder_display_name,
@@ -868,9 +865,9 @@ export const syncEventbriteAttendees = async (
     const ebToken = decrypt(user.encrypted_eventbrite_token);
     ebAttendees = await getEventbriteAttendees(
       ebToken,
-      Number(meetup.eventbriteRecord.event_id),
-      Number(meetup.eventbriteRecord.ticket_class_id),
-      Number(meetup.eventbriteRecord.display_name_question_id)
+      meetup.eventbriteRecord.event_id,
+      meetup.eventbriteRecord.ticket_class_id,
+      meetup.eventbriteRecord.display_name_question_id
     );
   } catch (error: any) {
     return res.status(500).json('Unable to get Eventbrite details.');

@@ -8,7 +8,7 @@ import { type User as UserInterface } from '@keebmeet/shared';
  */
 export const toUserResponse = (user: User): UserInterface => {
   return {
-    id: Number(user.id),
+    id: user.id,
     email: user.email,
     display_name: user.nick_name,
     first_name: user.first_name,

@@ -35,33 +35,33 @@ import MeetupFromEventbriteFormSchema from '../util/schemas/MeetupFromEventbrite
 const NewMeetupFromEventbritePage = (): ReactNode => {
   const navigate = useNavigate();
   const { user: localUser } = useAppSelector((state) => state.user);
-  const { data: user } = useGetUserQuery(localUser?.id ?? NaN, {
+  const { data: user } = useGetUserQuery(localUser?.id ?? '', {
     skip: localUser == null,
   });
   const isEventbriteLinked = user?.is_eventbrite_linked === true;
   const formik = useFormik({
     initialValues: {
-      organizationId: NaN,
-      eventId: NaN,
-      ticketClassId: NaN,
-      customQuestionId: NaN,
+      organizationId: '',
+      eventId: '',
+      ticketClassId: '',
+      customQuestionId: '',
       hasRaffle: true,
       defaultRaffleEntries: 1,
     },
     onSubmit: async (values) => {
       if (
-        Number.isNaN(values.eventId) ||
-        Number.isNaN(values.ticketClassId) ||
-        Number.isNaN(values.customQuestionId)
+        values.eventId === '' ||
+        values.ticketClassId === '' ||
+        values.customQuestionId === ''
       ) {
         console.log('invalid');
         return;
       }
 
       const response = await createMeetupFromEventbrite({
-        eventbrite_event_id: Number(values.eventId),
-        eventbrite_ticket_id: Number(values.ticketClassId),
-        eventbrite_question_id: Number(values.customQuestionId),
+        eventbrite_event_id: values.eventId,
+        eventbrite_ticket_id: values.ticketClassId,
+        eventbrite_question_id: values.customQuestionId,
         has_raffle: values.hasRaffle,
         default_raffle_entries: values.hasRaffle
           ? values.defaultRaffleEntries
@@ -84,22 +84,19 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
   const { data: organizations } = useGetOrganizationsQuery(undefined, {
     skip: !isEventbriteLinked,
   });
-  const { data: events } = useGetEventsQuery(
-    Number(formik.values.organizationId),
-    {
-      skip: Number.isNaN(formik.values.organizationId),
-    }
-  );
+  const { data: events } = useGetEventsQuery(formik.values.organizationId, {
+    skip: formik.values.organizationId === '',
+  });
   const { data: ticketClasses } = useGetTicketClassesQuery(
-    Number(formik.values.eventId),
+    formik.values.eventId,
     {
-      skip: Number.isNaN(formik.values.eventId),
+      skip: formik.values.eventId === '',
     }
   );
   const { data: customQuestions } = useGetCustomQuestionsQuery(
-    Number(formik.values.eventId),
+    formik.values.eventId,
     {
-      skip: Number.isNaN(formik.values.eventId),
+      skip: formik.values.eventId === '',
     }
   );
   const [createMeetupFromEventbrite, { isLoading }] =
@@ -114,7 +111,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
       | EventbriteTicket[]
       | EventbriteQuestion[]
       | undefined;
-    value: number;
+    value: string;
     disabled?: boolean;
   }
 
@@ -129,9 +126,9 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
       <Field className="w-full">
         <FieldLabel htmlFor={id}>{name}</FieldLabel>
         <Select
-          value={Number.isNaN(value) ? '' : String(value)}
+          value={value}
           onValueChange={(selected) => {
-            void formik.setFieldValue(id, Number(selected));
+            void formik.setFieldValue(id, selected);
           }}
           disabled={disabled}
         >
@@ -141,7 +138,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
           <SelectContent>
             {options != null
               ? options.map((option) => (
-                  <SelectItem key={option.id} value={String(option.id)}>
+                  <SelectItem key={option.id} value={option.id}>
                     {option.name}
                   </SelectItem>
                 ))

@@ -57,7 +57,7 @@ export const getOrganizerRequests = async (
   });
 
   const response: OrganizerRequestInfo[] = requests.map((request) => ({
-    id: Number(request.id),
+    id: request.id,
     created_at: request.created_at.toISOString(),
     user: toUserResponse(request.user),
   }));

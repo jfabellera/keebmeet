@@ -36,7 +36,7 @@ import {
 
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
-  const meetupId = parseInt(meetupIdParam ?? '');
+  const meetupId = meetupIdParam ?? '';
   const { data: attendees } = useGetMeetupAttendeesQuery({
     meetup_id: meetupId,
     params: { detail_level: 'detailed' },

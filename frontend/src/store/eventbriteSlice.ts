@@ -25,19 +25,19 @@ export const eventbriteSlice = createApi({
       }),
       providesTags: ['Organizations'],
     }),
-    getEvents: builder.query<EventbriteOrganization[], number>({
+    getEvents: builder.query<EventbriteOrganization[], string>({
       query: (organizationId) => ({
         url: `/eventbrite/organizations/${organizationId}/events`,
       }),
       providesTags: ['Events'],
     }),
-    getCustomQuestions: builder.query<EventbriteOrganization[], number>({
+    getCustomQuestions: builder.query<EventbriteOrganization[], string>({
       query: (eventId) => ({
         url: `/eventbrite/events/${eventId}/questions`,
       }),
       providesTags: ['Custom Questions'],
     }),
-    getTicketClasses: builder.query<EventbriteOrganization[], number>({
+    getTicketClasses: builder.query<EventbriteOrganization[], string>({
       query: (eventId) => ({
         url: `/eventbrite/events/${eventId}/tickets`,
       }),

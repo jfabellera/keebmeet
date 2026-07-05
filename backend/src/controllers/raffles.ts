@@ -20,11 +20,11 @@ const mapRaffleRecordToResponse = (
   raffleRecord: RaffleRecord
 ): RaffleRecordResponse => {
   return {
-    id: Number(raffleRecord.id),
+    id: raffleRecord.id,
     isBatchRoll: raffleRecord.is_batch_roll,
     winners: raffleRecord.winners.map((winner) => {
       return {
-        ticketId: Number(winner.ticket.id),
+        ticketId: winner.ticket.id,
         displayName: winner.ticket.ticket_holder_display_name,
         firstName: winner.ticket.ticket_holder_first_name,
         lastName: winner.ticket.ticket_holder_last_name,
@@ -134,8 +134,7 @@ export const claimRaffleWinner = async (
   const raffleRecord = await RaffleRecord.findOne({
     relations: { meetup: true, winners: { ticket: true } },
     where: {
-      // raffleRecordId is a number from the zod payload; ids are string in the DB.
-      id: String(result.data.raffleRecordId),
+      id: result.data.raffleRecordId,
     },
   });
 
@@ -256,7 +255,7 @@ export const unclaimRaffleWinner = async (
     return res.status(404).json({ message: 'Invalid raffle record ID.' });
 
   const raffleWinner = raffleRecord.winners.find(
-    (winner) => Number(winner.ticket.id) === payload.data.ticketId
+    (winner) => winner.ticket.id === payload.data.ticketId
   );
 
   if (raffleWinner == null)

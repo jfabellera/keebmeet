@@ -12,11 +12,11 @@ import { type RootState } from './store';
 
 export interface GetMeetupsOptions {
   detail_level?: string;
-  by_organizer_id?: number[];
+  by_organizer_id?: string[];
 }
 
 interface EditMeetupOptions {
-  meetupId: number;
+  meetupId: string;
   payload: EditMeetupPayload;
 }
 
@@ -49,7 +49,7 @@ export const meetupSlice = createApi({
       }),
       providesTags: ['Meetups'],
     }),
-    getMeetup: builder.query<MeetupInfo, number>({
+    getMeetup: builder.query<MeetupInfo, string>({
       query: (id) => ({
         url: `meetups/${id}`,
       }),
@@ -101,7 +101,7 @@ export const meetupSlice = createApi({
         { type: 'Display Assets', id: arg.meetupId },
       ],
     }),
-    deleteMeetup: builder.mutation<void, number>({
+    deleteMeetup: builder.mutation<void, string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}`,
         method: 'DELETE',
@@ -111,7 +111,7 @@ export const meetupSlice = createApi({
         { type: 'Meetup', id: arg },
       ],
     }),
-    getMeetupDisplayAssets: builder.query<MeetupDisplayAssets, number>({
+    getMeetupDisplayAssets: builder.query<MeetupDisplayAssets, string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/display-assets`,
       }),
@@ -121,7 +121,7 @@ export const meetupSlice = createApi({
     }),
     getMeetupDiscordMessage: builder.query<
       MeetupDiscordMessageInfo | null,
-      number
+      string
     >({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/discord/message`,
@@ -132,7 +132,7 @@ export const meetupSlice = createApi({
     }),
     createMeetupDiscordMessage: builder.mutation<
       MeetupDiscordMessageInfo,
-      { meetupId: number; server_id: string; channel_id: string }
+      { meetupId: string; server_id: string; channel_id: string }
     >({
       query: ({ meetupId, server_id, channel_id }) => ({
         url: `meetups/${meetupId}/discord/message`,
@@ -145,7 +145,7 @@ export const meetupSlice = createApi({
     }),
     updateMeetupDiscordMessage: builder.mutation<
       MeetupDiscordMessageInfo,
-      number
+      string
     >({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/discord/message`,
@@ -155,7 +155,7 @@ export const meetupSlice = createApi({
         { type: 'DiscordMessage', id: arg },
       ],
     }),
-    deleteMeetupDiscordMessage: builder.mutation<void, number>({
+    deleteMeetupDiscordMessage: builder.mutation<void, string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/discord/message`,
         method: 'DELETE',
