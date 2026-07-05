@@ -53,7 +53,7 @@ const mockRequest = (params: Record<string, string> = {}): Request =>
   ({ params }) as unknown as Request;
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   discord_id: null,
   ...overrides,
 });
@@ -83,7 +83,7 @@ describe('getUserDiscordServers', () => {
 
     await getUserDiscordServers(mockRequest({ user_id: '42' }), res);
 
-    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: 42 });
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '42' });
   });
 
   it('returns 409 when the user has not linked a Discord account', async () => {

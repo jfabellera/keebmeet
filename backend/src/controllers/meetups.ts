@@ -87,12 +87,12 @@ const mapMeetupInfo = async (
     meetupInfo.description = meetup.description;
 
     meetupInfo.organizers = meetup.organizers.map((organizer) => ({
-      id: Number(organizer.id),
+      id: organizer.id,
       display_name: organizer.nick_name,
     }));
     if (meetup.lead_organizer != null) {
       meetupInfo.lead_organizer = {
-        id: Number(meetup.lead_organizer.id),
+        id: meetup.lead_organizer.id,
         display_name: meetup.lead_organizer.nick_name,
       };
     }
@@ -136,7 +136,7 @@ const createMeetupsFilter = (
   }
 
   if (query.by_organizer_id != null) {
-    const organizerId = Number(query.by_organizer_id);
+    const organizerId = String(query.by_organizer_id);
     return [
       { ...findOptionsWhere, organizers: { id: organizerId } },
       { ...findOptionsWhere, lead_organizer: { id: organizerId } },
@@ -218,7 +218,7 @@ export const getMeetup = async (
       eventbriteRecord: true,
     },
     where: {
-      id: parseInt(meetup_id),
+      id: meetup_id,
     },
   });
 
@@ -545,7 +545,7 @@ export const updateMeetup = async (
       // ManyToMany). Used to keep the lead out of the co-organizer list.
       lead_organizer: true,
     },
-    where: { id: parseInt(meetup_id) },
+    where: { id: meetup_id },
   });
 
   if (meetup == null) {
@@ -655,11 +655,11 @@ export const updateMeetup = async (
       relations: { organizers: true },
       where: { id: meetup.id },
     });
-    const currentIds = (withOrganizers?.organizers ?? []).map((organizer) =>
-      Number(organizer.id)
+    const currentIds = (withOrganizers?.organizers ?? []).map(
+      (organizer) => organizer.id
     );
     const leadId =
-      meetup.lead_organizer != null ? Number(meetup.lead_organizer.id) : null;
+      meetup.lead_organizer != null ? meetup.lead_organizer.id : null;
     const desiredIds = Array.from(new Set(result.data.organizer_ids)).filter(
       (id) => id !== leadId
     );
@@ -688,7 +688,7 @@ export const deleteMeetup = async (
   res: Response
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
-  const meetupId = parseInt(meetup_id);
+  const meetupId = meetup_id;
 
   const meetup = await Meetup.findOne({
     relations: {
@@ -813,7 +813,7 @@ export const getMeetupAttendees = async (
     },
     relations: { tickets: { user: true }, eventbriteRecord: true },
     where: {
-      id: parseInt(meetup_id),
+      id: meetup_id,
     },
   });
 
@@ -893,7 +893,7 @@ export const getMeetupDisplayAssets = async (
   const meetup = await Meetup.findOne({
     relations: { displayRecord: true },
     where: {
-      id: Number(meetup_id),
+      id: meetup_id,
     },
   });
 

@@ -60,7 +60,7 @@ const postRsvp = async (
         'x-internal-secret': internalApiSecret,
       },
       body: JSON.stringify({
-        meetup_id: Number(meetupId),
+        meetup_id: meetupId,
         discord_id: interaction.user.id,
         display_name: interaction.user.globalName ?? interaction.user.username,
         action,

@@ -35,7 +35,7 @@ const AdminUsersPage = (): ReactNode => {
     'all' | 'organizers' | 'admins' | 'owners'
   >('all');
   // The user id currently being saved, so we can disable its row while in flight.
-  const [savingUserId, setSavingUserId] = useState<number | null>(null);
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
   // An in-progress admin-status change awaiting password confirmation.
   const [pendingAdminChange, setPendingAdminChange] = useState<{
     user: User;

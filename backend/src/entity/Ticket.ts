@@ -12,7 +12,7 @@ import { User } from './User';
 @Entity({ name: 'tickets' })
 export class Ticket extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @ManyToOne(() => Meetup, (meetup) => meetup.id)
   @JoinColumn({ name: 'meetup_id' })
@@ -57,6 +57,7 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'timestamptz', default: null, nullable: true })
   checked_out_at: Date;
 
+  // bigint → string at runtime; holds an external Eventbrite attendee id.
   @Column({ type: 'bigint', default: null, nullable: true })
-  eventbrite_attendee_id?: number;
+  eventbrite_attendee_id?: string | null;
 }

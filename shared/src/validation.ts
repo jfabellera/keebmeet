@@ -10,7 +10,7 @@ export const createMeetupSchema = z.object({
   duration_hours: z.number().gt(0),
   capacity: z.number().gt(0),
   image_key: z.string(),
-  organizer_ids: z.array(z.number()).optional(),
+  organizer_ids: z.array(z.string()).optional(),
   description: z.string().optional().default(''),
   has_raffle: z.boolean().optional().default(true),
   default_raffle_entries: z.number().gte(0).optional().default(1),
@@ -19,9 +19,9 @@ export const createMeetupSchema = z.object({
 export type CreateMeetupPayload = z.infer<typeof createMeetupSchema>;
 
 export const createMeetupFromEventbriteSchema = z.object({
-  eventbrite_event_id: z.number(),
-  eventbrite_ticket_id: z.number(),
-  eventbrite_question_id: z.number(),
+  eventbrite_event_id: z.string(),
+  eventbrite_ticket_id: z.string(),
+  eventbrite_question_id: z.string(),
   has_raffle: z.boolean().optional().default(true),
   default_raffle_entries: z.number().gte(0).optional().default(1),
 });
@@ -44,7 +44,7 @@ export const editMeetupSchema = z.object({
   capacity: z.number().gt(0).optional(),
   image_key: z.string().optional(),
   description: z.string().optional(),
-  organizer_ids: z.array(z.number()).optional(),
+  organizer_ids: z.array(z.string()).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
   display_idle_image_urls: z.string().array().optional(),
@@ -70,7 +70,7 @@ export type CreateMeetupDiscordMessagePayload = z.infer<
 >;
 
 export const discordRsvpSchema = z.object({
-  meetup_id: z.number(),
+  meetup_id: z.string(),
   discord_id: z.string(),
   display_name: z.string(),
   // 'rsvp' creates (or reports an existing RSVP); 'cancel' removes it. Cancelling
@@ -150,14 +150,14 @@ export const rollRaffleWinnerSchema = z.object({
 export type RollRaffleWinnerPayload = z.input<typeof rollRaffleWinnerSchema>;
 
 export const claimRaffleWinnerSchema = z.object({
-  raffleRecordId: z.number(),
+  raffleRecordId: z.string(),
   force: z.boolean().default(false).optional(),
 });
 
 export type ClaimRaffleWinnerPayload = z.input<typeof claimRaffleWinnerSchema>;
 
 export const unclaimRaffleWinnerSchema = z.object({
-  ticketId: z.number(),
+  ticketId: z.string(),
 });
 
 export type UnclaimRaffleWinnerPayload = z.input<

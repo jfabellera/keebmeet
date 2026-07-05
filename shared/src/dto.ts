@@ -3,7 +3,8 @@
 // server internals.
 
 export interface MeetupInfo {
-  id: number;
+  // Ids are opaque bigint identifiers, carried as strings end-to-end.
+  id: string;
   name: string;
   date: string;
   location: {
@@ -15,8 +16,8 @@ export interface MeetupInfo {
     country: string;
     postal_code?: string;
   };
-  organizers?: { id: number; display_name: string }[];
-  lead_organizer?: { id: number; display_name: string };
+  organizers?: { id: string; display_name: string }[];
+  lead_organizer?: { id: string; display_name: string };
   tickets?: {
     total: number;
     available: number;
@@ -28,7 +29,7 @@ export interface MeetupInfo {
 }
 
 export interface TicketInfo {
-  id: number;
+  id: string;
   created_at: Date;
   is_checked_in: boolean;
   checked_in_at?: Date;
@@ -41,12 +42,14 @@ export interface TicketInfo {
 }
 
 export interface SimpleTicketInfo {
-  id: number;
-  meetup_id: number;
+  id: string;
+  meetup_id: string;
 }
 
 export interface TokenData {
-  id: number;
+  // The user id is a bigint, carried as a string in the JWT (consumers coerce
+  // to a number if they need one).
+  id: string;
   nick_name: string;
   is_organizer: boolean;
   is_admin: boolean;

@@ -11,10 +11,10 @@ import { useAppDispatch } from '../store/hooks';
 type Status = 'verifying' | 'success' | 'error';
 
 /** Reads the user id embedded in a verification token, or null if unreadable. */
-const userIdFromToken = (token: string | null): number | null => {
+const userIdFromToken = (token: string | null): string | null => {
   if (token == null) return null;
   try {
-    return jwtDecode<{ user_id: number }>(token).user_id;
+    return jwtDecode<{ user_id: string }>(token).user_id;
   } catch {
     return null;
   }

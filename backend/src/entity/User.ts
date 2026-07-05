@@ -9,8 +9,11 @@ import { Ticket } from './Ticket';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
+  // bigint columns are returned by the pg driver as strings (and TypeORM relies
+  // on that internally). Typing ids as `string` keeps the type honest so the
+  // compiler flags any spot that assumes a number without coercing.
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @Column({ type: 'varchar', length: 100 })
   email: string;

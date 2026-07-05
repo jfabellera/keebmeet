@@ -58,23 +58,21 @@ const MeetupRsvpPage = (): ReactNode => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
 
-  const id = parseInt(meetupId ?? '');
+  const id = meetupId ?? '';
   const { data: meetup } = useGetMeetupQuery(id, {
-    skip: Number.isNaN(id),
+    skip: id === '',
   });
-  const { data: fullUser } = useGetUserQuery(user?.id ?? NaN, {
+  const { data: fullUser } = useGetUserQuery(user?.id ?? '', {
     skip: user == null,
   });
 
   // Find an existing ticket for this meetup to switch into "manage" mode.
-  const { data: tickets } = useGetTicketsQuery(user?.id ?? NaN, {
+  const { data: tickets } = useGetTicketsQuery(user?.id ?? '', {
     skip: user == null,
   });
-  // ids are bigint columns, so they come back as strings at runtime despite
-  // their `number` type — compare as strings to avoid a silent mismatch.
   const existingTicket =
-    tickets?.find((t) => String(t.meetup_id) === String(id)) ?? null;
-  const { data: ticketDetails } = useGetTicketQuery(existingTicket?.id ?? NaN, {
+    tickets?.find((t) => t.meetup_id === id) ?? null;
+  const { data: ticketDetails } = useGetTicketQuery(existingTicket?.id ?? '', {
     skip: existingTicket == null,
   });
   const isManaging = existingTicket != null;

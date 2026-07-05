@@ -12,29 +12,29 @@ import config from '../config';
 import { type RootState } from './store';
 
 export interface GetMeetupAttendeesOptions {
-  meetup_id: number;
+  meetup_id: string;
   params?: {
     detail_level?: string;
   };
 }
 
 export interface RollRaffleWinnerOptions {
-  meetupId: number;
+  meetupId: string;
   payload?: RollRaffleWinnerPayload;
 }
 
 export interface ClaimRaffleWinnerOptions {
-  ticketId: number;
+  ticketId: string;
   payload?: ClaimRaffleWinnerPayload;
 }
 
 export interface UnclaimRaffleWinnerOptions {
-  raffleRecordId: number;
+  raffleRecordId: string;
   payload: UnclaimRaffleWinnerPayload;
 }
 
 export interface UpdateAttendeeOptions {
-  ticketId: number;
+  ticketId: string;
   payload: EditTicketPayload;
 }
 
@@ -63,7 +63,7 @@ export const organizerSlice = createApi({
         { type: 'Attendees', id: arg.meetup_id },
       ],
     }),
-    checkInAttendee: builder.mutation<void, number>({
+    checkInAttendee: builder.mutation<void, string>({
       query: (ticketId) => ({
         url: `tickets/${ticketId}/checkin`,
         method: 'POST',
@@ -105,26 +105,26 @@ export const organizerSlice = createApi({
       }),
       invalidatesTags: ['Raffles', 'Raffle'], // TODO(jan): Invalidate by id
     }),
-    deleteRaffleRecord: builder.mutation<void, number>({
+    deleteRaffleRecord: builder.mutation<void, string>({
       query: (raffleRecordId) => ({
         url: `raffles/${raffleRecordId}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Raffles', 'Raffle'],
     }),
-    getRaffleHistory: builder.query<RaffleRecordResponse[], number>({
+    getRaffleHistory: builder.query<RaffleRecordResponse[], string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/raffles`,
       }),
       providesTags: (result, error, arg) => [{ type: 'Raffles', id: arg }],
     }),
-    getRaffleRecord: builder.query<RaffleRecordResponse, number>({
+    getRaffleRecord: builder.query<RaffleRecordResponse, string>({
       query: (raffleRecordId) => ({
         url: `raffles/${raffleRecordId}`,
       }),
       providesTags: (result, error, arg) => [{ type: 'Raffle', id: arg }],
     }),
-    markRaffleAsDisplayed: builder.mutation<void, number>({
+    markRaffleAsDisplayed: builder.mutation<void, string>({
       query: (raffleId) => ({
         url: `raffles/${raffleId}/displayed`,
         method: 'POST',

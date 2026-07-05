@@ -30,7 +30,7 @@ export const getTicket = async (
   const { ticket_id } = req.params as Record<string, string>;
 
   const ticket = await Ticket.findOneBy({
-    id: parseInt(ticket_id),
+    id: ticket_id,
   });
 
   if (ticket == null) {
@@ -126,7 +126,7 @@ export const updateTicket = async (
       meetup: { organizers: true },
     },
     where: {
-      id: parseInt(ticket_id),
+      id: ticket_id,
     },
   });
 
@@ -197,7 +197,7 @@ export const getUserTickets = async (
     },
     where: {
       user: {
-        id: parseInt(user_id),
+        id: user_id,
       },
     },
   });
@@ -314,7 +314,7 @@ export const updateTicketViaWebhook = async (
   try {
     const meetup = await Meetup.findOne({
       relations: { eventbriteRecord: true },
-      where: { id: parseInt(meetup_id) },
+      where: { id: meetup_id },
       select: {
         eventbriteRecord: {
           display_name_question_id: true,

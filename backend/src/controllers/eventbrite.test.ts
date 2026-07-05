@@ -114,7 +114,7 @@ describe.each(cases)('$name', ({ fn, mock, params, errorMessage }) => {
   });
 
   it('decrypts the token and returns the upstream payload on success', async () => {
-    (mock as jest.Mock).mockResolvedValue([{ id: 1 }]);
+    (mock as jest.Mock).mockResolvedValue([{ id: '1' }]);
     const res = mockResponse();
     withToken(res);
 
@@ -122,7 +122,7 @@ describe.each(cases)('$name', ({ fn, mock, params, errorMessage }) => {
 
     expect(mockedDecrypt).toHaveBeenCalledWith('enc');
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual([{ id: 1 }]);
+    expect(res.body).toEqual([{ id: '1' }]);
   });
 
   it('returns 500 when the upstream call throws', async () => {

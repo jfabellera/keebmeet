@@ -11,14 +11,14 @@ import config from '../config';
  * issued by the auth controller (sessions, Discord links).
  */
 export interface EmailVerificationTokenData {
-  user_id: number;
+  user_id: string;
   purpose: 'email_verify';
 }
 
 const TOKEN_TTL = '1h';
 
 /** Issues a one-hour verification token for a user. */
-export const generateVerificationToken = (userId: number): string =>
+export const generateVerificationToken = (userId: string): string =>
   jwt.sign(
     { user_id: userId, purpose: 'email_verify' } as EmailVerificationTokenData,
     config.jwtSecret,
@@ -30,7 +30,7 @@ export const generateVerificationToken = (userId: number): string =>
  * null if the token is missing, tampered with, expired, or not a verification
  * token.
  */
-export const verifyVerificationToken = (token: string): number | null => {
+export const verifyVerificationToken = (token: string): string | null => {
   try {
     const data = jwt.verify(token, config.jwtSecret) as EmailVerificationTokenData;
     if (data.purpose !== 'email_verify') {

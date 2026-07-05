@@ -20,15 +20,15 @@ const Homepage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
   const navigate = useNavigate();
   // The selected meetup is driven by the URL so meetups can be linked to.
-  const meetupId = Number(meetupIdParam) || 0;
+  const meetupId = meetupIdParam ?? '';
   const { data: meetups, isLoading } = useGetMeetupsQuery({});
   // TODO(jan): figure out how to remove this ugly ternary without getting linting errors
-  const { data: tickets } = useGetTicketsQuery(user != null ? user.id : 0, {
+  const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
-  const isOpen = meetupId !== 0;
+  const isOpen = meetupId !== '';
 
   const currentMeetups = useMemo(
     () => meetups?.filter((meetup) => isMeetupHappeningNow(meetup)),
@@ -54,17 +54,17 @@ const Homepage = (): ReactNode => {
    * @param meetupId
    * @returns User's ticket for a meetup or null.
    */
-  const getTicketForMeetup = (meetupId: number): SimpleTicketInfo | null => {
+  const getTicketForMeetup = (meetupId: string): SimpleTicketInfo | null => {
     if (user != null && tickets != null) {
       const ticket = tickets.filter(
-        (ticket) => String(ticket.meetup_id) === String(meetupId)
+        (ticket) => ticket.meetup_id === meetupId
       )[0];
       return ticket ?? null;
     }
     return null;
   };
 
-  const meetupCardOnClick = (selectedMeetupId: number): void => {
+  const meetupCardOnClick = (selectedMeetupId: string): void => {
     void navigate('/meetup/' + selectedMeetupId);
   };
 

@@ -33,7 +33,7 @@ const NewMeetupPage = (): ReactNode => {
       description: '',
       hasRaffle: true,
       defaultRaffleEntries: 1,
-      organizerIds: [] as number[],
+      organizerIds: [] as string[],
     },
     onSubmit: async (values) => {
       const result = await createMeetup({

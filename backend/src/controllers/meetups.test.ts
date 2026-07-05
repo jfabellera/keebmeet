@@ -173,7 +173,7 @@ const mockRequest = (
 ): Request => ({ body, params, query }) as unknown as Request;
 
 const fakeMeetupRow = (overrides = {}): any => ({
-  id: 10,
+  id: '10',
   name: 'Tex Mechs',
   date: '2026-07-01T18:00:00.000Z',
   utc_offset: -5,
@@ -185,8 +185,8 @@ const fakeMeetupRow = (overrides = {}): any => ({
   description: 'A meetup',
   capacity: 100,
   image_key: 'http://img',
-  organizers: [{ id: 1, nick_name: 'jane' }],
-  lead_organizer: { id: 1, nick_name: 'jane' },
+  organizers: [{ id: '1', nick_name: 'jane' }],
+  lead_organizer: { id: '1', nick_name: 'jane' },
   eventbriteRecord: null,
   ...overrides,
 });
@@ -238,8 +238,8 @@ describe('getAllMeetups', () => {
 
     const body = res.body as any[];
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
-    expect(body[0].organizers).toEqual([{ id: 1, display_name: 'jane' }]);
-    expect(body[0].lead_organizer).toEqual({ id: 1, display_name: 'jane' });
+    expect(body[0].organizers).toEqual([{ id: '1', display_name: 'jane' }]);
+    expect(body[0].lead_organizer).toEqual({ id: '1', display_name: 'jane' });
   });
 });
 
@@ -295,7 +295,7 @@ const validCreateBody = (overrides = {}) => ({
 describe('createMeetup', () => {
   it('returns 400 for an invalid body', async () => {
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await createMeetup(mockRequest({ name: 'x' }), res);
 
@@ -305,7 +305,7 @@ describe('createMeetup', () => {
   it('returns 409 when the name is taken', async () => {
     mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await createMeetup(mockRequest(validCreateBody()), res);
 
@@ -317,7 +317,7 @@ describe('createMeetup', () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockRejectedValue(new Error('bad address'));
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await createMeetup(mockRequest(validCreateBody()), res);
 
@@ -330,14 +330,14 @@ describe('createMeetup', () => {
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(mockRequest(validCreateBody()), res);
 
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
     // The requestor is the lead, tracked separately — not in the co-organizers.
-    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
     expect(created.organizers).toEqual([]);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
@@ -348,23 +348,23 @@ describe('createMeetup', () => {
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
     mockedUser.findBy.mockResolvedValue([
-      { id: 2, nick_name: 'john' },
-      { id: 3, nick_name: 'jill' },
+      { id: '2', nick_name: 'john' },
+      { id: '3', nick_name: 'jill' },
     ] as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(
-      mockRequest(validCreateBody({ organizer_ids: [2, 3] })),
+      mockRequest(validCreateBody({ organizer_ids: ['2', '3'] })),
       res
     );
 
-    expect(mockedUser.findBy).toHaveBeenCalledWith({ id: In([2, 3]) });
+    expect(mockedUser.findBy).toHaveBeenCalledWith({ id: In(['2', '3']) });
     const created = res.body as any;
-    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
+    expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
     expect(created.organizers).toEqual([
-      { id: 2, nick_name: 'john' },
-      { id: 3, nick_name: 'jill' },
+      { id: '2', nick_name: 'john' },
+      { id: '3', nick_name: 'jill' },
     ]);
     expect(res.statusCode).toBe(201);
   });
@@ -375,20 +375,20 @@ describe('createMeetup', () => {
     mockedGetUtcOffset.mockResolvedValue(-5);
     // Mirrors the DB returning the requestor row for their own id.
     mockedUser.findBy.mockResolvedValue([
-      { id: 1, nick_name: 'jane' },
-      { id: 2, nick_name: 'john' },
+      { id: '1', nick_name: 'jane' },
+      { id: '2', nick_name: 'john' },
     ] as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(
-      mockRequest(validCreateBody({ organizer_ids: [1, 2] })),
+      mockRequest(validCreateBody({ organizer_ids: ['1', '2'] })),
       res
     );
 
     const created = res.body as any;
-    expect(created.lead_organizer).toEqual({ id: 1, nick_name: 'jane' });
-    expect(created.organizers).toEqual([{ id: 2, nick_name: 'john' }]);
+    expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
+    expect(created.organizers).toEqual([{ id: '2', nick_name: 'john' }]);
   });
 
   it('does not query for organizers when none are selected', async () => {
@@ -396,14 +396,14 @@ describe('createMeetup', () => {
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(mockRequest(validCreateBody()), res);
 
     expect(mockedUser.findBy).not.toHaveBeenCalled();
     expect((res.body as any).organizers).toEqual([]);
     expect((res.body as any).lead_organizer).toEqual({
-      id: 1,
+      id: '1',
       nick_name: 'jane',
     });
   });
@@ -414,7 +414,7 @@ describe('createMeetup', () => {
     mockedGetUtcOffset.mockResolvedValue(-5);
     mockedPromoteImage.mockResolvedValueOnce('meetups/abc.png');
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(
       mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
@@ -433,7 +433,7 @@ describe('createMeetup', () => {
     mockedGetUtcOffset.mockResolvedValue(-5);
     mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
     const res = mockResponse();
-    res.locals.requestor = { id: 1, nick_name: 'jane' };
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createMeetup(
       mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
@@ -486,9 +486,9 @@ describe('updateMeetup', () => {
     expect(meetup.capacity).toBe(200);
     expect(meetup.save).toHaveBeenCalled();
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
-    expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.statusCode).toBe(201);
   });
 
@@ -500,18 +500,18 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(meetup) // target lookup (lead_organizer loaded)
       .mockResolvedValueOnce(null) // name-collision lookup
       .mockResolvedValueOnce({
-        organizers: [{ id: 2 }, { id: 5 }],
+        organizers: [{ id: '2' }, { id: '5' }],
       } as never); // organizers lookup
     const res = mockResponse();
-    res.locals.requestor = { id: 1 }; // the lead
+    res.locals.requestor = { id: '1' }; // the lead
 
     await updateMeetup(
-      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      mockRequest({ organizer_ids: ['2', '3'] }, { meetup_id: '10' }),
       res
     );
 
     // Add 3, remove 5; 2 is unchanged.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], [5]);
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['3'], ['5']);
     expect(res.statusCode).toBe(201);
   });
 
@@ -523,17 +523,17 @@ describe('updateMeetup', () => {
     mockedMeetup.findOne
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
+      .mockResolvedValueOnce({ organizers: [{ id: '2' }] } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 }; // the lead
+    res.locals.requestor = { id: '1' }; // the lead
 
     await updateMeetup(
-      mockRequest({ organizer_ids: [1, 2, 3] }, { meetup_id: '10' }),
+      mockRequest({ organizer_ids: ['1', '2', '3'] }, { meetup_id: '10' }),
       res
     );
 
     // Lead (1) is filtered out; only co-organizer 3 is added.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([3], []);
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['3'], []);
   });
 
   it('removes all co-organizers when organizer_ids is empty', async () => {
@@ -544,10 +544,10 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
-        organizers: [{ id: 2 }, { id: 3 }],
+        organizers: [{ id: '2' }, { id: '3' }],
       } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 }; // the lead
+    res.locals.requestor = { id: '1' }; // the lead
 
     await updateMeetup(
       mockRequest({ organizer_ids: [] }, { meetup_id: '10' }),
@@ -555,7 +555,7 @@ describe('updateMeetup', () => {
     );
 
     // The lead lives in its own column and is untouched here.
-    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], [2, 3]);
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], ['2', '3']);
   });
 
   it('leaves organizers untouched when organizer_ids is not provided', async () => {
@@ -566,7 +566,7 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await updateMeetup(
       mockRequest({ duration_hours: 5 }, { meetup_id: '10' }),
@@ -583,12 +583,12 @@ describe('updateMeetup', () => {
     mockedMeetup.findOne
       .mockResolvedValueOnce(meetup)
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ organizers: [{ id: 2 }] } as never);
+      .mockResolvedValueOnce({ organizers: [{ id: '2' }] } as never);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 }; // the lead
+    res.locals.requestor = { id: '1' }; // the lead
 
     await updateMeetup(
-      mockRequest({ organizer_ids: [2] }, { meetup_id: '10' }),
+      mockRequest({ organizer_ids: ['2'] }, { meetup_id: '10' }),
       res
     );
 
@@ -603,10 +603,10 @@ describe('updateMeetup', () => {
     });
     mockedMeetup.findOne.mockResolvedValueOnce(meetup); // target lookup
     const res = mockResponse();
-    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
 
     await updateMeetup(
-      mockRequest({ organizer_ids: [2, 3] }, { meetup_id: '10' }),
+      mockRequest({ organizer_ids: ['2', '3'] }, { meetup_id: '10' }),
       res
     );
 
@@ -624,7 +624,7 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(meetup) // target lookup
       .mockResolvedValueOnce(null); // name-collision lookup
     const res = mockResponse();
-    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
 
     await updateMeetup(
       mockRequest({ duration_hours: 4 }, { meetup_id: '10' }),
@@ -643,7 +643,7 @@ describe('updateMeetup', () => {
   // lookup excludes the current meetup id.
   it.failing('allows saving a meetup with its own unchanged name', async () => {
     const meetup = fakeMeetupRow({
-      id: 10,
+      id: '10',
       name: 'Tex Mechs',
       save: jest.fn().mockResolvedValue(undefined),
     });
@@ -886,7 +886,7 @@ describe('deleteMeetup', () => {
   it('returns 404 when the meetup does not exist', async () => {
     mockedMeetup.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await deleteMeetup(mockRequest({}, { meetup_id: '99' }), res);
 
@@ -895,7 +895,7 @@ describe('deleteMeetup', () => {
 
   it('deletes the meetup image and display image objects it owns', async () => {
     const meetup = {
-      id: 10,
+      id: '10',
       image_key: 'meetups/main.png',
       tickets: [],
       raffleRecords: [],
@@ -906,12 +906,12 @@ describe('deleteMeetup', () => {
         raffle_background_url: 'meetups/bg.png',
         batch_raffle_background_url: null,
       },
-      lead_organizer: { id: 1 },
+      lead_organizer: { id: '1' },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
@@ -925,19 +925,19 @@ describe('deleteMeetup', () => {
 
   it('lets the lead organizer delete the meetup', async () => {
     const meetup = {
-      id: 10,
+      id: '10',
       image_key: 'meetups/main.png',
       tickets: [],
       raffleRecords: [],
       discordMessage: null,
       eventbriteRecord: null,
       displayRecord: null,
-      lead_organizer: { id: 1 },
+      lead_organizer: { id: '1' },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 1 };
+    res.locals.requestor = { id: '1' };
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
@@ -946,18 +946,18 @@ describe('deleteMeetup', () => {
 
   it('rejects a non-lead organizer with 403', async () => {
     const meetup = {
-      id: 10,
+      id: '10',
       tickets: [],
       raffleRecords: [],
       discordMessage: null,
       eventbriteRecord: null,
       displayRecord: null,
-      lead_organizer: { id: 1 },
+      lead_organizer: { id: '1' },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
@@ -982,10 +982,10 @@ describe('getMeetupAttendees', () => {
   it('maps tickets and includes checked_in_at only for checked-in tickets', async () => {
     const checkedInAt = new Date('2026-07-01T19:00:00.000Z');
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
+      id: '10',
       tickets: [
         {
-          id: 1,
+          id: '1',
           created_at: new Date('2026-06-01'),
           is_checked_in: true,
           checked_in_at: checkedInAt,
@@ -994,7 +994,7 @@ describe('getMeetupAttendees', () => {
           ticket_holder_last_name: 'stone',
         },
         {
-          id: 2,
+          id: '2',
           created_at: new Date('2026-06-02'),
           is_checked_in: false,
           checked_in_at: null,
@@ -1027,7 +1027,7 @@ describe('getMeetupDisplayAssets', () => {
   });
 
   it('returns nulls when there is no display record', async () => {
-    mockedMeetup.findOne.mockResolvedValue({ id: 10, displayRecord: null } as any);
+    mockedMeetup.findOne.mockResolvedValue({ id: '10', displayRecord: null } as any);
     const res = mockResponse();
 
     await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '10' }), res);
@@ -1041,7 +1041,7 @@ describe('getMeetupDisplayAssets', () => {
 
   it('resolves stored keys to public URLs and passes external URLs through', async () => {
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
+      id: '10',
       displayRecord: {
         idle_image_urls: ['meetups/a.png', 'https://external.com/b.png'],
         raffle_background_url: 'meetups/bg.png',
@@ -1068,7 +1068,7 @@ describe('getMeetupDisplayAssets', () => {
 describe('syncEventbriteAttendees', () => {
   it('returns 400 when the meetup has no Eventbrite record', async () => {
     const res = mockResponse();
-    res.locals.meetup = { id: 10, eventbriteRecord: null };
+    res.locals.meetup = { id: '10', eventbriteRecord: null };
     res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
 
     await syncEventbriteAttendees(mockRequest(), res);
@@ -1078,7 +1078,7 @@ describe('syncEventbriteAttendees', () => {
 
   it('returns 400 when the requestor has no Eventbrite token', async () => {
     const res = mockResponse();
-    res.locals.meetup = { id: 10, eventbriteRecord: { event_id: 1 } };
+    res.locals.meetup = { id: '10', eventbriteRecord: { event_id: '1' } };
     res.locals.requestor = { encrypted_eventbrite_token: null };
 
     await syncEventbriteAttendees(mockRequest(), res);
@@ -1090,11 +1090,11 @@ describe('syncEventbriteAttendees', () => {
     mockedGetAttendees.mockRejectedValue(new Error('eb down'));
     const res = mockResponse();
     res.locals.meetup = {
-      id: 10,
+      id: '10',
       eventbriteRecord: {
-        event_id: 1,
-        ticket_class_id: 2,
-        display_name_question_id: 3,
+        event_id: '1',
+        ticket_class_id: '2',
+        display_name_question_id: '3',
       },
     };
     res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
@@ -1108,11 +1108,11 @@ describe('syncEventbriteAttendees', () => {
     mockedGetAttendees.mockResolvedValue([]);
     const res = mockResponse();
     res.locals.meetup = {
-      id: 10,
+      id: '10',
       eventbriteRecord: {
-        event_id: 1,
-        ticket_class_id: 2,
-        display_name_question_id: 3,
+        event_id: '1',
+        ticket_class_id: '2',
+        display_name_question_id: '3',
       },
     };
     res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
@@ -1121,7 +1121,7 @@ describe('syncEventbriteAttendees', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
-      meetupId: 10,
+      meetupId: '10',
     });
   });
 });
@@ -1130,9 +1130,9 @@ describe('syncEventbriteAttendees', () => {
 
 describe('createMeetupFromEventbrite', () => {
   const validBody = {
-    eventbrite_event_id: 1,
-    eventbrite_ticket_id: 2,
-    eventbrite_question_id: 3,
+    eventbrite_event_id: '1',
+    eventbrite_ticket_id: '2',
+    eventbrite_question_id: '3',
   };
 
   it('returns 400 for an invalid body', async () => {
@@ -1165,11 +1165,11 @@ describe('createMeetupFromEventbrite', () => {
 
   it('creates the meetup and Eventbrite record on success', async () => {
     mockedGetEvent.mockResolvedValue({
-      id: 1,
-      venueId: 7,
+      id: '1',
+      venueId: '7',
       startTime: '2026-09-01T18:00:00.000Z',
       endTime: '2026-09-01T21:00:00.000Z',
-      organizationId: 99,
+      organizationId: '99',
       name: 'EB Meetup',
       url: 'http://eb',
       imageUrl: 'http://img',
@@ -1179,9 +1179,9 @@ describe('createMeetupFromEventbrite', () => {
     mockedGetTicket.mockResolvedValue({ total: 80 } as any);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
-    mockedCreateWebhook.mockResolvedValue({ id: 555 } as any);
+    mockedCreateWebhook.mockResolvedValue({ id: '555' } as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 1, encrypted_eventbrite_token: 'enc' };
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
 
     await createMeetupFromEventbrite(mockRequest(validBody), res);
 
@@ -1190,9 +1190,9 @@ describe('createMeetupFromEventbrite', () => {
     );
     expect(mockedEventbriteRecord.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        event_id: 1,
-        ticket_class_id: 2,
-        display_name_question_id: 3,
+        event_id: '1',
+        ticket_class_id: '2',
+        display_name_question_id: '3',
       })
     );
     expect(res.statusCode).toBe(201);

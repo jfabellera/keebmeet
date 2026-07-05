@@ -1,40 +1,40 @@
 export interface EventbriteOrganization {
   name: string;
-  id: number;
+  id: string;
 }
 
 export interface EventbriteEvent {
   name: string;
-  id: number;
+  id: string;
   imageUrl?: string;
   startTime?: string;
   endTime?: string;
   url?: string;
   description?: string;
-  venueId?: number;
-  organizationId?: number;
+  venueId?: string;
+  organizationId?: string;
 }
 
 export interface EventbriteVenue {
-  id: number;
+  id: string;
   name: string;
   address: string;
 }
 
 export interface EventbriteTicket {
   name: string;
-  id: number;
+  id: string;
   total?: number;
   sold?: number;
 }
 
 export interface EventbriteQuestion {
   name: string;
-  id: number;
+  id: string;
 }
 
 export interface EventbriteAttendee {
-  id: number;
+  id: string;
   displayName: string;
   firstName: string;
   lastName: string;
@@ -43,9 +43,9 @@ export interface EventbriteAttendee {
   isCheckedIn: boolean;
   checkInStatusUpdatedAt: Date;
   isAttending: boolean;
-  ticketClassId: number;
+  ticketClassId: string;
 }
 
 export interface EventbriteWebhook {
-  id: number;
+  id: string;
 }

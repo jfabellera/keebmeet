@@ -17,16 +17,16 @@ import { useAppSelector } from '../../store/hooks';
 
 interface Props {
   /** Currently selected organizer ids. */
-  value: number[];
+  value: string[];
   /** Called with the new set of selected organizer ids. */
-  onChange: (organizerIds: number[]) => void;
+  onChange: (organizerIds: string[]) => void;
   /** Read-only mode: chips are shown but the selection can't be changed. */
   disabled?: boolean;
   /**
    * Organizer ids to hide from the options in addition to the current user,
    * e.g. the lead organizer, who is fixed and can't be removed.
    */
-  excludeIds?: number[];
+  excludeIds?: string[];
   /** Associates the input with an external label. */
   id?: string;
 }

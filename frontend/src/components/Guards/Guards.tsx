@@ -86,12 +86,12 @@ export const RequireOrganizer = ({ children }: GuardProps): ReactNode => {
  */
 export const RequireMeetup = ({ children }: GuardProps): ReactNode => {
   const { meetupId } = useParams();
-  const id = parseInt(meetupId ?? '');
+  const id = meetupId ?? '';
   const { error, isLoading } = useGetMeetupQuery(id, {
-    skip: Number.isNaN(id),
+    skip: id === '',
   });
 
-  if (Number.isNaN(id)) return <Navigate to="/" replace />;
+  if (id === '') return <Navigate to="/" replace />;
   // Wait for the lookup before deciding so valid meetups don't flash a redirect.
   if (isLoading) return null;
   if (isNotFoundError(error)) return <Navigate to="/" replace />;
@@ -108,20 +108,20 @@ export const RequireMeetup = ({ children }: GuardProps): ReactNode => {
 export const RequireMeetupOrganizer = ({ children }: GuardProps): ReactNode => {
   const { user } = useAppSelector((state) => state.user);
   const { meetupId } = useParams();
-  const id = parseInt(meetupId ?? '');
+  const id = meetupId ?? '';
 
   const { data: organizedMeetups, isLoading } = useGetMeetupsQuery(
     { by_organizer_id: user != null ? [user.id] : [] },
     { skip: user == null }
   );
 
-  if (user == null || Number.isNaN(id)) return <Navigate to="/" replace />;
+  if (user == null || id === '') return <Navigate to="/" replace />;
   // Wait for the lookup before deciding so authorized organizers don't flash a
   // redirect on a slow load.
   if (isLoading) return null;
 
   const organizesMeetup =
-    organizedMeetups?.some((meetup) => String(meetup.id) === String(id)) ??
+    organizedMeetups?.some((meetup) => meetup.id === id) ??
     false;
 
   if (!organizesMeetup) return <Navigate to="/" replace />;

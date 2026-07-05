@@ -28,7 +28,7 @@ const mockedUser = jest.mocked(User);
 const mockedSendEmail = jest.mocked(sendOrganizerRequestEmail);
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   email: 'user@example.com',
   nick_name: 'jane',
   ...overrides,
@@ -41,8 +41,8 @@ beforeEach(() => {
 describe('notifyAdminsOfOrganizerRequest', () => {
   it('emails every admin with the requester details and review link', async () => {
     mockedUser.find.mockResolvedValue([
-      fakeUser({ id: 10, email: 'admin1@example.com' }),
-      fakeUser({ id: 11, email: 'admin2@example.com' }),
+      fakeUser({ id: '10', email: 'admin1@example.com' }),
+      fakeUser({ id: '11', email: 'admin2@example.com' }),
     ]);
     const requester = fakeUser({
       email: 'requester@example.com',

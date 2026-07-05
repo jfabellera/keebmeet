@@ -12,7 +12,7 @@ import ImageUploadField from '../shared/ImageUploadField';
 import { useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
-  meetupId: number;
+  meetupId: string;
 }
 
 const gridClass =

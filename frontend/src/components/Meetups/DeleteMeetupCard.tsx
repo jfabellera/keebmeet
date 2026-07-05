@@ -21,7 +21,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 
 interface Props {
-  meetupId: number;
+  meetupId: string;
 }
 
 export const DeleteMeetupCard = ({ meetupId }: Props): ReactNode => {

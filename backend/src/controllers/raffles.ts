@@ -191,12 +191,12 @@ export const getRaffleRecord = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true } },
     where: {
-      id: Number(raffle_id),
+      id: raffle_id,
     },
     order: {
       created_at: 'DESC',
@@ -214,12 +214,12 @@ export const markRaffleRecordAsDisplayed = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { meetup: true },
     where: {
-      id: Number(raffle_id),
+      id: raffle_id,
     },
   });
 
@@ -239,7 +239,7 @@ export const unclaimRaffleWinner = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
   const payload = unclaimRaffleWinnerSchema.safeParse(req.body);
 
   if (!payload.success) {
@@ -248,14 +248,14 @@ export const unclaimRaffleWinner = async (
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true }, meetup: true },
-    where: { id: Number(raffle_id) },
+    where: { id: raffle_id },
   });
 
   if (raffleRecord == null)
     return res.status(404).json({ message: 'Invalid raffle record ID.' });
 
   const raffleWinner = raffleRecord.winners.find(
-    (winner) => Number(winner.ticket.id) === payload.data.ticketId
+    (winner) => winner.ticket.id === payload.data.ticketId
   );
 
   if (raffleWinner == null)
@@ -284,11 +284,11 @@ export const deleteRaffleRecord = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true }, meetup: true },
-    where: { id: Number(raffle_id) },
+    where: { id: raffle_id },
   });
 
   if (raffleRecord == null)

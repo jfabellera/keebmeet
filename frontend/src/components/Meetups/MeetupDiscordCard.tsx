@@ -37,7 +37,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 
 interface Props {
-  meetupId: number;
+  meetupId: string;
 }
 
 // Surfaces an RTK Query mutation error as a toast; returns true when errored.
@@ -55,14 +55,14 @@ const handleMutationError = (
 
 export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
   const { user: localUser } = useAppSelector((state) => state.user);
-  const { data: user } = useGetUserQuery(localUser?.id ?? NaN, {
+  const { data: user } = useGetUserQuery(localUser?.id ?? '', {
     skip: localUser == null,
   });
 
   const isLinked = user?.is_discord_linked === true;
 
   const { data: servers } = useGetUserDiscordServersQuery(
-    localUser?.id ?? NaN,
+    localUser?.id ?? '',
     { skip: localUser == null || !isLinked }
   );
   const { data: meetup } = useGetMeetupQuery(meetupId);
@@ -78,7 +78,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: channels } = useGetUserDiscordServerChannelsQuery(
-    { userId: localUser?.id ?? NaN, serverId: selectedServer },
+    { userId: localUser?.id ?? '', serverId: selectedServer },
     { skip: localUser == null || selectedServer === '' }
   );
 

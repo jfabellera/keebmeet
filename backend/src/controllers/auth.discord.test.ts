@@ -81,7 +81,7 @@ type DiscordProfile = {
 
 /** A fake User row with a stubbed save(). */
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   email: 'user@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -356,9 +356,9 @@ describe('discordLink', () => {
   });
 
   it('returns 409 when the Discord ID is already linked elsewhere', async () => {
-    mockedUser.findOne.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOne.mockResolvedValue(fakeUser({ id: '1' }));
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 99 })); // owned by another
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '99' })); // owned by another
     const res = mockResponse();
 
     await discordLink(
@@ -374,7 +374,7 @@ describe('discordLink', () => {
   });
 
   it('links the Discord ID on success', async () => {
-    const existing = fakeUser({ id: 1 });
+    const existing = fakeUser({ id: '1' });
     mockedUser.findOne.mockResolvedValue(existing);
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     mockedUser.findOneBy.mockResolvedValue(null);
@@ -422,9 +422,9 @@ describe('linkDiscordAccount', () => {
 
   it('returns 409 when the Discord ID belongs to another account', async () => {
     mockDiscordExchange();
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 99 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '99' }));
     const res = mockResponse();
-    res.locals.requestor = fakeUser({ id: 1 });
+    res.locals.requestor = fakeUser({ id: '1' });
 
     await linkDiscordAccount(mockRequest({ code: 'abc' }), res);
 
@@ -434,7 +434,7 @@ describe('linkDiscordAccount', () => {
   it('links the Discord ID to the requestor on success', async () => {
     mockDiscordExchange();
     mockedUser.findOneBy.mockResolvedValue(null);
-    const requestor = fakeUser({ id: 1 });
+    const requestor = fakeUser({ id: '1' });
     const res = mockResponse();
     res.locals.requestor = requestor;
 
@@ -449,7 +449,7 @@ describe('linkDiscordAccount', () => {
 
   it('allows re-linking the same Discord ID already owned by the requestor', async () => {
     mockDiscordExchange();
-    const requestor = fakeUser({ id: 1 });
+    const requestor = fakeUser({ id: '1' });
     mockedUser.findOneBy.mockResolvedValue(requestor); // same account
     const res = mockResponse();
     res.locals.requestor = requestor;

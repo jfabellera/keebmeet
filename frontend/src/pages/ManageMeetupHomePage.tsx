@@ -20,14 +20,12 @@ dayjs.extend(isBetween);
 
 const ManageMeetupHomePage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: meetup } = useGetMeetupQuery(parseInt(meetupId ?? ''));
+  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
   const { data: attendees } = useGetMeetupAttendeesQuery({
-    meetup_id: parseInt(meetupId ?? ''),
+    meetup_id: meetupId ?? '',
   });
 
-  const { data: raffleRecords } = useGetRaffleHistoryQuery(
-    parseInt(meetupId ?? '')
-  );
+  const { data: raffleRecords } = useGetRaffleHistoryQuery(meetupId ?? '');
   const navigate = useNavigate();
 
   const hasStarted = useMemo(

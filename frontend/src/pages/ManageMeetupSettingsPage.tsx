@@ -9,16 +9,16 @@ import MeetupDisplaySettingsCard from '../components/Meetups/MeetupDisplaySettin
 
 const ManageMeetupSettingsPage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: meetup } = useGetMeetupQuery(Number(meetupId));
+  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
   const currentUserId = useAppSelector((state) => state.user.user?.id);
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <MeetupDetailsSettingsCard meetupId={Number(meetupId)} />
-      <MeetupDiscordCard meetupId={Number(meetupId)} />
-      <MeetupDisplaySettingsCard meetupId={Number(meetupId)} />
+      <MeetupDetailsSettingsCard meetupId={meetupId ?? ''} />
+      <MeetupDiscordCard meetupId={meetupId ?? ''} />
+      <MeetupDisplaySettingsCard meetupId={meetupId ?? ''} />
       {meetup?.lead_organizer?.id === currentUserId && (
-        <DeleteMeetupCard meetupId={Number(meetupId)} />
+        <DeleteMeetupCard meetupId={meetupId ?? ''} />
       )}
     </div>
   );

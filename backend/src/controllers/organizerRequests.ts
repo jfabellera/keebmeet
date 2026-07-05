@@ -77,7 +77,7 @@ export const approveOrganizerRequest = async (
 
   const request = await OrganizerRequest.findOne({
     relations: { user: true },
-    where: { id: parseInt(request_id) },
+    where: { id: request_id },
   });
 
   if (request == null) {
@@ -109,7 +109,7 @@ export const denyOrganizerRequest = async (
 
   const request = await OrganizerRequest.findOne({
     relations: { user: true },
-    where: { id: parseInt(request_id) },
+    where: { id: request_id },
   });
 
   if (request == null) {

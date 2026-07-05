@@ -4,8 +4,8 @@ import RaffleHistoryCard from './RaffleHistoryCard';
 import { cn } from '@/lib/utils';
 
 interface Props extends React.ComponentProps<'div'> {
-  meetupId: number;
-  onCardClick: (raffleRecordId: number) => void;
+  meetupId: string;
+  onCardClick: (raffleRecordId: string) => void;
 }
 
 const RaffleHistoryList = ({

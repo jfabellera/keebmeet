@@ -73,19 +73,19 @@ const mockRequest = (
 
 const signToken = (
   overrides: Partial<{
-    id: number;
+    id: string;
     nick_name: string;
     is_organizer: boolean;
     is_admin: boolean;
   }> = {}
 ): string =>
   jwt.sign(
-    { id: 1, nick_name: 'jane', is_organizer: false, is_admin: false, ...overrides },
+    { id: '1', nick_name: 'jane', is_organizer: false, is_admin: false, ...overrides },
     TEST_JWT_SECRET
   );
 
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   nick_name: 'jane',
   is_admin: false,
   is_organizer: false,
@@ -193,7 +193,7 @@ describe('authChecker: account-type rules', () => {
   });
 
   it('short-circuits via overrideAdmin for an admin without checking params', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, is_admin: true }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1', is_admin: true }));
     const res = mockResponse();
     const next = jest.fn();
 
@@ -210,7 +210,7 @@ describe('authChecker: account-type rules', () => {
 
   it('short-circuits via overrideOrganizer for an organizer', async () => {
     mockedUser.findOneBy.mockResolvedValue(
-      fakeUser({ id: 1, is_organizer: true })
+      fakeUser({ id: '1', is_organizer: true })
     );
     const res = mockResponse();
     const next = jest.fn();
@@ -229,23 +229,23 @@ describe('authChecker: account-type rules', () => {
 
 describe('authChecker: user_id ownership', () => {
   it('allows the requestor to access their own user_id', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     const res = mockResponse();
     const next = jest.fn();
 
-    await authChecker()(mockRequest(signToken({ id: 1 }), { user_id: '1' }), res, next);
+    await authChecker()(mockRequest(signToken({ id: '1' }), { user_id: '1' }), res, next);
 
     expect(res.locals.user).toBeDefined();
     expect(next).toHaveBeenCalled();
   });
 
   it('rejects accessing a different user_id', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { user_id: '2' }),
+      mockRequest(signToken({ id: '1' }), { user_id: '2' }),
       res,
       next
     );
@@ -259,13 +259,13 @@ describe('authChecker: user_id ownership', () => {
 
 describe('authChecker: ticket_id ownership', () => {
   it('returns 404 when the ticket does not exist', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      mockRequest(signToken({ id: '1' }), { ticket_id: '5' }),
       res,
       next
     );
@@ -275,17 +275,17 @@ describe('authChecker: ticket_id ownership', () => {
   });
 
   it('allows the ticket owner', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedTicket.findOne.mockResolvedValue({
-      id: 5,
-      user: { id: 1 },
-      meetup: { id: 10 },
+      id: '5',
+      user: { id: '1' },
+      meetup: { id: '10' },
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      mockRequest(signToken({ id: '1' }), { ticket_id: '5' }),
       res,
       next
     );
@@ -295,17 +295,17 @@ describe('authChecker: ticket_id ownership', () => {
   });
 
   it('rejects a non-owner of the ticket', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedTicket.findOne.mockResolvedValue({
-      id: 5,
-      user: { id: 2 },
-      meetup: { id: 10 },
+      id: '5',
+      user: { id: '2' },
+      meetup: { id: '10' },
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      mockRequest(signToken({ id: '1' }), { ticket_id: '5' }),
       res,
       next
     );
@@ -315,17 +315,17 @@ describe('authChecker: ticket_id ownership', () => {
   });
 
   it('rejects when the ticket has no owning user (e.g. a Discord RSVP)', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedTicket.findOne.mockResolvedValue({
-      id: 5,
+      id: '5',
       user: null,
-      meetup: { id: 10 },
+      meetup: { id: '10' },
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      mockRequest(signToken({ id: '1' }), { ticket_id: '5' }),
       res,
       next
     );
@@ -335,22 +335,22 @@ describe('authChecker: ticket_id ownership', () => {
   });
 
   it('allows a meetup organizer via overrideMeetupOrganizer even if not the owner', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedTicket.findOne.mockResolvedValue({
-      id: 5,
-      user: { id: 2 },
-      meetup: { id: 10 },
+      id: '5',
+      user: { id: '2' },
+      meetup: { id: '10' },
     } as any);
     // checkMeetupOrganizer() resolves the meetup and finds the requestor.
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
-      organizers: [{ id: 1 }],
+      id: '10',
+      organizers: [{ id: '1' }],
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker([Rule.overrideMeetupOrganizer])(
-      mockRequest(signToken({ id: 1 }), { ticket_id: '5' }),
+      mockRequest(signToken({ id: '1' }), { ticket_id: '5' }),
       res,
       next
     );
@@ -364,13 +364,13 @@ describe('authChecker: ticket_id ownership', () => {
 
 describe('authChecker: raffle_id ownership', () => {
   it('returns 404 when the raffle record does not exist', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedRaffleRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { raffle_id: '3' }),
+      mockRequest(signToken({ id: '1' }), { raffle_id: '3' }),
       res,
       next
     );
@@ -380,17 +380,17 @@ describe('authChecker: raffle_id ownership', () => {
   });
 
   it("rejects when the requestor is not an organizer of the raffle's meetup", async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedRaffleRecord.findOne.mockResolvedValue({
-      id: 3,
-      meetup: { id: 10 },
+      id: '3',
+      meetup: { id: '10' },
     } as any);
-    mockedMeetup.findOne.mockResolvedValue({ id: 10, organizers: [] } as any);
+    mockedMeetup.findOne.mockResolvedValue({ id: '10', organizers: [] } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { raffle_id: '3' }),
+      mockRequest(signToken({ id: '1' }), { raffle_id: '3' }),
       res,
       next
     );
@@ -400,20 +400,20 @@ describe('authChecker: raffle_id ownership', () => {
   });
 
   it('allows an organizer of the raffle meetup', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedRaffleRecord.findOne.mockResolvedValue({
-      id: 3,
-      meetup: { id: 10 },
+      id: '3',
+      meetup: { id: '10' },
     } as any);
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
-      organizers: [{ id: 1 }],
+      id: '10',
+      organizers: [{ id: '1' }],
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { raffle_id: '3' }),
+      mockRequest(signToken({ id: '1' }), { raffle_id: '3' }),
       res,
       next
     );
@@ -427,13 +427,13 @@ describe('authChecker: raffle_id ownership', () => {
 
 describe('authChecker: meetup_id ownership', () => {
   it('returns 404 when the meetup does not exist', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedMeetup.findOne.mockResolvedValue(null);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      mockRequest(signToken({ id: '1' }), { meetup_id: '10' }),
       res,
       next
     );
@@ -443,13 +443,13 @@ describe('authChecker: meetup_id ownership', () => {
   });
 
   it('rejects a non-organizer of the meetup', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
-    mockedMeetup.findOne.mockResolvedValue({ id: 10, organizers: [] } as any);
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
+    mockedMeetup.findOne.mockResolvedValue({ id: '10', organizers: [] } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      mockRequest(signToken({ id: '1' }), { meetup_id: '10' }),
       res,
       next
     );
@@ -459,16 +459,16 @@ describe('authChecker: meetup_id ownership', () => {
   });
 
   it('allows an organizer of the meetup', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
-      organizers: [{ id: 1 }],
+      id: '10',
+      organizers: [{ id: '1' }],
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      mockRequest(signToken({ id: '1' }), { meetup_id: '10' }),
       res,
       next
     );
@@ -478,18 +478,18 @@ describe('authChecker: meetup_id ownership', () => {
   });
 
   it('allows the lead organizer even when not in the organizers list', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
     // Lead lives in its own column; co-organizers list doesn't include them.
     mockedMeetup.findOne.mockResolvedValue({
-      id: 10,
-      lead_organizer: { id: 1 },
-      organizers: [{ id: 2 }],
+      id: '10',
+      lead_organizer: { id: '1' },
+      organizers: [{ id: '2' }],
     } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker()(
-      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      mockRequest(signToken({ id: '1' }), { meetup_id: '10' }),
       res,
       next
     );
@@ -499,13 +499,13 @@ describe('authChecker: meetup_id ownership', () => {
   });
 
   it('skips the organizer check when ignoreMeetupOrganizer is set', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
-    mockedMeetup.findOne.mockResolvedValue({ id: 10, organizers: [] } as any);
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
+    mockedMeetup.findOne.mockResolvedValue({ id: '10', organizers: [] } as any);
     const res = mockResponse();
     const next = jest.fn();
 
     await authChecker([Rule.ignoreMeetupOrganizer])(
-      mockRequest(signToken({ id: 1 }), { meetup_id: '10' }),
+      mockRequest(signToken({ id: '1' }), { meetup_id: '10' }),
       res,
       next
     );

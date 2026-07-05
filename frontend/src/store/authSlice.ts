@@ -32,7 +32,7 @@ export interface DiscordLinkPayload {
 }
 
 export interface SetUserAccessPayload {
-  userId: number;
+  userId: string;
   isAdmin: boolean;
   isOrganizer: boolean;
   /** The requestor's own password, required to confirm a change to admin status. */
@@ -40,7 +40,7 @@ export interface SetUserAccessPayload {
 }
 
 export interface UpdateProfilePayload {
-  userId: number;
+  userId: string;
   firstName: string;
   lastName: string;
   displayName: string;
@@ -66,7 +66,7 @@ export interface DiscordLinkRequired {
 
 interface User {
   token: string;
-  id: number;
+  id: string;
   displayName: string;
   isOrganizer: boolean;
   isAdmin: boolean;
@@ -94,7 +94,7 @@ interface AuthState {
  */
 export interface UnverifiedEmailError {
   unverified: true;
-  userId: number;
+  userId: string;
 }
 
 export const login = createAsyncThunk<
@@ -289,7 +289,7 @@ export const verifyEmail = createAsyncThunk(
  */
 export const resendVerification = createAsyncThunk(
   'auth/resendVerification',
-  async (userId: number, { rejectWithValue }) => {
+  async (userId: string, { rejectWithValue }) => {
     try {
       await axios.post(`${config.authUrl}/${userId}/resend-verification`);
     } catch (err) {
@@ -423,9 +423,7 @@ const getUserFromToken = (token: string): User | null => {
 
     const user: User = {
       token,
-      // Older tokens embedded the bigint id as a string; coerce so the id is
-      // consistently a number throughout the app.
-      id: Number(decoded.id),
+      id: decoded.id,
       displayName: decoded.nick_name,
       isOrganizer: decoded.is_organizer,
       isAdmin: decoded.is_admin,

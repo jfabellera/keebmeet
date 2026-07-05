@@ -17,7 +17,7 @@ const BUTTON_STYLE_PRIMARY = 1;
  * Builds the action row holding the RSVP button for a meetup. The custom_id
  * encodes the meetup id so the bot can route the click without an extra lookup.
  */
-export const buildRsvpComponents = (meetupId: number): DiscordComponent[] => [
+export const buildRsvpComponents = (meetupId: string): DiscordComponent[] => [
   {
     type: ACTION_ROW,
     components: [
@@ -38,7 +38,7 @@ const FIELD_VALUE_LIMIT = 1024;
  * Returns the display names of a meetup's attendees, oldest RSVP first.
  */
 export const getMeetupAttendeeDisplayNames = async (
-  meetupId: number
+  meetupId: string
 ): Promise<string[]> => {
   const tickets = await Ticket.find({
     where: { meetup: { id: meetupId } },
@@ -119,7 +119,7 @@ export const buildMeetupEmbed = (
  * an RSVP), so failures are logged and swallowed.
  */
 export const refreshMeetupDiscordMessage = async (
-  meetupId: number
+  meetupId: string
 ): Promise<void> => {
   try {
     const meetup = await Meetup.findOne({

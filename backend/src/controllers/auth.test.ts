@@ -137,7 +137,7 @@ const mockRequest = (
 
 /** A fake User row with stubbed save()/remove(). */
 const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
-  id: 1,
+  id: '1',
   email: 'user@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
@@ -371,8 +371,8 @@ describe('updateUser', () => {
   });
 
   it('returns 409 when the new email is taken', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1 }));
-    mockedUser.findOne.mockResolvedValue(fakeUser({ id: 2 }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1' }));
+    mockedUser.findOne.mockResolvedValue(fakeUser({ id: '2' }));
     const res = mockResponse();
     res.locals.requestor = fakeUser();
 
@@ -386,7 +386,7 @@ describe('updateUser', () => {
   });
 
   it('updates the provided fields and saves on success', async () => {
-    const target = fakeUser({ id: 1 });
+    const target = fakeUser({ id: '1' });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -407,7 +407,7 @@ describe('updateUser', () => {
   });
 
   it('ignores admin-only fields for a non-admin requestor', async () => {
-    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    const target = fakeUser({ id: '1',is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -423,7 +423,7 @@ describe('updateUser', () => {
   });
 
   it('skips the email-taken check when no email is provided (partial update)', async () => {
-    const target = fakeUser({ id: 1, is_organizer: false });
+    const target = fakeUser({ id: '1',is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
     res.locals.requestor = fakeUser({ is_admin: true });
@@ -440,7 +440,7 @@ describe('updateUser', () => {
   });
 
   it('applies admin-only fields for an admin requestor with a valid password', async () => {
-    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    const target = fakeUser({ id: '1',is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
@@ -460,7 +460,7 @@ describe('updateUser', () => {
   });
 
   it('requires the requestor password to change admin status', async () => {
-    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    const target = fakeUser({ id: '1',is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -479,7 +479,7 @@ describe('updateUser', () => {
   });
 
   it('rejects an incorrect password when changing admin status', async () => {
-    const target = fakeUser({ id: 1, is_admin: false });
+    const target = fakeUser({ id: '1',is_admin: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(false);
@@ -499,7 +499,7 @@ describe('updateUser', () => {
   });
 
   it('does not require a password to change only organizer status', async () => {
-    const target = fakeUser({ id: 1, is_admin: false, is_organizer: false });
+    const target = fakeUser({ id: '1',is_admin: false, is_organizer: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -520,11 +520,11 @@ describe('updateUser', () => {
   });
 
   it('does not let an admin change the admin status of an owner', async () => {
-    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    const target = fakeUser({ id: '1',is_owner: true, is_admin: true });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.requestor = fakeUser({ id: 2, is_admin: true, is_owner: false });
+    res.locals.requestor = fakeUser({ id: '2',is_admin: true, is_owner: false });
 
     await updateUser(
       mockRequest({ is_admin: false }, { user_id: '1' }),
@@ -536,12 +536,12 @@ describe('updateUser', () => {
   });
 
   it('lets an owner change the admin status of an owner', async () => {
-    const target = fakeUser({ id: 1, is_owner: true, is_admin: true });
+    const target = fakeUser({ id: '1',is_owner: true, is_admin: true });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     const res = mockResponse();
-    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+    res.locals.requestor = fakeUser({ id: '2',is_owner: true });
 
     await updateUser(
       mockRequest({ is_admin: false, current_password: 'pw' }, { user_id: '1' }),
@@ -552,11 +552,11 @@ describe('updateUser', () => {
   });
 
   it('never changes owner status via the API, even for an owner requestor', async () => {
-    const target = fakeUser({ id: 1, is_owner: false });
+    const target = fakeUser({ id: '1',is_owner: false });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.requestor = fakeUser({ id: 2, is_owner: true });
+    res.locals.requestor = fakeUser({ id: '2',is_owner: true });
 
     await updateUser(mockRequest({ is_owner: true }, { user_id: '1' }), res);
 
@@ -565,7 +565,7 @@ describe('updateUser', () => {
   });
 
   it('rehashes the password when one is provided', async () => {
-    const target = fakeUser({ id: 1, password_hash: 'old' });
+    const target = fakeUser({ id: '1',password_hash: 'old' });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     (mockedBcrypt.hash as unknown as jest.Mock).mockResolvedValue('new-hash');
@@ -582,7 +582,7 @@ describe('updateUser', () => {
   });
 
   it('promotes a new profile photo and deletes the previous one', async () => {
-    const target = fakeUser({ id: 1, photo_key: 'users/old.png' });
+    const target = fakeUser({ id: '1',photo_key: 'users/old.png' });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     mockedPromoteImage.mockResolvedValueOnce('users/new.png');
@@ -601,7 +601,7 @@ describe('updateUser', () => {
   });
 
   it('does not delete the photo when it is unchanged', async () => {
-    const target = fakeUser({ id: 1, photo_key: 'users/keep.png' });
+    const target = fakeUser({ id: '1',photo_key: 'users/keep.png' });
     mockedUser.findOneBy.mockResolvedValue(target);
     mockedUser.findOne.mockResolvedValue(null);
     const res = mockResponse();
@@ -631,7 +631,7 @@ describe('deleteUser', () => {
   });
 
   it('removes the user and returns 204 on success', async () => {
-    const target = fakeUser({ id: 1 });
+    const target = fakeUser({ id: '1' });
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -643,7 +643,7 @@ describe('deleteUser', () => {
   });
 
   it("deletes the user's profile photo object", async () => {
-    const target = fakeUser({ id: 1, photo_key: 'users/pic.png' });
+    const target = fakeUser({ id: '1',photo_key: 'users/pic.png' });
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -688,20 +688,20 @@ describe('verifyUser', () => {
   });
 
   it('returns 404 when the token is valid but the user is gone', async () => {
-    mockedVerifyVerificationToken.mockReturnValue(99);
+    mockedVerifyVerificationToken.mockReturnValue('99');
     mockedUser.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
 
     await verifyUser(mockRequest({ token: TOKEN }), res);
 
-    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: 99 });
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '99' });
     expect(res.statusCode).toBe(404);
     expect(res.body).toEqual({ message: 'Invalid user ID.' });
   });
 
   it('returns 200 when the token is accepted and the user is verified', async () => {
-    const target = fakeUser({ id: 1, is_verified: false });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    const target = fakeUser({ id: '1',is_verified: false });
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -712,8 +712,8 @@ describe('verifyUser', () => {
   });
 
   it('marks is_verified and saves for a newly verified user', async () => {
-    const target = fakeUser({ id: 1, is_verified: false });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    const target = fakeUser({ id: '1',is_verified: false });
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -724,8 +724,8 @@ describe('verifyUser', () => {
   });
 
   it('is a no-op when the user is already verified', async () => {
-    const target = fakeUser({ id: 1, is_verified: true });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    const target = fakeUser({ id: '1',is_verified: true });
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -757,7 +757,7 @@ describe('resendVerificationEmail', () => {
   });
 
   it('does not resend to an already-verified user, but still returns the generic 200', async () => {
-    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: 1, is_verified: true }));
+    mockedUser.findOneBy.mockResolvedValue(fakeUser({ id: '1',is_verified: true }));
     const res = mockResponse();
 
     await resendVerificationEmail(mockRequest({}, { user_id: '1' }), res);
@@ -780,13 +780,13 @@ describe('resendVerificationEmail', () => {
 
   it('emails a freshly generated link to an unverified user', async () => {
     mockedUser.findOneBy.mockResolvedValue(
-      fakeUser({ id: 1, email: 'user@example.com', is_verified: false })
+      fakeUser({ id: '1',email: 'user@example.com', is_verified: false })
     );
     const res = mockResponse();
 
     await resendVerificationEmail(mockRequest({}, { user_id: '1' }), res);
 
-    expect(mockedGenerateVerificationToken).toHaveBeenCalledWith(1);
+    expect(mockedGenerateVerificationToken).toHaveBeenCalledWith('1');
     expect(mockedSendVerificationEmail).toHaveBeenCalledWith(
       'user@example.com',
       'https://app.test/verify-email?token=verify-token'
@@ -835,7 +835,7 @@ describe('login', () => {
 
   it('returns 403 when the password is correct but the email is unverified', async () => {
     mockedUser.findOne.mockResolvedValue(
-      fakeUser({ id: 7, is_verified: false })
+      fakeUser({ id: '7', is_verified: false })
     );
     (mockedBcrypt.compare as unknown as jest.Mock).mockResolvedValue(true);
     const res = mockResponse();
@@ -848,14 +848,14 @@ describe('login', () => {
     expect(res.statusCode).toBe(403);
     expect(res.body).toEqual({
       message: 'Please verify your email before signing in.',
-      user_id: 7,
+      user_id: '7',
     });
   });
 
   it('returns a signed session token on success', async () => {
     mockedUser.findOne.mockResolvedValue(
       fakeUser({
-        id: 7,
+        id: '7',
         nick_name: 'jane',
         is_admin: true,
         is_organizer: false,
@@ -874,7 +874,7 @@ describe('login', () => {
     const body = res.body as { token: string };
     expect(body).toHaveProperty('token');
     const decoded = jwt.verify(body.token, TEST_JWT_SECRET) as any;
-    expect(decoded.id).toBe(7);
+    expect(decoded.id).toBe('7');
     expect(decoded.nick_name).toBe('jane');
     expect(decoded.is_admin).toBe(true);
   });
