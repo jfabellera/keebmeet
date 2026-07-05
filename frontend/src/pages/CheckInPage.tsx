@@ -1,3 +1,4 @@
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,6 +27,8 @@ import { type TicketInfo } from '@keebmeet/shared';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FiCheck } from 'react-icons/fi';
+import { MdQrCodeScanner } from 'react-icons/md';
+import BarcodeScanner from 'react-qr-barcode-scanner';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -59,6 +62,8 @@ const CheckInPage = (): ReactNode => {
   const [editAttendee] = useEditAttendeeMutation();
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  const [useCamera, setUseCamera] = useState<boolean>(false);
 
   const filteredAttendees = useMemo(() => {
     if (attendees == null) return [];
@@ -257,7 +262,30 @@ const CheckInPage = (): ReactNode => {
   return (
     <div className="flex h-full flex-col gap-2 p-4 text-center">
       <h2 className="mb-2 text-center text-2xl font-medium">Check-in</h2>
-      <div className="bg-card text-card-foreground rounded-md p-2 shadow-sm">
+
+      {useCamera && (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="relative max-w-lg">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">Loading camera...</p>
+            </div>
+            <div className="relative z-10">
+              <BarcodeScanner
+                onUpdate={(_, result) => {
+                  if (result) {
+                    setSearchValue(result.getText());
+                  }
+                }}
+                videoConstraints={{
+                  aspectRatio: 1,
+                  facingMode: 'environment',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="bg-card text-card-foreground flex flex-row items-center gap-2 rounded-md p-2 shadow-sm">
         <Input
           ref={searchRef}
           className="border-0 shadow-none focus-visible:ring-0"
@@ -265,6 +293,13 @@ const CheckInPage = (): ReactNode => {
           value={searchValue}
           onChange={handleSearchChange}
         />
+        <Button
+          size="icon-lg"
+          variant="outline"
+          onClick={() => setUseCamera(!useCamera)}
+        >
+          <MdQrCodeScanner />
+        </Button>
       </div>
       <div className="bg-card text-card-foreground rounded-md p-4 shadow-sm">
         <Table>
