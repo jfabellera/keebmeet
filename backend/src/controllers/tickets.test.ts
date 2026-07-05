@@ -404,6 +404,30 @@ describe('updateTicket', () => {
     expect(res.statusCode).toBe(201);
   });
 
+  it('lets the lead organizer (not in the co-organizer list) check a ticket out', async () => {
+    const ticket = {
+      id: '5',
+      is_checked_in: true,
+      raffle_entries: 1,
+      raffle_wins: 0,
+      // The lead is tracked separately and is NOT in `organizers`.
+      meetup: { id: '10', organizers: [], lead_organizer: { id: '7' } },
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedTicket.findOne.mockResolvedValue(ticket as any);
+    const res = mockResponse();
+    res.locals.requestor = fakeRequestor({ id: '7', is_organizer: true });
+
+    await updateTicket(
+      mockRequest({ is_checked_in: false }, { ticket_id: '5' }),
+      res
+    );
+
+    expect(ticket.is_checked_in).toBe(false);
+    expect(ticket.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(201);
+  });
+
   it('does not let a non-organizer modify their own check-in status, raffle wins, or raffle entries', async () => {
     const ticket = {
       id: '5',
