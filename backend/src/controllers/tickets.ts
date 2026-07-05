@@ -1,14 +1,14 @@
-import { type Request, type Response } from 'express';
-import { socket } from '../Server';
-import { Meetup } from '../entity/Meetup';
-import { Ticket } from '../entity/Ticket';
-import { type User } from '../entity/User';
 import {
   type EventbriteAttendee,
   type SimpleTicketInfo,
   createTicketSchema,
   editTicketSchema,
 } from '@keebmeet/shared';
+import { type Request, type Response } from 'express';
+import { socket } from '../Server';
+import { Meetup } from '../entity/Meetup';
+import { Ticket } from '../entity/Ticket';
+import { type User } from '../entity/User';
 import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
@@ -123,7 +123,7 @@ export const updateTicket = async (
 
   const ticket = await Ticket.findOne({
     relations: {
-      meetup: { organizers: true },
+      meetup: { organizers: true, lead_organizer: true },
     },
     where: {
       id: ticket_id,
@@ -136,10 +136,11 @@ export const updateTicket = async (
 
   const isOrganizer =
     requestor != null &&
-    (ticket.meetup.organizers?.some(
-      (organizer) => organizer.id === requestor.id
-    ) ??
-      false);
+    (ticket.meetup.lead_organizer?.id === requestor.id ||
+      (ticket.meetup.organizers?.some(
+        (organizer) => organizer.id === requestor.id
+      ) ??
+        false));
 
   if (isOrganizer) {
     ticket.is_checked_in = req.body.is_checked_in ?? ticket.is_checked_in;
