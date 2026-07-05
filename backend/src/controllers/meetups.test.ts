@@ -7,7 +7,11 @@ jest.mock('../Server', () => ({ socket: { emit: jest.fn() } }));
 
 jest.mock('../config', () => ({
   __esModule: true,
-  default: { apiUrl: 'http://api.test', r2PublicBaseUrl: 'https://cdn.test' },
+  default: {
+    apiUrl: 'http://api.test',
+    r2PublicBaseUrl: 'https://cdn.test',
+    qrCodeKey: 'test-qr-code-key',
+  },
 }));
 
 jest.mock('../entity/Meetup', () => ({
