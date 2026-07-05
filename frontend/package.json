@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
     "@keebmeet/shared": "*",
     "@marsidev/react-turnstile": "^1.5.3",
     "@reduxjs/toolkit": "^2.12.0",
