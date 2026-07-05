@@ -36,6 +36,7 @@ import AdminUsersPage from './pages/AdminUsersPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
 import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
+import { ManageMeetupDisplayPage } from './pages/ManageMeetupDisplayPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
 import MeetupRsvpPage from './pages/MeetupRsvpPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
@@ -117,6 +118,7 @@ const App = (): ReactNode => {
               <Route path="" element={<ManageMeetupHomePage />} />
               <Route path="checkin" element={<CheckInPage />} />
               <Route path="raffle" element={<RafflePage />} />
+              <Route path="display" element={<ManageMeetupDisplayPage />} />
               <Route path="attendees" element={<ManageMeetupAttendeesPage />} />
               <Route path="settings" element={<ManageMeetupSettingsPage />} />
             </Route>
