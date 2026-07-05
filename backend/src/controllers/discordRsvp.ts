@@ -5,6 +5,7 @@ import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { generateQrCodeBuffer } from '../util/qrCode';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
 import { discordRsvpSchema } from '@keebmeet/shared';
 
@@ -104,9 +105,14 @@ export const handleDiscordRsvp = async (
   socket.emit('meetup:update', { meetupId: meetup_id });
   await refreshMeetupDiscordMessage(meetupId);
 
+  // Base64-encoded PNG the bot attaches to its confirmation DM, mirroring the
+  // QR code the email RSVP flow sends. The HMAC secret stays in the backend.
+  const qrCode = (await generateQrCodeBuffer(ticket.id)).toString('base64');
+
   return res.status(201).json({
     status: 'created',
     meetup_name: meetup.name,
     message_url: messageUrl,
+    qr_code: qrCode,
   });
 };

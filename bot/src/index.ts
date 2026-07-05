@@ -1,6 +1,7 @@
 // Require the necessary discord.js classes
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   Client,
@@ -43,6 +44,8 @@ interface RsvpResponse {
   status?: string;
   meetup_name?: string;
   message_url?: string;
+  // Base64-encoded PNG of the RSVP's QR code, present on a 'created' response.
+  qr_code?: string;
 }
 
 // Calls the backend to record an RSVP action and returns the response object,
@@ -107,6 +110,7 @@ client.on(Events.InteractionCreate, (interaction) => {
     const status = rsvpResponse.status ?? 'error';
     const meetupName = rsvpResponse.meetup_name ?? 'the meetup';
     const messageUrl = rsvpResponse.message_url;
+    const qrCode = rsvpResponse.qr_code;
 
     // Already RSVP'd: offer an ephemeral confirm button rather than cancelling.
     if (status === 'already') {
@@ -147,9 +151,23 @@ client.on(Events.InteractionCreate, (interaction) => {
             .setStyle(ButtonStyle.Danger)
         );
 
+        // Attach the QR code (a base64 PNG from the backend) so it displays
+        // inline in the DM, mirroring the email RSVP confirmation.
+        const files = qrCode
+          ? [
+              new AttachmentBuilder(Buffer.from(qrCode, 'base64'), {
+                name: 'qr-code.png',
+              }),
+            ]
+          : [];
+        const qrText = qrCode
+          ? '\n\nIf asked, present the QR code below at the event.'
+          : '';
+
         await dm.send({
-          content: `✅ You're RSVP'd for **${meetupName}**! If you need to cancel, use the button below.${linkText}`,
+          content: `✅ You're RSVP'd for **${meetupName}**! If you need to cancel, use the button below.${qrText}${linkText}`,
           components: [cancelRow],
+          files,
         });
       } else if (status === 'cancelled') {
         const rsvpAgainText = messageUrl
