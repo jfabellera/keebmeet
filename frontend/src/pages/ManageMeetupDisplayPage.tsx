@@ -1,3 +1,4 @@
+import MeetupDisplaySettingsCard from '@/components/Meetups/MeetupDisplaySettingsCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
@@ -23,8 +24,8 @@ export const ManageMeetupDisplayPage = (): ReactNode => {
   };
 
   return (
-    <div className="flex justify-center p-4">
-      <Card className="w-full max-w-3xl p-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
+      <Card className="w-full p-4">
         <h1 className="text-2xl font-bold">Display</h1>
         <Field>
           <Label htmlFor="interval">Idle Image Interval (seconds)</Label>
@@ -45,7 +46,7 @@ export const ManageMeetupDisplayPage = (): ReactNode => {
             <Input
               readOnly
               value={displayUrl}
-              className="font-mono text-sm pr-10"
+              className="pr-10 font-mono text-sm"
               onFocus={(e) => e.target.select()}
             />
             <Button
@@ -74,6 +75,8 @@ export const ManageMeetupDisplayPage = (): ReactNode => {
           Go to display
         </Button>
       </Card>
+
+      <MeetupDisplaySettingsCard meetupId={meetupId ?? ''} />
     </div>
   );
 };
