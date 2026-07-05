@@ -20,11 +20,11 @@ const mapRaffleRecordToResponse = (
   raffleRecord: RaffleRecord
 ): RaffleRecordResponse => {
   return {
-    id: raffleRecord.id,
+    id: Number(raffleRecord.id),
     isBatchRoll: raffleRecord.is_batch_roll,
     winners: raffleRecord.winners.map((winner) => {
       return {
-        ticketId: winner.ticket.id,
+        ticketId: Number(winner.ticket.id),
         displayName: winner.ticket.ticket_holder_display_name,
         firstName: winner.ticket.ticket_holder_first_name,
         lastName: winner.ticket.ticket_holder_last_name,
@@ -134,7 +134,8 @@ export const claimRaffleWinner = async (
   const raffleRecord = await RaffleRecord.findOne({
     relations: { meetup: true, winners: { ticket: true } },
     where: {
-      id: result.data.raffleRecordId,
+      // raffleRecordId is a number from the zod payload; ids are string in the DB.
+      id: String(result.data.raffleRecordId),
     },
   });
 
@@ -191,12 +192,12 @@ export const getRaffleRecord = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true } },
     where: {
-      id: Number(raffle_id),
+      id: raffle_id,
     },
     order: {
       created_at: 'DESC',
@@ -214,12 +215,12 @@ export const markRaffleRecordAsDisplayed = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { meetup: true },
     where: {
-      id: Number(raffle_id),
+      id: raffle_id,
     },
   });
 
@@ -239,7 +240,7 @@ export const unclaimRaffleWinner = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
   const payload = unclaimRaffleWinnerSchema.safeParse(req.body);
 
   if (!payload.success) {
@@ -248,7 +249,7 @@ export const unclaimRaffleWinner = async (
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true }, meetup: true },
-    where: { id: Number(raffle_id) },
+    where: { id: raffle_id },
   });
 
   if (raffleRecord == null)
@@ -284,11 +285,11 @@ export const deleteRaffleRecord = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { raffle_id } = req.params;
+  const { raffle_id } = req.params as Record<string, string>;
 
   const raffleRecord = await RaffleRecord.findOne({
     relations: { winners: { ticket: true }, meetup: true },
-    where: { id: Number(raffle_id) },
+    where: { id: raffle_id },
   });
 
   if (raffleRecord == null)

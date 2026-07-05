@@ -11,7 +11,7 @@ import { Meetup } from './Meetup';
 @Entity({ name: 'meetup_display_record' })
 export class MeetupDisplayRecord extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @OneToOne(() => Meetup, (meetup) => meetup.id)
   @JoinColumn({ name: 'meetup_id' })

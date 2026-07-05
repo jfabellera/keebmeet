@@ -46,7 +46,9 @@ export interface SimpleTicketInfo {
 }
 
 export interface TokenData {
-  id: number;
+  // The user id is a bigint, carried as a string in the JWT (consumers coerce
+  // to a number if they need one).
+  id: string;
   nick_name: string;
   is_organizer: boolean;
   is_admin: boolean;

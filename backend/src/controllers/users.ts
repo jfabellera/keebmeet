@@ -81,7 +81,7 @@ export const getUser = async (
   const { user_id } = req.params as Record<string, string>;
 
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: user_id,
   });
 
   if (user == null) {

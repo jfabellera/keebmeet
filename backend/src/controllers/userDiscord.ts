@@ -17,7 +17,7 @@ export const getUserDiscordServers = async (
   const { user_id } = req.params as Record<string, string>;
 
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: user_id,
   });
 
   if (user == null) {
@@ -44,7 +44,7 @@ export const getUserDiscordServerChannels = async (
   const { user_id, server_id } = req.params as Record<string, string>;
 
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: user_id,
   });
 
   if (user == null) {

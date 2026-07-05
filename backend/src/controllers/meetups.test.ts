@@ -1188,11 +1188,12 @@ describe('createMeetupFromEventbrite', () => {
     expect(mockedMeetup.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'EB Meetup', capacity: 80 })
     );
+    // Stored as strings: the columns are bigint, and the ids arrive as numbers.
     expect(mockedEventbriteRecord.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        event_id: 1,
-        ticket_class_id: 2,
-        display_name_question_id: 3,
+        event_id: '1',
+        ticket_class_id: '2',
+        display_name_question_id: '3',
       })
     );
     expect(res.statusCode).toBe(201);

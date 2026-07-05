@@ -14,8 +14,8 @@ import {
 
 describe('generateVerificationToken / verifyVerificationToken', () => {
   it('round-trips the user id', () => {
-    const token = generateVerificationToken(42);
-    expect(verifyVerificationToken(token)).toBe(42);
+    const token = generateVerificationToken('42');
+    expect(verifyVerificationToken(token)).toBe('42');
   });
 
   it('rejects a token signed with a different secret', () => {
@@ -50,7 +50,7 @@ describe('generateVerificationToken / verifyVerificationToken', () => {
 
 describe('buildVerificationLink', () => {
   it('builds a link to the web app carrying the token', () => {
-    const token = generateVerificationToken(1);
+    const token = generateVerificationToken('1');
     expect(buildVerificationLink(token)).toBe(
       `https://app.example.com/verify-email?token=${encodeURIComponent(token)}`
     );

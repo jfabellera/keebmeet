@@ -57,7 +57,7 @@ export const getOrganizerRequests = async (
   });
 
   const response: OrganizerRequestInfo[] = requests.map((request) => ({
-    id: request.id,
+    id: Number(request.id),
     created_at: request.created_at.toISOString(),
     user: toUserResponse(request.user),
   }));
@@ -77,7 +77,7 @@ export const approveOrganizerRequest = async (
 
   const request = await OrganizerRequest.findOne({
     relations: { user: true },
-    where: { id: parseInt(request_id) },
+    where: { id: request_id },
   });
 
   if (request == null) {
@@ -109,7 +109,7 @@ export const denyOrganizerRequest = async (
 
   const request = await OrganizerRequest.findOne({
     relations: { user: true },
-    where: { id: parseInt(request_id) },
+    where: { id: request_id },
   });
 
   if (request == null) {

@@ -145,7 +145,7 @@ describe('handleDiscordRsvp', () => {
         ticket_holder_email: '',
       })
     );
-    expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
       status: 'created',
@@ -208,7 +208,7 @@ describe('handleDiscordRsvp', () => {
     await handleDiscordRsvp(mockRequest(cancelBody), res);
 
     expect(ticket.remove).toHaveBeenCalled();
-    expect(mockedRefresh).toHaveBeenCalledWith(10);
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.body).toEqual({
       status: 'cancelled',
       meetup_name: 'Test Meetup',

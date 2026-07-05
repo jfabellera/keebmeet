@@ -61,12 +61,12 @@ describe('getMeetupAttendeeDisplayNames', () => {
       { ticket_holder_display_name: 'Bob' },
     ] as any);
 
-    const result = await getMeetupAttendeeDisplayNames(1);
+    const result = await getMeetupAttendeeDisplayNames('1');
 
     expect(result).toEqual(['Alice', 'Bob']);
     expect(mockedTicket.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { meetup: { id: 1 } },
+        where: { meetup: { id: '1' } },
         order: { created_at: 'ASC' },
       })
     );
@@ -116,7 +116,7 @@ describe('refreshMeetupDiscordMessage', () => {
   it('is a no-op when the meetup has no tracked message', async () => {
     mockedMeetup.findOne.mockResolvedValue(fakeMeetup({ discordMessage: null }));
 
-    await refreshMeetupDiscordMessage(1);
+    await refreshMeetupDiscordMessage('1');
 
     expect(mockedEditEmbed).not.toHaveBeenCalled();
     expect(mockedTicket.find).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('refreshMeetupDiscordMessage', () => {
   it('is a no-op when the meetup does not exist', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
 
-    await refreshMeetupDiscordMessage(1);
+    await refreshMeetupDiscordMessage('1');
 
     expect(mockedEditEmbed).not.toHaveBeenCalled();
   });
@@ -140,7 +140,7 @@ describe('refreshMeetupDiscordMessage', () => {
       { ticket_holder_display_name: 'Alice' },
     ] as any);
 
-    await refreshMeetupDiscordMessage(1);
+    await refreshMeetupDiscordMessage('1');
 
     expect(mockedEditEmbed).toHaveBeenCalledTimes(1);
     const [channelId, messageId, embed] = mockedEditEmbed.mock.calls[0];
@@ -158,6 +158,6 @@ describe('refreshMeetupDiscordMessage', () => {
     mockedTicket.find.mockResolvedValue([]);
     mockedEditEmbed.mockRejectedValue(new Error('500'));
 
-    await expect(refreshMeetupDiscordMessage(1)).resolves.toBeUndefined();
+    await expect(refreshMeetupDiscordMessage('1')).resolves.toBeUndefined();
   });
 });

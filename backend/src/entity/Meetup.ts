@@ -20,7 +20,7 @@ import { User } from './User';
 @Entity({ name: 'meetups' })
 export class Meetup extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

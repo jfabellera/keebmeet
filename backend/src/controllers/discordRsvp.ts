@@ -28,15 +28,17 @@ export const handleDiscordRsvp = async (
   }
 
   const { meetup_id, discord_id, display_name, action } = result.data;
+  // meetup_id arrives as a number from the zod payload; ids are string in the DB.
+  const meetupId = String(meetup_id);
 
-  const meetup = await Meetup.findOneBy({ id: meetup_id });
+  const meetup = await Meetup.findOneBy({ id: meetupId });
 
   if (meetup == null) {
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
   const discordMsg = await MeetupDiscordMessage.findOneBy({
-    meetup: { id: meetup_id },
+    meetup: { id: meetupId },
   });
   const messageUrl = discordMsg
     ? `https://discord.com/channels/${discordMsg.guild_id}/${discordMsg.channel_id}/${discordMsg.message_id}`
@@ -48,9 +50,9 @@ export const handleDiscordRsvp = async (
   const existingTicket = await Ticket.findOne({
     relations: { user: true },
     where: [
-      { meetup: { id: meetup_id }, discord_id },
+      { meetup: { id: meetupId }, discord_id },
       ...(user != null
-        ? [{ meetup: { id: meetup_id }, user: { id: user.id } }]
+        ? [{ meetup: { id: meetupId }, user: { id: user.id } }]
         : []),
     ],
   });
@@ -66,7 +68,7 @@ export const handleDiscordRsvp = async (
 
     await existingTicket.remove();
     socket.emit('meetup:update', { meetupId: meetup_id });
-    await refreshMeetupDiscordMessage(meetup_id);
+    await refreshMeetupDiscordMessage(meetupId);
     return res.json({
       status: 'cancelled',
       meetup_name: meetup.name,
@@ -83,7 +85,7 @@ export const handleDiscordRsvp = async (
     return res.json({ status: 'ended' });
   }
 
-  if (await isMeetupAtCapacity(meetup_id, meetup.capacity)) {
+  if (await isMeetupAtCapacity(meetupId, meetup.capacity)) {
     return res.json({ status: 'full' });
   }
 
@@ -100,7 +102,7 @@ export const handleDiscordRsvp = async (
   await ticket.save();
 
   socket.emit('meetup:update', { meetupId: meetup_id });
-  await refreshMeetupDiscordMessage(meetup_id);
+  await refreshMeetupDiscordMessage(meetupId);
 
   return res.status(201).json({
     status: 'created',

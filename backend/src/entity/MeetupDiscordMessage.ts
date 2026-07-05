@@ -11,7 +11,7 @@ import { Meetup } from './Meetup';
 @Entity({ name: 'meetup_discord_message' })
 export class MeetupDiscordMessage extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @OneToOne(() => Meetup, (meetup) => meetup.discordMessage)
   @JoinColumn({ name: 'meetup_id' })

@@ -207,7 +207,8 @@ export const resendVerificationEmail = async (
     return genericResponse();
   }
 
-  const user = await User.findOneBy({ id });
+  // ids are string in the DB; query with the normalized integer as a string.
+  const user = await User.findOneBy({ id: String(id) });
 
   // Only send mail to an existing, unverified user, but never reveal which of
   // those conditions failed.
@@ -233,7 +234,7 @@ export const updateUser = async (
 
   // Check if user exists
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: user_id,
   });
 
   if (user == null) {
@@ -247,7 +248,7 @@ export const updateUser = async (
       },
     });
 
-    if (existingUser != null && Number(existingUser.id) !== user.id) {
+    if (existingUser != null && existingUser.id !== user.id) {
       return res.status(409).json({ message: 'Email is taken.' });
     }
   }
@@ -320,7 +321,7 @@ export const deleteUser = async (
   const { user_id } = req.params as Record<string, string>;
 
   const user = await User.findOneBy({
-    id: parseInt(user_id),
+    id: user_id,
   });
 
   if (user == null) {

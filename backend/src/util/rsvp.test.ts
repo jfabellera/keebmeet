@@ -38,16 +38,16 @@ describe('isMeetupAtCapacity', () => {
   it('is true when the ticket count meets or exceeds capacity', async () => {
     mockedTicket.count.mockResolvedValue(5);
 
-    expect(await isMeetupAtCapacity(1, 5)).toBe(true);
+    expect(await isMeetupAtCapacity('1', 5)).toBe(true);
     expect(mockedTicket.count).toHaveBeenCalledWith({
-      where: { meetup: { id: 1 } },
+      where: { meetup: { id: '1' } },
     });
   });
 
   it('is false when below capacity', async () => {
     mockedTicket.count.mockResolvedValue(4);
 
-    expect(await isMeetupAtCapacity(1, 5)).toBe(false);
+    expect(await isMeetupAtCapacity('1', 5)).toBe(false);
   });
 });
 

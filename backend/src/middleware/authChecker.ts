@@ -16,7 +16,7 @@ export enum Rule {
 }
 
 interface TokenInterface {
-  id: number;
+  id: string;
   nick_name: string;
   is_organizer: boolean;
   is_admin: boolean;
@@ -27,8 +27,8 @@ const reject = (res: Response): Response => {
 };
 
 const checkMeetupOrganizer = async (
-  meetupId: number,
-  userId: number
+  meetupId: string,
+  userId: string
 ): Promise<boolean> => {
   const meetup = await Meetup.findOne({
     relations: {
@@ -125,7 +125,7 @@ export const authChecker =
         const ticket = await Ticket.findOne({
           relations: { user: true, meetup: true },
           where: {
-            id: parseInt(req.params.ticket_id as string),
+            id: req.params.ticket_id as string,
           },
         });
 
@@ -153,7 +153,7 @@ export const authChecker =
       if (req.params.raffle_id != null) {
         const raffleRecord = await RaffleRecord.findOne({
           relations: { meetup: true },
-          where: { id: Number(req.params.raffle_id) },
+          where: { id: req.params.raffle_id as string },
         });
 
         if (raffleRecord == null)
@@ -175,7 +175,7 @@ export const authChecker =
             eventbriteRecord: true,
           },
           where: {
-            id: parseInt(req.params.meetup_id as string),
+            id: req.params.meetup_id as string,
           },
         });
 

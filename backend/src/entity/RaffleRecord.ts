@@ -13,7 +13,7 @@ import { RaffleWinner } from './RaffleWinner';
 @Entity({ name: 'raffle_record' })
 export class RaffleRecord extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @Column({ type: 'boolean' })
   is_batch_roll: boolean;

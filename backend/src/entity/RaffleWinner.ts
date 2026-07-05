@@ -12,14 +12,14 @@ import { Ticket } from './Ticket';
 @Entity({ name: 'raffle_winner' })
 export class RaffleWinner extends BaseEntity {
   @PrimaryColumn()
-  raffle_record_id: number;
+  raffle_record_id: string;
 
   @ManyToOne(() => RaffleRecord, (raffleRecord) => raffleRecord.id)
   @JoinColumn({ name: 'raffle_record_id' })
   raffle_record: RaffleRecord;
 
   @PrimaryColumn()
-  ticket_id: number;
+  ticket_id: string;
 
   @ManyToOne(() => Ticket, (ticket) => ticket.id)
   @JoinColumn({ name: 'ticket_id' })

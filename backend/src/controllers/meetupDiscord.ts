@@ -20,7 +20,7 @@ const findMeetupWithMessage = async (
 ): Promise<Meetup | null> =>
   await Meetup.findOne({
     relations: { discordMessage: true },
-    where: { id: parseInt(meetupId) },
+    where: { id: meetupId },
   });
 
 export const getMeetupDiscordMessage = async (

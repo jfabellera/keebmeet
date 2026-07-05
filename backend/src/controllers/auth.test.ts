@@ -688,20 +688,20 @@ describe('verifyUser', () => {
   });
 
   it('returns 404 when the token is valid but the user is gone', async () => {
-    mockedVerifyVerificationToken.mockReturnValue(99);
+    mockedVerifyVerificationToken.mockReturnValue('99');
     mockedUser.findOneBy.mockResolvedValue(null);
     const res = mockResponse();
 
     await verifyUser(mockRequest({ token: TOKEN }), res);
 
-    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: 99 });
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '99' });
     expect(res.statusCode).toBe(404);
     expect(res.body).toEqual({ message: 'Invalid user ID.' });
   });
 
   it('returns 200 when the token is accepted and the user is verified', async () => {
     const target = fakeUser({ id: 1, is_verified: false });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -713,7 +713,7 @@ describe('verifyUser', () => {
 
   it('marks is_verified and saves for a newly verified user', async () => {
     const target = fakeUser({ id: 1, is_verified: false });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 
@@ -725,7 +725,7 @@ describe('verifyUser', () => {
 
   it('is a no-op when the user is already verified', async () => {
     const target = fakeUser({ id: 1, is_verified: true });
-    mockedVerifyVerificationToken.mockReturnValue(1);
+    mockedVerifyVerificationToken.mockReturnValue('1');
     mockedUser.findOneBy.mockResolvedValue(target);
     const res = mockResponse();
 

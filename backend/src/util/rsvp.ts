@@ -13,7 +13,7 @@ export const getMeetupEnd = (meetup: Meetup): Date => {
 
 // Whether the meetup already has at least `capacity` tickets.
 export const isMeetupAtCapacity = async (
-  meetupId: number,
+  meetupId: string,
   capacity: number
 ): Promise<boolean> => {
   const ticketCount = await Ticket.count({
