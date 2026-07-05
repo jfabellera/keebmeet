@@ -102,30 +102,53 @@ const CheckInPage = (): ReactNode => {
     return filtered;
   }, [attendees, searchValue]);
 
-  const handleSelectAttendee = (attendee: TicketInfo): void => {
+  // If whole search value matches a QR code, automatically check in the
+  // attendee without requiring a confirmation dialog. Useful for barcode
+  // scanners. Scanners don't need to be configured to press enter after
+  // scanning, but if they do there shouldn't be any issues.
+  useEffect(() => {
+    if (
+      filteredAttendees.length === 1 &&
+      searchValue === filteredAttendees[0].qr_code_value
+    ) {
+      handleSelectAttendee(filteredAttendees[0], true);
+    }
+  }, [searchValue, filteredAttendees]);
+
+  const handleSelectAttendee = (
+    attendee: TicketInfo,
+    bypassConfirm: boolean = false
+  ): void => {
     if (attendee.is_checked_in) {
       toast.warning('Already checked in', {
         description: `${attendee.ticket_holder_display_name} is already checked in`,
       });
       return;
     }
+
     setTicket(attendee);
     setAction('checkin');
+
+    if (bypassConfirm) {
+      handleCheckIn(attendee);
+      return;
+    }
+
     onOpen();
   };
 
-  const handleCheckIn = (): void => {
+  const handleCheckIn = (attendee: TicketInfo | null = ticket): void => {
     void (async () => {
-      if (ticket != null) {
-        const result = await checkInAttendee(ticket.id);
+      if (attendee != null) {
+        const result = await checkInAttendee(attendee.id);
 
         if ('error' in result) {
           toast.error('Error', {
-            description: `Could not check ${ticket.ticket_holder_display_name} in`,
+            description: `Could not check ${attendee.ticket_holder_display_name} in`,
           });
         } else {
           toast.success('Success', {
-            description: `${ticket.ticket_holder_display_name} checked in`,
+            description: `${attendee.ticket_holder_display_name} checked in`,
           });
         }
       }
@@ -359,7 +382,11 @@ const CheckInPage = (): ReactNode => {
                 autoFocus={action === 'checkin'}
                 disabled={!canConfirm}
                 onClick={
-                  action === 'uncheckin' ? handleUncheckIn : handleCheckIn
+                  action === 'uncheckin'
+                    ? handleUncheckIn
+                    : () => {
+                        handleCheckIn();
+                      }
                 }
               >
                 Confirm
