@@ -49,6 +49,11 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+// The added-organizer email side effect is covered separately in
+// organizerAddedNotification.test.ts; here we only stub it out.
+jest.mock('../util/organizerAddedNotification', () => ({
+  notifyAddedOrganizers: jest.fn(),
+}));
 // Run the delete transaction callback against a no-op manager.
 jest.mock('../datasource', () => {
   // A single shared relation builder so tests can assert on addAndRemove.
