@@ -906,6 +906,7 @@ describe('deleteMeetup', () => {
         raffle_background_url: 'meetups/bg.png',
         batch_raffle_background_url: null,
       },
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
     mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
@@ -922,43 +923,47 @@ describe('deleteMeetup', () => {
     expect(res.statusCode).toBe(204);
   });
 
-  // BUG: deleteMeetup re-fetches with `findOneBy`, which does NOT load the
-  // `organizers` relation, then reads `meetup.organizers[0].id` — that throws a
-  // TypeError (organizers is undefined), crashing every delete. It should either
-  // load the relation or reuse `res.locals.meetup` (authChecker already loaded
-  // it with organizers). These assert the intended authorization outcome; remove
-  // `.failing` once the relation is available.
-  it.failing('lets the head organizer delete the meetup', async () => {
-    // findOneBy realistically returns the row WITHOUT relations.
+  it('lets the lead organizer delete the meetup', async () => {
     const meetup = {
       id: 10,
-      organizers: undefined,
+      image_key: 'meetups/main.png',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
-    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
     res.locals.requestor = { id: 1 };
-    res.locals.meetup = { id: 10, organizers: [{ id: 1 }] };
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(204);
   });
 
-  it.failing('rejects a non-head organizer with 401', async () => {
+  it('rejects a non-lead organizer with 403', async () => {
     const meetup = {
       id: 10,
-      organizers: undefined,
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: 1 },
       remove: jest.fn().mockResolvedValue(undefined),
     };
-    mockedMeetup.findOneBy.mockResolvedValue(meetup as any);
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
     const res = mockResponse();
-    res.locals.requestor = { id: 2 };
-    res.locals.meetup = { id: 10, organizers: [{ id: 1 }, { id: 2 }] };
+    res.locals.requestor = { id: 2 }; // a co-organizer, not the lead
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(403);
+    // Nothing is destroyed for a forbidden request.
+    expect(meetup.remove).not.toHaveBeenCalled();
   });
 });
 

@@ -695,6 +695,7 @@ export const deleteMeetup = async (
       discordMessage: true,
       eventbriteRecord: true,
       displayRecord: true,
+      lead_organizer: true,
     },
     where: { id: meetupId },
   });
@@ -703,8 +704,15 @@ export const deleteMeetup = async (
     return res.status(404).json({ message: 'Invalid meetup ID.' });
   }
 
-  // The auth middleware has already verified that the requestor is an organizer
-  // of this meetup, so no further authorization check is needed here.
+  // The auth middleware verifies the requestor is an organizer of this meetup,
+  // but deletion is reserved to the lead organizer alone — co-organizers can
+  // manage the meetup but not destroy it.
+  const requestor = res.locals.requestor as User;
+  if (meetup.lead_organizer?.id !== requestor.id) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can delete this meetup.',
+    });
+  }
 
   // Best-effort removal of the announcement embed from Discord before we drop
   // our own record of it. A failure here shouldn't block deleting the meetup.
