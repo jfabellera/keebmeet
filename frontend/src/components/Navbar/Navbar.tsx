@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { meetupSlice } from '@/store/meetupSlice';
 import { type ReactNode } from 'react';
 import { type IconType } from 'react-icons';
 import { FiLogOut, FiMenu, FiShield, FiUser } from 'react-icons/fi';
@@ -159,6 +160,14 @@ const NavbarDropdown = ({
   });
   const pendingRequestCount = organizerRequests?.length ?? 0;
 
+  const prefetchOrganizerDashboard = meetupSlice.usePrefetch('getMeetups');
+  const handlePrefetchOrganizerDashboard = (): void => {
+    prefetchOrganizerDashboard({
+      by_organizer_id: [userId],
+      detail_level: 'detailed',
+    });
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -201,6 +210,11 @@ const NavbarDropdown = ({
             onClick={() => {
               void navigate(link.url);
             }}
+            onMouseEnter={
+              link.url === '/organizer'
+                ? handlePrefetchOrganizerDashboard
+                : undefined
+            }
           >
             {link.name}
           </NavItem>
@@ -223,6 +237,7 @@ interface NavItemProps {
   icon: IconType;
   children: ReactNode;
   onClick: () => void;
+  onMouseEnter?: () => void;
   /** Optional count shown as a badge (hidden when 0 or undefined). */
   badge?: number;
 }
@@ -231,10 +246,15 @@ const NavItem = ({
   icon: IconComponent,
   children,
   onClick,
+  onMouseEnter,
   badge,
 }: NavItemProps): ReactNode => {
   return (
-    <DropdownMenuItem onClick={onClick} className="cursor-pointer">
+    <DropdownMenuItem
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      className="cursor-pointer"
+    >
       <IconComponent className="mr-2 size-4" />
       {children}
       {badge != null && badge > 0 ? (
