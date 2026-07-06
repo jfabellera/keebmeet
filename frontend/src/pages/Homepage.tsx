@@ -1,8 +1,8 @@
+import { Spinner } from '@/components/ui/spinner';
+import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { type MeetupInfo } from '@keebmeet/shared';
-import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
@@ -100,7 +100,9 @@ const Homepage = (): ReactNode => {
   return (
     <Page>
       {isLoading ? (
-        <></>
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner className="size-10" />
+        </div>
       ) : (
         <div className="flex flex-col gap-4 p-4">
           {currentMeetups != null && currentMeetups.length > 0
