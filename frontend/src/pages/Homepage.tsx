@@ -7,7 +7,7 @@ import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
-import { useGetMeetupsQuery } from '../store/meetupSlice';
+import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
 import {
   hasMeetupEnded,
@@ -26,6 +26,9 @@ const Homepage = (): ReactNode => {
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
+  // Warm the detail cache on hover so the modal usually opens instantly on
+  // click. Prefetch is a no-op when the meetup is already cached.
+  const prefetchMeetup = meetupSlice.usePrefetch('getMeetup');
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
   const isOpen = meetupId !== '';
@@ -84,6 +87,9 @@ const Homepage = (): ReactNode => {
               key={meetup.id}
               onClick={() => {
                 meetupCardOnClick(meetup.id);
+              }}
+              onMouseEnter={() => {
+                prefetchMeetup(meetup.id);
               }}
             >
               <MeetupCard
