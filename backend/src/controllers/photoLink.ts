@@ -50,6 +50,12 @@ export const createPhotoLink = async (
     }
   }
 
+  // Photo links can only be added once the meetup is under way — there are no
+  // photos to share before it starts. `meetup.date` is the start time.
+  if (new Date(meetup.date) > new Date()) {
+    return res.status(400).json({ message: 'Meetup has not started yet.' });
+  }
+
   const existing = await PhotoLinkRecord.findOne({
     where: {
       meetup: { id: meetup.id },

@@ -51,10 +51,14 @@ const mockRequest = (
 ): Request => ({ body, params }) as unknown as Request;
 
 const VALID_LINK = 'https://photos.example.com/album/1';
+// A meetup that has already started vs one still in the future.
+const STARTED_DATE = '2020-01-01T00:00:00.000Z';
+const FUTURE_DATE = '2999-01-01T00:00:00.000Z';
 
-/** A meetup where user `1` is neither organizer nor lead. */
+/** A meetup (already started) where user `1` is neither organizer nor lead. */
 const meetupWithoutUser = (): any => ({
   id: '10',
+  date: STARTED_DATE,
   lead_organizer: { id: '99' },
   organizers: [{ id: '98' }],
 });
@@ -125,7 +129,12 @@ describe('createPhotoLink', () => {
   it('creates a link (201) for the lead organizer without needing a ticket', async () => {
     mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.meetup = { id: '10', lead_organizer: { id: '1' }, organizers: [] };
+    res.locals.meetup = {
+      id: '10',
+      date: STARTED_DATE,
+      lead_organizer: { id: '1' },
+      organizers: [],
+    };
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
     await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
@@ -139,6 +148,7 @@ describe('createPhotoLink', () => {
     const res = mockResponse();
     res.locals.meetup = {
       id: '10',
+      date: STARTED_DATE,
       lead_organizer: { id: '99' },
       organizers: [{ id: '1' }],
     };
@@ -148,6 +158,24 @@ describe('createPhotoLink', () => {
 
     expect(res.statusCode).toBe(201);
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
+  });
+
+  // Requirement: links can only be added once the meetup has started.
+  it('returns 400 when the meetup has not started yet', async () => {
+    const res = mockResponse();
+    res.locals.meetup = {
+      id: '10',
+      date: FUTURE_DATE,
+      lead_organizer: { id: '1' },
+      organizers: [],
+    };
+    res.locals.requestor = { id: '1', nick_name: 'lead' };
+
+    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'Meetup has not started yet.' });
+    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
   });
 
   // Requirement: each attendee/organizer may hold at most one link per meetup.
