@@ -47,6 +47,12 @@ export interface SimpleTicketInfo {
   meetup_id: string;
 }
 
+export interface PhotoLinkInfo {
+  user_id: string;
+  display_name: string;
+  photo_link: string;
+}
+
 export interface TokenData {
   // The user id is a bigint, carried as a string in the JWT (consumers coerce
   // to a number if they need one).
