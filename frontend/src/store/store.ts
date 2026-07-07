@@ -4,6 +4,7 @@ import authSlice, { refreshSession } from './authSlice';
 import { eventbriteSlice } from './eventbriteSlice';
 import { meetupSlice } from './meetupSlice';
 import { organizerSlice } from './organizerSlice';
+import { photoLinkSlice } from './photoLinkSlice';
 import { ticketSlice } from './ticketSlice';
 import { userSlice } from './userSlice';
 
@@ -14,6 +15,7 @@ export const store = configureStore({
     [organizerSlice.reducerPath]: organizerSlice.reducer,
     [userSlice.reducerPath]: userSlice.reducer,
     [eventbriteSlice.reducerPath]: eventbriteSlice.reducer,
+    [photoLinkSlice.reducerPath]: photoLinkSlice.reducer,
     user: authSlice,
   },
   middleware: (getDefaultMiddleware) =>
@@ -22,7 +24,8 @@ export const store = configureStore({
       .concat(ticketSlice.middleware)
       .concat(organizerSlice.middleware)
       .concat(userSlice.middleware)
-      .concat(eventbriteSlice.middleware),
+      .concat(eventbriteSlice.middleware)
+      .concat(photoLinkSlice.middleware),
 });
 
 setupListeners(store.dispatch);
