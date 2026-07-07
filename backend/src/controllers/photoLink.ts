@@ -6,6 +6,7 @@ import { type Request, type Response } from 'express';
 import { socket } from '../Server';
 import { type Meetup } from '../entity/Meetup';
 import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
+import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 
 // A photo link is keyed by (meetup_id, user_id): each attendee may have at most
@@ -25,6 +26,28 @@ export const createPhotoLink = async (
   const result = createPhotoLinkSchema.safeParse(req.body ?? {});
   if (!result.success) {
     return res.status(400).json(result.error);
+  }
+
+  // Only an organizer or an attendee (ticket holder) of the meetup may add a
+  // photo link. authChecker lets any signed-in user onto this route
+  // (Rule.ignoreMeetupOrganizer), so the attendee/organizer gate lives here.
+  const isOrganizer =
+    meetup.lead_organizer?.id === user.id ||
+    (meetup.organizers?.some((organizer) => organizer.id === user.id) ?? false);
+
+  if (!isOrganizer) {
+    const ticket = await Ticket.findOne({
+      where: {
+        meetup: { id: meetup.id },
+        user: { id: user.id },
+      },
+    });
+
+    if (ticket == null) {
+      return res.status(403).json({
+        message: 'Only meetup attendees or organizers can add a photo link.',
+      });
+    }
   }
 
   const existing = await PhotoLinkRecord.findOne({
