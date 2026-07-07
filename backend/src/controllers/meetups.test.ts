@@ -130,6 +130,7 @@ import { Meetup } from '../entity/Meetup';
 import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
+import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
 import { Ticket } from '../entity/Ticket';
 import {
   createEventbriteWebhook,
@@ -961,6 +962,47 @@ describe('deleteMeetup', () => {
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
+    expect(res.statusCode).toBe(204);
+  });
+
+  // photo_link_record uses ON DELETE NO ACTION, so its rows must be removed by
+  // hand before the meetup, or the delete fails on a FK violation.
+  it("removes the meetup's photo links inside the delete transaction", async () => {
+    const builder = {
+      delete: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+    const manager = {
+      remove: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => builder),
+    };
+    mockedDataSource.transaction.mockImplementationOnce(
+      (async (cb: (m: unknown) => Promise<unknown>) => cb(manager)) as any
+    );
+    const meetup = {
+      id: '10',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: '1' },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(builder.from).toHaveBeenCalledWith(PhotoLinkRecord);
+    expect(builder.where).toHaveBeenCalledWith('meetup_id = :meetupId', {
+      meetupId: '10',
+    });
+    expect(builder.execute).toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
   });
 

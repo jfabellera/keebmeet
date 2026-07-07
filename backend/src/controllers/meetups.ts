@@ -24,6 +24,7 @@ import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
+import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
@@ -794,6 +795,12 @@ export const deleteMeetup = async (
     if (meetup.discordMessage != null) {
       await manager.remove(meetup.discordMessage);
     }
+    await manager
+      .createQueryBuilder()
+      .delete()
+      .from(PhotoLinkRecord)
+      .where('meetup_id = :meetupId', { meetupId })
+      .execute();
     // Removing the meetup also clears its rows in the organizers join table.
     await manager.remove(meetup);
   });
