@@ -28,7 +28,7 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'timestamp with time zone' })
   date: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'lead_organizer' })
   lead_organizer: User;
 
