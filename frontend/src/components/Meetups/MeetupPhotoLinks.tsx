@@ -67,9 +67,12 @@ export const MeetupPhotoLinks = ({
     skip: meetup.id === '',
   });
   // Previews are scraped server-side and fill in after the tiles first render.
-  const { data: previews = [] } = useGetMeetupPhotoLinkPreviewsQuery(meetup.id, {
-    skip: meetup.id === '',
-  });
+  const { data: previews = [] } = useGetMeetupPhotoLinkPreviewsQuery(
+    meetup.id,
+    {
+      skip: meetup.id === '',
+    }
+  );
   const previewByUser = new Map(
     previews.map((preview) => [preview.user_id, preview])
   );
@@ -198,8 +201,10 @@ const PhotoTile = ({
               variant="secondary"
               size="icon"
               title={isOwn ? 'Remove your photo link' : 'Remove photo link'}
-              aria-label={isOwn ? 'Remove your photo link' : 'Remove photo link'}
-              className="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={
+                isOwn ? 'Remove your photo link' : 'Remove photo link'
+              }
+              className="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
             >
               <FiTrash2 />
             </Button>
