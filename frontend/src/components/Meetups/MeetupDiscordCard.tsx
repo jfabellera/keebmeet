@@ -157,6 +157,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
               disabled={isUpdating}
             >
               Update
+              {isUpdating && <Spinner />}
             </Button>
             <Dialog
               open={confirmDeleteOpen}
@@ -187,6 +188,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
                     disabled={isDeleting}
                   >
                     Delete
+                    {isDeleting && <Spinner />}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -250,6 +252,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
             }
           >
             Create
+            {isCreating && <Spinner />}
           </Button>
         </div>
       )}

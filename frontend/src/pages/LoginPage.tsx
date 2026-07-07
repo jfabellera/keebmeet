@@ -145,8 +145,8 @@ const LoginPage = (): ReactNode => {
                       disabled={resending}
                       onClick={() => void handleResend()}
                     >
-                      {resending ? <Loader2 className="animate-spin" /> : null}
                       Resend verification email
+                      {resending ? <Loader2 className="animate-spin" /> : null}
                     </Button>
                   </div>
                 ) : loginFailed ? (
@@ -155,8 +155,8 @@ const LoginPage = (): ReactNode => {
                   </p>
                 ) : null}
                 <Button type="submit" disabled={loading}>
-                  {loading ? <Loader2 className="animate-spin" /> : null}
                   Sign in
+                  {loading ? <Loader2 className="animate-spin" /> : null}
                 </Button>
                 <DiscordLoginButton />
                 <div className="pt-2">

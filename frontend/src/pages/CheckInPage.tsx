@@ -59,8 +59,10 @@ const CheckInPage = (): ReactNode => {
   // Undoing a check-in is destructive, so we require the organizer to type the
   // attendee's display name to confirm.
   const [confirmText, setConfirmText] = useState<string>('');
-  const [checkInAttendee] = useCheckInAttendeeMutation();
-  const [editAttendee] = useEditAttendeeMutation();
+  const [checkInAttendee, { isLoading: isCheckingIn }] =
+    useCheckInAttendeeMutation();
+  const [editAttendee, { isLoading: isUncheckingIn }] =
+    useEditAttendeeMutation();
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -408,7 +410,7 @@ const CheckInPage = (): ReactNode => {
               <Button
                 variant={action === 'uncheckin' ? 'destructive' : 'default'}
                 autoFocus={action === 'checkin'}
-                disabled={!canConfirm}
+                disabled={!canConfirm || isCheckingIn || isUncheckingIn}
                 onClick={
                   action === 'uncheckin'
                     ? handleUncheckIn
@@ -418,6 +420,7 @@ const CheckInPage = (): ReactNode => {
                 }
               >
                 Confirm
+                {(isCheckingIn || isUncheckingIn) && <Spinner />}
               </Button>
             </DialogFooter>
           </DialogContent>

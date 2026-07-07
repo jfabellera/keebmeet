@@ -74,10 +74,12 @@ const AdminRequestsPage = (): ReactNode => {
                 >
                   <FiX />
                   Deny
+                  {isDenying && <Spinner />}
                 </Button>
                 <Button onClick={() => onApprove(request)} disabled={isBusy}>
                   <FiCheck />
                   Approve
+                  {isApproving && <Spinner />}
                 </Button>
               </div>
             </div>

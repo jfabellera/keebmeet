@@ -288,6 +288,7 @@ const AdminUsersPage = (): ReactNode => {
               }
             >
               Confirm
+              {savingUserId === pendingAdminChange?.user.id && <Spinner />}
             </Button>
           </DialogFooter>
         </DialogContent>

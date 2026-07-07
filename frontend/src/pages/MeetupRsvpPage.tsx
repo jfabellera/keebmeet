@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form-field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Spinner } from '@/components/ui/spinner';
 import { useGetMeetupQuery } from '@/store/meetupSlice';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -70,8 +71,7 @@ const MeetupRsvpPage = (): ReactNode => {
   const { data: tickets } = useGetTicketsQuery(user?.id ?? '', {
     skip: user == null,
   });
-  const existingTicket =
-    tickets?.find((t) => t.meetup_id === id) ?? null;
+  const existingTicket = tickets?.find((t) => t.meetup_id === id) ?? null;
   const { data: ticketDetails } = useGetTicketQuery(existingTicket?.id ?? '', {
     skip: existingTicket == null,
   });
@@ -258,6 +258,7 @@ const MeetupRsvpPage = (): ReactNode => {
                 >
                   <FiUserCheck />
                   {isManaging ? 'Update RSVP' : 'Confirm RSVP'}
+                  {(isRsvping || isUpdating) && <Spinner />}
                 </Button>
                 {isManaging ? (
                   <Button
@@ -298,6 +299,7 @@ const MeetupRsvpPage = (): ReactNode => {
                     >
                       <FiUserX />
                       Cancel RSVP
+                      {isCancelling && <Spinner />}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

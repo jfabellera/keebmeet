@@ -37,7 +37,7 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
     },
   });
 
-  const [editAttendee] = useEditAttendeeMutation();
+  const [editAttendee, { isLoading: isSaving }] = useEditAttendeeMutation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [viewing, setViewing] = useState<TicketInfo | null>(null);
@@ -234,8 +234,9 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
                 <Button variant="outline" onClick={cancelEditing}>
                   Cancel
                 </Button>
-                <Button disabled={!canSave} onClick={handleSave}>
+                <Button disabled={!canSave || isSaving} onClick={handleSave}>
                   Save
+                  {isSaving && <Spinner />}
                 </Button>
               </>
             ) : (

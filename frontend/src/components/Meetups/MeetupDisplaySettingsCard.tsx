@@ -22,7 +22,7 @@ const gridClass =
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets, isLoading } =
     useGetMeetupDisplayAssetsQuery(meetupId);
-  const [updateMeetup] = useEditMeetupMutation();
+  const [updateMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
   const [raffleBackgroundUrl, setRaffleBackgroundUrl] = useState<string>('');
@@ -92,9 +92,11 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
           display_batch_raffle_background_url: batchRaffleBackgroundUrl,
         },
       });
-    })();
 
-    setIsEditable.off();
+      // Only leave edit mode once the save resolves, so the Save button (and
+      // its spinner) stays visible while the request is in flight.
+      setIsEditable.off();
+    })();
   };
 
   const onCancel = (): void => {
@@ -111,6 +113,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditEnter={setIsEditable.on}
       onEditCancel={onCancel}
       onEditSubmit={onSubmit}
+      isSubmitLoading={isSaving}
       isFormInvalid={false}
     >
       {isLoading ? (

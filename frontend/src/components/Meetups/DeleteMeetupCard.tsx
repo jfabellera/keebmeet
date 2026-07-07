@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import {
   useDeleteMeetupMutation,
   useGetMeetupQuery,
@@ -85,8 +86,7 @@ export const DeleteMeetupCard = ({ meetupId }: Props): ReactNode => {
           </DialogHeader>
           <Field>
             <FieldLabel htmlFor="confirm-meetup-name">
-              Type{' '}
-              <span className="font-bold">{meetup?.name}</span> to confirm.
+              Type <span className="font-bold">{meetup?.name}</span> to confirm.
             </FieldLabel>
             <Input
               id="confirm-meetup-name"
@@ -108,6 +108,7 @@ export const DeleteMeetupCard = ({ meetupId }: Props): ReactNode => {
               disabled={!canConfirm || isDeleting}
             >
               Delete meetup
+              {isDeleting && <Spinner />}
             </Button>
           </DialogFooter>
         </DialogContent>
