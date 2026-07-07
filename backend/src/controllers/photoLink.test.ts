@@ -11,20 +11,26 @@ jest.mock('../entity/PhotoLinkRecord', () => ({
 jest.mock('../entity/Ticket', () => ({
   Ticket: { findOne: jest.fn() },
 }));
+// Scraping is exercised in linkPreview.test.ts; here we only assert the
+// controller maps whatever the util returns onto the response.
+jest.mock('../util/linkPreview', () => ({ fetchLinkPreview: jest.fn() }));
 
 import {
   createPhotoLink,
   deletePhotoLink,
   deletePhotoLinkForUser,
+  getMeetupPhotoLinkPreviews,
   getMeetupPhotoLinks,
 } from './photoLink';
 import { socket } from '../Server';
 import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
 import { Ticket } from '../entity/Ticket';
+import { fetchLinkPreview } from '../util/linkPreview';
 
 const mockedPhotoLinkRecord = jest.mocked(PhotoLinkRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
+const mockedFetchLinkPreview = jest.mocked(fetchLinkPreview);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -328,5 +334,63 @@ describe('getMeetupPhotoLinks', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
+  });
+});
+
+// ---- getMeetupPhotoLinkPreviews --------------------------------------------
+
+describe('getMeetupPhotoLinkPreviews', () => {
+  it('maps the util preview onto each link, keyed by user_id', async () => {
+    mockedPhotoLinkRecord.find.mockResolvedValue([
+      { user_id: '1', photo_link: 'https://album.example.com/1' },
+      { user_id: '2', photo_link: 'https://img.example.com/photo.jpg' },
+    ] as any);
+    mockedFetchLinkPreview.mockImplementation(async (url: string) =>
+      url === 'https://album.example.com/1'
+        ? {
+            title: 'Meetup album',
+            image: 'https://album.example.com/cover.jpg',
+            siteName: 'Example Photos',
+          }
+        : { title: null, image: url, siteName: null }
+    );
+    const res = mockResponse();
+
+    await getMeetupPhotoLinkPreviews(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([
+      {
+        user_id: '1',
+        title: 'Meetup album',
+        image: 'https://album.example.com/cover.jpg',
+        siteName: 'Example Photos',
+      },
+      {
+        user_id: '2',
+        title: null,
+        image: 'https://img.example.com/photo.jpg',
+        siteName: null,
+      },
+    ]);
+  });
+
+  it('returns null fields when the util yields no preview', async () => {
+    mockedPhotoLinkRecord.find.mockResolvedValue([
+      { user_id: '3', photo_link: 'https://broken.example.com/1' },
+    ] as any);
+    mockedFetchLinkPreview.mockResolvedValue({
+      title: null,
+      image: null,
+      siteName: null,
+    });
+    const res = mockResponse();
+
+    await getMeetupPhotoLinkPreviews(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([
+      { user_id: '3', title: null, image: null, siteName: null },
+    ]);
   });
 });

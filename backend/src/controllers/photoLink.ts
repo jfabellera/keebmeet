@@ -1,6 +1,7 @@
 import {
   createPhotoLinkSchema,
   type PhotoLinkInfo,
+  type PhotoLinkPreview,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { socket } from '../Server';
@@ -8,6 +9,7 @@ import { type Meetup } from '../entity/Meetup';
 import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
+import { fetchLinkPreview } from '../util/linkPreview';
 
 // A photo link is keyed by (meetup_id, user_id): each attendee may have at most
 // one link per meetup. A duplicate POST is rejected with 409; to change a link
@@ -164,4 +166,39 @@ export const getMeetupPhotoLinks = async (
   );
 
   return res.status(200).json(response);
+};
+
+// OpenGraph-style previews for the meetup's photo links, scraped server-side
+// (the browser can't fetch cross-origin). Only the meetup's own stored links are
+// ever fetched — the client never supplies a URL — so there's no open SSRF
+// surface. fetchLinkPreview caches and never throws, so one bad link can't fail
+// the batch.
+export const getMeetupPhotoLinkPreviews = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { meetup_id } = req.params as Record<string, string>;
+
+  const records = await PhotoLinkRecord.find({
+    where: {
+      meetup: { id: meetup_id },
+    },
+    order: {
+      created_at: 'ASC',
+    },
+  });
+
+  const previews = await Promise.all(
+    records.map(async (record) => {
+      const preview = await fetchLinkPreview(record.photo_link);
+      return {
+        user_id: record.user_id,
+        title: preview.title,
+        image: preview.image,
+        siteName: preview.siteName,
+      } satisfies PhotoLinkPreview;
+    })
+  );
+
+  return res.status(200).json(previews);
 };

@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { type PhotoLinkInfo } from '@keebmeet/shared';
+import { type PhotoLinkInfo, type PhotoLinkPreview } from '@keebmeet/shared';
 import config from '../config';
 import { type RootState } from './store';
 
@@ -33,6 +33,16 @@ export const photoLinkSlice = createApi({
     getMeetupPhotoLinks: builder.query<PhotoLinkInfo[], string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/photo-links`,
+      }),
+      providesTags: (result, error, meetupId) => [
+        { type: 'PhotoLinks', id: meetupId },
+      ],
+    }),
+    // Server-scraped OpenGraph previews, keyed by user_id. Shares the per-meetup
+    // tag so adding/removing a link refreshes previews too.
+    getMeetupPhotoLinkPreviews: builder.query<PhotoLinkPreview[], string>({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}/photo-links/previews`,
       }),
       providesTags: (result, error, meetupId) => [
         { type: 'PhotoLinks', id: meetupId },
@@ -75,6 +85,7 @@ export const photoLinkSlice = createApi({
 
 export const {
   useGetMeetupPhotoLinksQuery,
+  useGetMeetupPhotoLinkPreviewsQuery,
   useCreatePhotoLinkMutation,
   useDeletePhotoLinkMutation,
   useDeletePhotoLinkForUserMutation,

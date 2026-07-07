@@ -21,6 +21,7 @@ import {
   createPhotoLink,
   deletePhotoLink,
   deletePhotoLinkForUser,
+  getMeetupPhotoLinkPreviews,
   getMeetupPhotoLinks,
 } from '../controllers/photoLink';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
@@ -148,5 +149,11 @@ router.delete(
 );
 
 router.get('/:meetup_id/photo-links', getMeetupPhotoLinks as RequestHandler);
+
+// Public: server-scraped OpenGraph previews for those links.
+router.get(
+  '/:meetup_id/photo-links/previews',
+  getMeetupPhotoLinkPreviews as RequestHandler
+);
 
 export default router;

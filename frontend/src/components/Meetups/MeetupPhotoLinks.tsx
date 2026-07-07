@@ -14,7 +14,11 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { type MeetupInfo, type PhotoLinkInfo } from '@keebmeet/shared';
+import {
+  type MeetupInfo,
+  type PhotoLinkInfo,
+  type PhotoLinkPreview,
+} from '@keebmeet/shared';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { FiAlertTriangle, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -23,6 +27,7 @@ import {
   useCreatePhotoLinkMutation,
   useDeletePhotoLinkForUserMutation,
   useDeletePhotoLinkMutation,
+  useGetMeetupPhotoLinkPreviewsQuery,
   useGetMeetupPhotoLinksQuery,
 } from '../../store/photoLinkSlice';
 import { hasMeetupStarted } from '../../util/timeUtil';
@@ -61,6 +66,13 @@ export const MeetupPhotoLinks = ({
   const { data: photos = [] } = useGetMeetupPhotoLinksQuery(meetup.id, {
     skip: meetup.id === '',
   });
+  // Previews are scraped server-side and fill in after the tiles first render.
+  const { data: previews = [] } = useGetMeetupPhotoLinkPreviewsQuery(meetup.id, {
+    skip: meetup.id === '',
+  });
+  const previewByUser = new Map(
+    previews.map((preview) => [preview.user_id, preview])
+  );
 
   // Organizers can add photos to their own meetup even without a ticket, matching
   // the backend's attendee-or-organizer gate.
@@ -93,6 +105,7 @@ export const MeetupPhotoLinks = ({
             key={photo.user_id}
             meetupId={meetup.id}
             photo={photo}
+            preview={previewByUser.get(photo.user_id)}
             isOwn={photo.user_id === currentUserId}
             canModerate={isOrganizer}
           />
@@ -106,6 +119,8 @@ export const MeetupPhotoLinks = ({
 interface PhotoTileProps {
   meetupId: string;
   photo: PhotoLinkInfo;
+  /** Server-scraped preview for this link, once it has loaded. */
+  preview: PhotoLinkPreview | undefined;
   isOwn: boolean;
   /** Organizers can remove any contributor's link, not just their own. */
   canModerate: boolean;
@@ -114,6 +129,7 @@ interface PhotoTileProps {
 const PhotoTile = ({
   meetupId,
   photo,
+  preview,
   isOwn,
   canModerate,
 }: PhotoTileProps): ReactNode => {
@@ -161,13 +177,15 @@ const PhotoTile = ({
       <a href={photo.photo_link} target="_blank" rel="noopener noreferrer">
         <AspectRatio ratio={1}>
           <ImageWithFallback
-            src={photo.photo_link}
+            src={preview?.image ?? photo.photo_link}
             resizeWidth={256}
             className="size-full object-cover"
           />
         </AspectRatio>
         <div className="p-2 text-xs">
-          <p className="truncate font-medium">{linkLabel(photo.photo_link)}</p>
+          <p className="truncate font-medium">
+            {preview?.title ?? preview?.siteName ?? linkLabel(photo.photo_link)}
+          </p>
           <p className="text-muted-foreground truncate">
             Added by {photo.display_name}
           </p>
