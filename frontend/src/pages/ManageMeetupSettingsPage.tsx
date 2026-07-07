@@ -1,5 +1,6 @@
 import { DeleteMeetupCard } from '@/components/Meetups/DeleteMeetupCard';
 import { MeetupDiscordCard } from '@/components/Meetups/MeetupDiscordCard';
+import { Spinner } from '@/components/ui/spinner';
 import { useAppSelector } from '@/store/hooks';
 import { useGetMeetupQuery } from '@/store/meetupSlice';
 import { type ReactNode } from 'react';
@@ -8,8 +9,16 @@ import MeetupDetailsSettingsCard from '../components/Meetups/MeetupDetailsSettin
 
 const ManageMeetupSettingsPage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
+  const { data: meetup, isLoading } = useGetMeetupQuery(meetupId ?? '');
   const currentUserId = useAppSelector((state) => state.user.user?.id);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4">

@@ -1,5 +1,6 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useBoolean } from '@/hooks/useBoolean';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
@@ -19,7 +20,8 @@ const gridClass =
   'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
-  const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId);
+  const { data: displayAssets, isLoading } =
+    useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup] = useEditMeetupMutation();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
@@ -111,110 +113,122 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditSubmit={onSubmit}
       isFormInvalid={false}
     >
-      <h3 className="mb-1 text-lg font-medium">Idle Images</h3>
-      <div className={gridClass}>
-        {(urls.length > 0 ? urls : ['']).map((imageUrl, index, idleUrls) => (
-          <ImageUploadField
-            key={index}
-            previewUrl={imageUrl}
-            editable={isEditable}
-            aspectRatio={16 / 9}
-            className="max-w-none py-0"
-            previewWidth={360}
-            useUpload={useMeetupImageUpload}
-            onUploaded={(_imageKey, imageUrl) => setIdleUrl(index, imageUrl)}
-            footer={
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Move left"
-                  disabled={index === 0}
-                  onClick={() => onMoveLeft(index)}
-                >
-                  <FiArrowLeft />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Remove"
-                  onClick={() => onRemove(index)}
-                >
-                  <FiTrash2 />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Move right"
-                  disabled={index === idleUrls.length - 1}
-                  onClick={() => onMoveRight(index)}
-                >
-                  <FiArrowRight />
-                </Button>
-              </>
-            }
-          />
-        ))}
-        {isEditable ? (
-          <div>
-            <AspectRatio ratio={16 / 9}>
-              <Button
-                variant="outline"
-                aria-label="add"
-                className="size-full"
-                onClick={onAdd}
-              >
-                <FiPlus className="size-8" />
-              </Button>
-            </AspectRatio>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap justify-around gap-4">
-        <div className="flex-1">
-          <h3 className="mt-4 mb-1 text-lg font-medium">
-            Raffle Winner Background
-          </h3>
-          <div className={gridClass}>
-            <ImageUploadField
-              previewUrl={raffleBackgroundUrl}
-              editable={isEditable}
-              aspectRatio={16 / 9}
-              className="max-w-none py-0"
-              previewWidth={360}
-              useUpload={useMeetupImageUpload}
-              onUploaded={(_imageKey, imageUrl) =>
-                setRaffleBackgroundUrl(imageUrl)
-              }
-              onRemove={() => setRaffleBackgroundUrl('')}
-            />
-          </div>
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <Spinner className="size-8" />
         </div>
-
-        <div className="flex-1">
-          <h3 className="mt-4 mb-1 text-lg font-medium">
-            Raffle Winner Background (Batch)
-          </h3>
+      ) : (
+        <>
+          <h3 className="mb-1 text-lg font-medium">Idle Images</h3>
           <div className={gridClass}>
-            <ImageUploadField
-              previewUrl={batchRaffleBackgroundUrl}
-              editable={isEditable}
-              aspectRatio={16 / 9}
-              className="max-w-none py-0"
-              previewWidth={360}
-              useUpload={useMeetupImageUpload}
-              onUploaded={(_imageKey, imageUrl) =>
-                setBatchRaffleBackgroundUrl(imageUrl)
-              }
-              onRemove={() => setBatchRaffleBackgroundUrl('')}
-            />
+            {(urls.length > 0 ? urls : ['']).map(
+              (imageUrl, index, idleUrls) => (
+                <ImageUploadField
+                  key={index}
+                  previewUrl={imageUrl}
+                  editable={isEditable}
+                  aspectRatio={16 / 9}
+                  className="max-w-none py-0"
+                  previewWidth={360}
+                  useUpload={useMeetupImageUpload}
+                  onUploaded={(_imageKey, imageUrl) =>
+                    setIdleUrl(index, imageUrl)
+                  }
+                  footer={
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Move left"
+                        disabled={index === 0}
+                        onClick={() => onMoveLeft(index)}
+                      >
+                        <FiArrowLeft />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Remove"
+                        onClick={() => onRemove(index)}
+                      >
+                        <FiTrash2 />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Move right"
+                        disabled={index === idleUrls.length - 1}
+                        onClick={() => onMoveRight(index)}
+                      >
+                        <FiArrowRight />
+                      </Button>
+                    </>
+                  }
+                />
+              )
+            )}
+            {isEditable ? (
+              <div>
+                <AspectRatio ratio={16 / 9}>
+                  <Button
+                    variant="outline"
+                    aria-label="add"
+                    className="size-full"
+                    onClick={onAdd}
+                  >
+                    <FiPlus className="size-8" />
+                  </Button>
+                </AspectRatio>
+              </div>
+            ) : null}
           </div>
-        </div>
-      </div>
+
+          <div className="flex flex-wrap justify-around gap-4">
+            <div className="flex-1">
+              <h3 className="mt-4 mb-1 text-lg font-medium">
+                Raffle Winner Background
+              </h3>
+              <div className={gridClass}>
+                <ImageUploadField
+                  previewUrl={raffleBackgroundUrl}
+                  editable={isEditable}
+                  aspectRatio={16 / 9}
+                  className="max-w-none py-0"
+                  previewWidth={360}
+                  useUpload={useMeetupImageUpload}
+                  onUploaded={(_imageKey, imageUrl) =>
+                    setRaffleBackgroundUrl(imageUrl)
+                  }
+                  onRemove={() => setRaffleBackgroundUrl('')}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <h3 className="mt-4 mb-1 text-lg font-medium">
+                Raffle Winner Background (Batch)
+              </h3>
+              <div className={gridClass}>
+                <ImageUploadField
+                  previewUrl={batchRaffleBackgroundUrl}
+                  editable={isEditable}
+                  aspectRatio={16 / 9}
+                  className="max-w-none py-0"
+                  previewWidth={360}
+                  useUpload={useMeetupImageUpload}
+                  onUploaded={(_imageKey, imageUrl) =>
+                    setBatchRaffleBackgroundUrl(imageUrl)
+                  }
+                  onRemove={() => setBatchRaffleBackgroundUrl('')}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </EditableFormCard>
   );
 };

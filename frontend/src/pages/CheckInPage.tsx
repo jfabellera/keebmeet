@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ import {
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
   const meetupId = meetupIdParam ?? '';
-  const { data: attendees } = useGetMeetupAttendeesQuery({
+  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery({
     meetup_id: meetupId,
     params: { detail_level: 'detailed' },
   });
@@ -263,6 +264,14 @@ const CheckInPage = (): ReactNode => {
     setFocusedIndex(null);
     setSearchValue(event.target.value);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-2 p-4 text-center">
