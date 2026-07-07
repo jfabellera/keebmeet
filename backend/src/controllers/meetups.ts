@@ -42,6 +42,7 @@ import {
   type GeocodeResults,
 } from '../util/externalApis';
 import { deleteManagedObjects } from '../util/imageCleanup';
+import { normalizeImage } from '../util/imageProcessing';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
   IMAGE_EXT_BY_MIME,
@@ -255,9 +256,20 @@ export const uploadMeetupImage = async (
       .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
   }
 
+  let processed: Buffer;
+  try {
+    processed = await normalizeImage(file.buffer, file.mimetype, {
+      maxDimension: 3840,
+    });
+  } catch {
+    return res
+      .status(400)
+      .json({ message: 'Could not process the uploaded image.' });
+  }
+
   // Stored under the temp prefix; promoted to permanent when a meetup is saved.
   const key = buildTempImageKey('meetups', ext);
-  await upload(key, file.buffer, file.mimetype);
+  await upload(key, processed, file.mimetype);
 
   return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
 };

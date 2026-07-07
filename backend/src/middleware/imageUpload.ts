@@ -2,7 +2,7 @@ import { type NextFunction, type Request, type Response } from 'express';
 import multer, { MulterError } from 'multer';
 import { ALLOWED_IMAGE_TYPES } from '../util/objectStorage';
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_IMAGE_MB = MAX_IMAGE_BYTES / (1024 * 1024);
 // Marker so the wrapper can distinguish a rejected mimetype from other errors.
 const UNSUPPORTED_IMAGE_TYPE = 'UNSUPPORTED_IMAGE_TYPE';

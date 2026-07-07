@@ -21,7 +21,7 @@ const Page = ({
   return (
     <div className="bg-muted flex h-svh flex-col">
       <Navbar sidebar={sidebarItems != null} onOpen={onOpen} />
-      <div className="h-full w-auto overflow-hidden">
+      <div className="h-full w-auto overflow-auto">
         {sidebarItems != null &&
         sidebarValue != null &&
         setSidebarValue != null ? (
@@ -33,10 +33,10 @@ const Page = ({
               value={sidebarValue}
               setValue={setSidebarValue}
             />
-            <div className="grow overflow-auto">{children}</div>
+            <div className="grow">{children}</div>
           </div>
         ) : (
-          <div className="h-full overflow-auto">{children}</div>
+          children
         )}
       </div>
     </div>
