@@ -2,7 +2,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
@@ -32,6 +32,7 @@ const Homepage = (): ReactNode => {
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
   const isOpen = meetupId !== '';
+  const isRsvp = useMatch('/meetup/:meetupId/rsvp') != null;
 
   const currentMeetups = useMemo(
     () => meetups?.filter((meetup) => isMeetupHappeningNow(meetup)),
@@ -127,6 +128,7 @@ const Homepage = (): ReactNode => {
             ticket={getTicketForMeetup(meetupId)}
             isLoggedIn={isLoggedIn}
             isOpen={isOpen}
+            isRsvp={isRsvp}
             onClose={handleClose}
           />
         </div>

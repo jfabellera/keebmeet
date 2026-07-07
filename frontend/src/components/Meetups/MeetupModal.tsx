@@ -10,10 +10,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { cn } from '@/lib/utils';
 import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { useEffect, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiClock,
@@ -21,7 +23,6 @@ import {
   FiExternalLink,
   FiLink,
   FiMapPin,
-  FiSettings,
   FiUser,
   FiUserCheck,
 } from 'react-icons/fi';
@@ -35,14 +36,34 @@ import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 import { MeetupPhotoLinks } from './MeetupPhotoLinks';
+import { MeetupRsvpForm } from './MeetupRsvpForm';
 
 dayjs.extend(customParseFormat);
+
+// True at Tailwind's `lg` breakpoint, where the two-column layout fits.
+const useIsWide = (): boolean => {
+  const [isWide, setIsWide] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(min-width: 1024px)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (): void => setIsWide(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  return isWide;
+};
 
 export interface MeetupModalProps {
   meetupId: string;
   isLoggedIn: boolean;
   ticket: SimpleTicketInfo | null;
   isOpen: boolean;
+  isRsvp: boolean;
   onClose: () => void;
 }
 
@@ -51,6 +72,7 @@ export const MeetupModal = ({
   isLoggedIn,
   ticket,
   isOpen,
+  isRsvp,
   onClose,
 }: MeetupModalProps): ReactNode => {
   const { currentData: meetup, error } = useGetMeetupQuery(meetupId, {
@@ -58,6 +80,7 @@ export const MeetupModal = ({
   });
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const isWide = useIsWide();
 
   // A meetup id in the URL that doesn't resolve to a real meetup sends the
   // visitor back to the homepage rather than leaving a dead modal open.
@@ -104,11 +127,16 @@ export const MeetupModal = ({
     toast.success('Link copied to clipboard');
   };
 
+  const handleCollapse = (): void => {
+    void navigate('/meetup/' + meetupId);
+  };
+
   const isHappeningNow = isMeetupHappeningNow(meetup);
   const hasEnded = hasMeetupEnded(meetup);
   // A meetup can be RSVP'd to (or cancelled) right up until it ends.
   const isRsvpable = !hasEnded;
   const isRsvpDisabled = !isLoggedIn || meetup.tickets?.available === 0;
+  const goToRsvp = (): void => void navigate('/meetup/' + meetupId + '/rsvp');
 
   return (
     <Dialog
@@ -119,191 +147,230 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
+        className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
         showCloseButton={false}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {meetup.image_url != null && meetup.image_url !== '' ? (
-            <AspectRatio ratio={2 / 1}>
-              <ImageWithFallback
-                src={meetup.image_url}
-                resizeWidth={768}
-                className="size-full rounded-t-md object-cover"
-              />
-            </AspectRatio>
-          ) : null}
-          <div className="flex flex-col p-4 pb-0">
-            <DialogHeader className="space-y-0 text-left">
-              <DialogTitle className="flex flex-row justify-between pb-2 text-2xl font-bold">
-                <div>
-                  {meetup.name}
-                  {isHappeningNow ? (
-                    <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
-                      <span className="size-1.5 animate-pulse rounded-full bg-white" />
-                      Happening now
-                    </Badge>
-                  ) : hasEnded ? (
-                    <Badge
-                      variant="secondary"
-                      className="ml-3 -translate-y-0.5 align-middle"
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-visible">
+          <div
+            className={cn(
+              'flex-col sm:w-lg lg:min-h-0 lg:shrink-0 lg:overflow-hidden',
+              isRsvp ? 'hidden lg:flex' : 'flex'
+            )}
+          >
+            <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+              {meetup.image_url != null && meetup.image_url !== '' ? (
+                <AspectRatio ratio={2 / 1}>
+                  <ImageWithFallback
+                    src={meetup.image_url}
+                    resizeWidth={768}
+                    className={cn(
+                      'size-full rounded-tl-md object-cover',
+                      !isRsvp && 'rounded-tr-md'
+                    )}
+                  />
+                </AspectRatio>
+              ) : null}
+              <div className="flex flex-col p-4 pb-0">
+                <DialogHeader className="space-y-0 text-left">
+                  <DialogTitle className="flex flex-row justify-between pb-2 text-2xl font-bold">
+                    <div>
+                      {meetup.name}
+                      {isHappeningNow ? (
+                        <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                          <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                          Happening now
+                        </Badge>
+                      ) : hasEnded ? (
+                        <Badge
+                          variant="secondary"
+                          className="ml-3 -translate-y-0.5 align-middle"
+                        >
+                          Ended
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Copy link"
+                      aria-label="Copy link"
+                      onClick={handleCopyLink}
+                      className="ml-auto"
                     >
-                      Ended
-                    </Badge>
+                      <FiLink />
+                    </Button>
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-1 pb-4 font-semibold">
+                  {/* Date */}
+                  <div className="flex items-start gap-2">
+                    <FiCalendar className="mt-1 shrink-0" />
+                    <p>
+                      {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
+                        'MMMM DD, YYYY'
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Time */}
+                  <div className="flex items-start gap-2">
+                    <FiClock className="mt-1 shrink-0" />
+                    <p>
+                      {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
+                        'h:mm A'
+                      )}
+                      {' - '}
+                      {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss')
+                        .add(meetup.duration_hours ?? 0, 'hours')
+                        .format('h:mm A')}
+                    </p>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-start gap-2">
+                    <FiMapPin className="mt-1 shrink-0" />
+                    <p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          meetup.location.full_address ?? ''
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {meetup.location.full_address}
+                      </a>
+                    </p>
+                  </div>
+
+                  {/* Organizers */}
+                  {meetup.organizers != null ? (
+                    <div className="flex items-start gap-2">
+                      <FiUser className="mt-1 shrink-0" />
+                      <p>
+                        Organized by{' '}
+                        {new Intl.ListFormat().format(
+                          [meetup.lead_organizer, ...meetup.organizers]
+                            .filter(
+                              (
+                                organizer
+                              ): organizer is NonNullable<typeof organizer> =>
+                                organizer != null
+                            )
+                            .map((organizer) => organizer.display_name)
+                        )}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Copy link"
-                  aria-label="Copy link"
-                  onClick={handleCopyLink}
-                  className="ml-auto"
-                >
-                  <FiLink />
-                </Button>
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-1 pb-4 font-semibold">
-              {/* Date */}
-              <div className="flex items-start gap-2">
-                <FiCalendar className="mt-1 shrink-0" />
-                <p>
-                  {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
-                    'MMMM DD, YYYY'
-                  )}
-                </p>
-              </div>
 
-              {/* Time */}
-              <div className="flex items-start gap-2">
-                <FiClock className="mt-1 shrink-0" />
-                <p>
-                  {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format('h:mm A')}
-                  {' - '}
-                  {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss')
-                    .add(meetup.duration_hours ?? 0, 'hours')
-                    .format('h:mm A')}
-                </p>
-              </div>
+                {/* Photos */}
+                {!isRsvp ? (
+                  <MeetupPhotoLinks
+                    meetup={meetup}
+                    isAttendee={ticket != null}
+                  />
+                ) : null}
 
-              {/* Location */}
-              <div className="flex items-start gap-2">
-                <FiMapPin className="mt-1 shrink-0" />
-                <p>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      meetup.location.full_address ?? ''
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                  >
-                    {meetup.location.full_address}
-                  </a>
-                </p>
-              </div>
-
-              {/* Organizers */}
-              {meetup.organizers != null ? (
-                <div className="flex items-start gap-2">
-                  <FiUser className="mt-1 shrink-0" />
+                {/* Description */}
+                {meetup.description !== '' ? (
+                  <>
+                    <p className="font-semibold">Description</p>
+                    <p className="whitespace-pre-line">{meetup.description}</p>
+                  </>
+                ) : (
                   <p>
-                    Organized by{' '}
-                    {new Intl.ListFormat().format(
-                      [meetup.lead_organizer, ...meetup.organizers]
-                        .filter(
-                          (
-                            organizer
-                          ): organizer is NonNullable<typeof organizer> =>
-                            organizer != null
-                        )
-                        .map((organizer) => organizer.display_name)
-                    )}
+                    <i>No description</i>
                   </p>
-                </div>
-              ) : null}
+                )}
+              </div>
             </div>
 
-            {/* Photos */}
-            <MeetupPhotoLinks meetup={meetup} isAttendee={ticket != null} />
-
-            {/* Description */}
-            {meetup.description !== '' ? (
-              <>
-                <p className="font-semibold">Description</p>
-                <p className="whitespace-pre-line">{meetup.description}</p>
-              </>
-            ) : (
-              <p>
-                <i>No description</i>
-              </p>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
-          {meetup.tickets != null ? (
-            <MeetupCapacityStatus
-              available={meetup.tickets.available}
-              total={meetup.tickets.total}
-              ended={hasEnded}
-            />
-          ) : (
-            <span />
-          )}
-          <div className="ml-auto flex items-center gap-3">
-            {isRsvpable ? (
-              meetup.eventbrite_url != null ? (
-                <a
-                  href={meetup.eventbrite_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button>
-                    <FiExternalLink />
-                    RSVP
-                  </Button>
-                </a>
-              ) : ticket != null ? (
-                <Button
-                  variant="outline"
-                  disabled={!isLoggedIn}
-                  onClick={() => void navigate('/meetup/' + meetupId + '/rsvp')}
-                >
-                  <FiEdit />
-                  Manage RSVP
-                </Button>
+            <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
+              {meetup.tickets != null ? (
+                <MeetupCapacityStatus
+                  available={meetup.tickets.available}
+                  total={meetup.tickets.total}
+                  ended={hasEnded}
+                />
               ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Button
-                        variant="default"
-                        disabled={isRsvpDisabled}
-                        onClick={() =>
-                          void navigate('/meetup/' + meetupId + '/rsvp')
-                        }
-                      >
-                        <FiUserCheck />
+                <span />
+              )}
+              <div className="ml-auto flex items-center gap-3">
+                {!isRsvp && isRsvpable ? (
+                  meetup.eventbrite_url != null ? (
+                    <a
+                      href={meetup.eventbrite_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Button>
+                        <FiExternalLink />
                         RSVP
                       </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {isRsvpDisabled && (
-                    <TooltipContent>
-                      {isLoggedIn
-                        ? 'No tickets available'
-                        : 'Please log in to RSVP'}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              )
-            ) : null}
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
+                    </a>
+                  ) : ticket != null ? (
+                    <Button
+                      variant="outline"
+                      disabled={!isLoggedIn}
+                      onClick={goToRsvp}
+                    >
+                      <FiEdit />
+                      Manage RSVP
+                    </Button>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button
+                            variant="default"
+                            disabled={isRsvpDisabled}
+                            onClick={goToRsvp}
+                          >
+                            <FiUserCheck />
+                            RSVP
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {isRsvpDisabled && (
+                        <TooltipContent>
+                          {isLoggedIn
+                            ? 'No tickets available'
+                            : 'Please log in to RSVP'}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  )
+                ) : null}
+                <Button variant="secondary" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
+            </DialogFooter>
           </div>
-        </DialogFooter>
+
+          <AnimatePresence initial={false}>
+            {isRsvp ? (
+              <motion.div
+                key="rsvp-panel"
+                initial={isWide ? { width: 0, opacity: 0 } : false}
+                animate={isWide ? { width: 'auto', opacity: 1 } : {}}
+                exit={isWide ? { width: 0, opacity: 0 } : {}}
+                transition={{ duration: isWide ? 0.3 : 0, ease: 'easeOut' }}
+                className="shrink-0 overflow-hidden lg:min-h-0 lg:border-l"
+              >
+                <div className="sm:w-lg lg:h-full lg:w-96">
+                  <MeetupRsvpForm
+                    meetup={meetup}
+                    isLoggedIn={isLoggedIn}
+                    ticket={ticket}
+                    onCollapse={handleCollapse}
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
       </DialogContent>
     </Dialog>
   );
