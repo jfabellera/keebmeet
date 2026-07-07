@@ -41,6 +41,7 @@ interface Props {
   className?: string;
   /** The upload hook to use (meetup vs user photo endpoint). */
   useUpload: () => ReturnType<typeof useImageUpload>;
+  previewWidth?: number;
 }
 
 /**
@@ -59,6 +60,7 @@ const ImageUploadField = ({
   rounded = false,
   className,
   useUpload,
+  previewWidth,
 }: Props): ReactNode => {
   const { upload, isUploading } = useUpload();
   const inputId = useId();
@@ -103,6 +105,7 @@ const ImageUploadField = ({
         >
           <ImageWithFallback
             src={previewUrl}
+            resizeWidth={previewWidth}
             className="size-full object-cover"
           />
           {editable ? (

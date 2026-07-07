@@ -31,6 +31,7 @@ export const MeetupOrganizerCard = ({
       <div className="relative w-1/3 shrink-0 sm:w-2/5">
         <ImageWithFallback
           src={imageUrl}
+          resizeWidth={480}
           className="absolute inset-0 size-full object-cover"
         />
       </div>

@@ -310,6 +310,7 @@ const MeetupRsvpPage = (): ReactNode => {
                 <AspectRatio ratio={2 / 1}>
                   <ImageWithFallback
                     src={meetup.image_url}
+                    resizeWidth={768}
                     className="size-full object-cover"
                   />
                 </AspectRatio>

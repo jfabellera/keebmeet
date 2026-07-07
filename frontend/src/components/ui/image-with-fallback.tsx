@@ -1,8 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiImage } from 'react-icons/fi';
+import { resizedImageUrl } from '../../util/imageUrl';
 
 interface ImageWithFallbackProps extends React.ComponentProps<'img'> {
   fallback?: ReactNode;
+  resizeWidth?: number;
 }
 
 /**
@@ -13,6 +15,7 @@ export function ImageWithFallback({
   src,
   fallback,
   alt = '',
+  resizeWidth,
   ...props
 }: ImageWithFallbackProps): ReactNode {
   const [errored, setErrored] = useState(false);
@@ -35,8 +38,12 @@ export function ImageWithFallback({
 
   return (
     <img
-      src={src}
+      src={
+        resizeWidth != null ? resizedImageUrl(src, { width: resizeWidth }) : src
+      }
       alt={alt}
+      loading="lazy"
+      decoding="async"
       onError={() => {
         setErrored(true);
       }}

@@ -2,6 +2,7 @@ import type * as React from 'react';
 import { Avatar as AvatarPrimitive } from 'radix-ui';
 
 import { cn } from '@/lib/utils';
+import { resizedImageUrl } from '@/util/imageUrl';
 
 function Avatar({
   className,
@@ -25,12 +26,21 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
+  resizeWidth = 96,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+}: React.ComponentProps<typeof AvatarPrimitive.Image> & {
+  resizeWidth?: number;
+}) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn('aspect-square size-full', className)}
+      src={
+        typeof src === 'string' && src !== ''
+          ? resizedImageUrl(src, { width: resizeWidth })
+          : src
+      }
       {...props}
     />
   );
