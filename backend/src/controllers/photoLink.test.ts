@@ -281,6 +281,17 @@ describe('getMeetupPhotoLinks', () => {
     ]);
   });
 
+  // Records are returned oldest-first (contribution order) for a stable list.
+  it('requests the links ordered by created_at ascending', async () => {
+    mockedPhotoLinkRecord.find.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+
+    const findArg = mockedPhotoLinkRecord.find.mock.calls[0][0] as any;
+    expect(findArg.order).toEqual({ created_at: 'ASC' });
+  });
+
   it('returns an empty list when the meetup has no photo links', async () => {
     mockedPhotoLinkRecord.find.mockResolvedValue([]);
     const res = mockResponse();

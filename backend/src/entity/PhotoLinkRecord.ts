@@ -27,4 +27,7 @@ export class PhotoLinkRecord extends BaseEntity {
 
   @Column({ type: 'varchar', length: 1024, nullable: false })
   photo_link: string;
+
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  created_at: Date;
 }

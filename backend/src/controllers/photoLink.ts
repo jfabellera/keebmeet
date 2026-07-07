@@ -143,6 +143,9 @@ export const getMeetupPhotoLinks = async (
     where: {
       meetup: { id: meetup_id },
     },
+    order: {
+      created_at: 'ASC',
+    },
   });
 
   const response = records.map(
