@@ -147,10 +147,6 @@ router.delete(
   deletePhotoLinkForUser as RequestHandler
 );
 
-router.get(
-  '/:meetup_id/photo-links',
-  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
-  getMeetupPhotoLinks as RequestHandler
-);
+router.get('/:meetup_id/photo-links', getMeetupPhotoLinks as RequestHandler);
 
 export default router;
