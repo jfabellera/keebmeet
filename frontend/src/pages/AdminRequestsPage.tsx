@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { type OrganizerRequestInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { type ReactNode } from 'react';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { type OrganizerRequestInfo } from '@keebmeet/shared';
 import {
   useApproveOrganizerRequestMutation,
   useDenyOrganizerRequestMutation,
@@ -43,7 +44,11 @@ const AdminRequestsPage = (): ReactNode => {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
       <h1 className="text-2xl font-semibold">Organizer requests</h1>
-      {isLoading ? null : requests == null || requests.length === 0 ? (
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <Spinner className="size-8" />
+        </div>
+      ) : requests == null || requests.length === 0 ? (
         <p className="text-muted-foreground">No pending organizer requests.</p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -69,10 +74,12 @@ const AdminRequestsPage = (): ReactNode => {
                 >
                   <FiX />
                   Deny
+                  {isDenying && <Spinner />}
                 </Button>
                 <Button onClick={() => onApprove(request)} disabled={isBusy}>
                   <FiCheck />
                   Approve
+                  {isApproving && <Spinner />}
                 </Button>
               </div>
             </div>

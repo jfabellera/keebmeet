@@ -103,8 +103,8 @@ const VerifyEmailPage = (): ReactNode => {
             <div className="flex flex-col gap-2">
               {userId != null && (
                 <Button size="lg" disabled={resending} onClick={handleResend}>
-                  {resending ? <Loader2 className="animate-spin" /> : null}
                   Send a new link
+                  {resending ? <Loader2 className="animate-spin" /> : null}
                 </Button>
               )}
               <Button

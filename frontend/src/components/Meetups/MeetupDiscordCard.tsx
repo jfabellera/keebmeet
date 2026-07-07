@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { hasMeetupEnded } from '../../util/timeUtil';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
+import { Spinner } from '../ui/spinner';
 
 interface Props {
   meetupId: string;
@@ -61,10 +62,9 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
 
   const isLinked = user?.is_discord_linked === true;
 
-  const { data: servers } = useGetUserDiscordServersQuery(
-    localUser?.id ?? '',
-    { skip: localUser == null || !isLinked }
-  );
+  const { data: servers } = useGetUserDiscordServersQuery(localUser?.id ?? '', {
+    skip: localUser == null || !isLinked,
+  });
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const { data: message, isLoading: isLoadingMessage } =
     useGetMeetupDiscordMessageQuery(meetupId, {
@@ -127,7 +127,9 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
           .
         </p>
       ) : isLoadingMessage ? (
-        <p>Loading...</p>
+        <div className="flex items-center justify-center py-4">
+          <Spinner className="size-6" />
+        </div>
       ) : message != null ? (
         <div className="flex flex-col gap-2">
           <p>
@@ -155,6 +157,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
               disabled={isUpdating}
             >
               Update
+              {isUpdating && <Spinner />}
             </Button>
             <Dialog
               open={confirmDeleteOpen}
@@ -185,6 +188,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
                     disabled={isDeleting}
                   >
                     Delete
+                    {isDeleting && <Spinner />}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -248,6 +252,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
             }
           >
             Create
+            {isCreating && <Spinner />}
           </Button>
         </div>
       )}

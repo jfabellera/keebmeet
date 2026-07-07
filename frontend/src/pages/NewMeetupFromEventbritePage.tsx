@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { useFormik } from 'formik';
 import { type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -236,6 +237,7 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
                     disabled={!formik.isValid || isLoading}
                   >
                     Submit
+                    {isLoading && <Spinner />}
                   </Button>
                 </>
               )}

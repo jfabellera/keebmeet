@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { type RaffleRecordResponse } from '@keebmeet/shared';
 import dayjs from 'dayjs';
@@ -150,6 +151,7 @@ const RaffleHistoryCard = ({
                   onClick={() => void handleDelete()}
                 >
                   {cooldown > 0 ? `Delete (${cooldown})` : 'Delete'}
+                  {isDeleting && <Spinner />}
                 </Button>
               </DialogClose>
             </DialogFooter>

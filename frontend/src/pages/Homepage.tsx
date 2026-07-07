@@ -1,13 +1,13 @@
+import { Spinner } from '@/components/ui/spinner';
+import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { type MeetupInfo } from '@keebmeet/shared';
-import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
-import { useGetMeetupsQuery } from '../store/meetupSlice';
+import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
 import {
   hasMeetupEnded,
@@ -26,6 +26,9 @@ const Homepage = (): ReactNode => {
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
+  // Warm the detail cache on hover so the modal usually opens instantly on
+  // click. Prefetch is a no-op when the meetup is already cached.
+  const prefetchMeetup = meetupSlice.usePrefetch('getMeetup');
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
   const isOpen = meetupId !== '';
@@ -85,6 +88,9 @@ const Homepage = (): ReactNode => {
               onClick={() => {
                 meetupCardOnClick(meetup.id);
               }}
+              onMouseEnter={() => {
+                prefetchMeetup(meetup.id);
+              }}
             >
               <MeetupCard
                 meetup={meetup}
@@ -100,7 +106,9 @@ const Homepage = (): ReactNode => {
   return (
     <Page>
       {isLoading ? (
-        <></>
+        <div className="flex h-full w-full items-center justify-center">
+          <Spinner className="size-10" />
+        </div>
       ) : (
         <div className="flex flex-col gap-4 p-4">
           {currentMeetups != null && currentMeetups.length > 0

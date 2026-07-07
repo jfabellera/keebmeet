@@ -108,8 +108,8 @@ const DiscordLinkPage = (): ReactNode => {
                   </p>
                 ) : null}
                 <Button type="submit" disabled={loading}>
-                  {loading ? <Loader2 className="animate-spin" /> : null}
                   Link and sign in
+                  {loading ? <Loader2 className="animate-spin" /> : null}
                 </Button>
                 <Button
                   type="button"

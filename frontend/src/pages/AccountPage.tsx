@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
+import { Spinner } from '@/components/ui/spinner';
 import { useFormik } from 'formik';
-import { Loader2 } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
@@ -198,8 +198,8 @@ const AccountPage = (): ReactNode => {
                 disabled={loading || !formik.isValid || !formik.dirty}
                 size="lg"
               >
-                {loading ? <Loader2 className="animate-spin" /> : null}
                 Save changes
+                {loading ? <Spinner /> : null}
               </Button>
             </div>
           </form>
@@ -263,10 +263,8 @@ const AccountPage = (): ReactNode => {
                 onClick={onRequestOrganizer}
                 disabled={isRequestingOrganizer || user == null}
               >
-                {isRequestingOrganizer ? (
-                  <Loader2 className="animate-spin" />
-                ) : null}
                 Request organizer access
+                {isRequestingOrganizer ? <Spinner /> : null}
               </Button>
             </div>
           )}

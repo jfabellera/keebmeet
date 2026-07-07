@@ -190,8 +190,8 @@ const RegisterPage = (): ReactNode => {
                     disabled={loading || !formik.isValid}
                     size="lg"
                   >
-                    {loading ? <Loader2 className="animate-spin" /> : null}
                     Sign up
+                    {loading ? <Loader2 className="animate-spin" /> : null}
                   </Button>
                   <DiscordLoginButton />
                 </div>

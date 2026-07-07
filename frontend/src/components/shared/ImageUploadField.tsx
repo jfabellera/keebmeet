@@ -2,6 +2,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
@@ -139,7 +140,7 @@ const ImageUploadField = ({
                 disabled={isUploading}
                 aria-label="Change image"
               >
-                <Pencil />
+                {isUploading ? <Spinner /> : <Pencil />}
               </Button>
               {onRemove != null && previewUrl !== '' ? (
                 <Button

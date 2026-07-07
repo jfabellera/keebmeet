@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
   TableBody,
@@ -16,12 +17,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useDisclosure } from '@/hooks/useDisclosure';
+import { type TicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiEdit2 } from 'react-icons/fi';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { type TicketInfo } from '@keebmeet/shared';
 import {
   useEditAttendeeMutation,
   useGetMeetupAttendeesQuery,
@@ -29,14 +30,14 @@ import {
 
 const ManageMeetupAttendeesPage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: attendees } = useGetMeetupAttendeesQuery({
+  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery({
     meetup_id: meetupId ?? '',
     params: {
       detail_level: 'detailed',
     },
   });
 
-  const [editAttendee] = useEditAttendeeMutation();
+  const [editAttendee, { isLoading: isSaving }] = useEditAttendeeMutation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [viewing, setViewing] = useState<TicketInfo | null>(null);
@@ -79,6 +80,14 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
 
   const entries = parseInt(raffleEntries, 10);
   const canSave = Number.isInteger(entries) && entries >= 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   const handleSave = (): void => {
     if (viewing == null || !canSave) return;
@@ -225,8 +234,9 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
                 <Button variant="outline" onClick={cancelEditing}>
                   Cancel
                 </Button>
-                <Button disabled={!canSave} onClick={handleSave}>
+                <Button disabled={!canSave || isSaving} onClick={handleSave}>
                   Save
+                  {isSaving && <Spinner />}
                 </Button>
               </>
             ) : (

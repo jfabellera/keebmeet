@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Spinner } from '@/components/ui/spinner';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,7 @@ import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
-  const [createMeetup] = useCreateMeetupMutation();
+  const [createMeetup, { isLoading }] = useCreateMeetupMutation();
   const currentUserId = useAppSelector((state) => state.user.user?.id);
   const navigate = useNavigate();
   const formik = useFormik({
@@ -199,8 +200,13 @@ const NewMeetupPage = (): ReactNode => {
                   value={formik.values.defaultRaffleEntries}
                 />
 
-                <Button type="submit" disabled={!formik.isValid} size="lg">
+                <Button
+                  type="submit"
+                  disabled={!formik.isValid || isLoading}
+                  size="lg"
+                >
                   Create
+                  {isLoading && <Spinner />}
                 </Button>
               </div>
             </form>

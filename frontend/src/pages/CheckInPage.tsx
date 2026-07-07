@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
   TableBody,
@@ -40,7 +41,7 @@ import {
 const CheckInPage = (): ReactNode => {
   const { meetupId: meetupIdParam } = useParams();
   const meetupId = meetupIdParam ?? '';
-  const { data: attendees } = useGetMeetupAttendeesQuery({
+  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery({
     meetup_id: meetupId,
     params: { detail_level: 'detailed' },
   });
@@ -58,8 +59,10 @@ const CheckInPage = (): ReactNode => {
   // Undoing a check-in is destructive, so we require the organizer to type the
   // attendee's display name to confirm.
   const [confirmText, setConfirmText] = useState<string>('');
-  const [checkInAttendee] = useCheckInAttendeeMutation();
-  const [editAttendee] = useEditAttendeeMutation();
+  const [checkInAttendee, { isLoading: isCheckingIn }] =
+    useCheckInAttendeeMutation();
+  const [editAttendee, { isLoading: isUncheckingIn }] =
+    useEditAttendeeMutation();
 
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
@@ -264,6 +267,14 @@ const CheckInPage = (): ReactNode => {
     setSearchValue(event.target.value);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-2 p-4 text-center">
       <h2 className="mb-2 text-center text-2xl font-medium">Check-in</h2>
@@ -399,7 +410,7 @@ const CheckInPage = (): ReactNode => {
               <Button
                 variant={action === 'uncheckin' ? 'destructive' : 'default'}
                 autoFocus={action === 'checkin'}
-                disabled={!canConfirm}
+                disabled={!canConfirm || isCheckingIn || isUncheckingIn}
                 onClick={
                   action === 'uncheckin'
                     ? handleUncheckIn
@@ -409,6 +420,7 @@ const CheckInPage = (): ReactNode => {
                 }
               >
                 Confirm
+                {(isCheckingIn || isUncheckingIn) && <Spinner />}
               </Button>
             </DialogFooter>
           </DialogContent>

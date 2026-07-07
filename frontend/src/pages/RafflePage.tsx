@@ -8,12 +8,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { useDisclosure } from '@/hooks/useDisclosure';
 import { cn } from '@/lib/utils';
 import { type RaffleRecordResponse } from '@keebmeet/shared';
 import { useFormik } from 'formik';
-import { Loader2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiSettings } from 'react-icons/fi';
 import { MdHistory } from 'react-icons/md';
@@ -289,6 +289,7 @@ const RafflePage = (): ReactNode => {
                           disabled={isClaimLoading || isUnClaimLoading}
                         >
                           {!winner.claimed ? 'Claim' : 'Unclaim'}
+                          {(isClaimLoading || isUnClaimLoading) && <Spinner />}
                         </Button>
                       </div>
                     );
@@ -345,7 +346,6 @@ const RafflePage = (): ReactNode => {
               onClick={handleRoll}
               disabled={!isRollable || isRollLoading}
             >
-              {isRollLoading ? <Loader2 className="animate-spin" /> : null}
               <span className="text-2xl font-medium">
                 Roll{' '}
                 {formik.values.rollQuantity > 1
@@ -355,6 +355,7 @@ const RafflePage = (): ReactNode => {
               {formik.values.displayOnRoll ? (
                 <span className="text-sm">and display</span>
               ) : null}
+              {isRollLoading ? <Spinner className="size-6" /> : null}
             </Button>
           </div>
           <div className={isBatch ? 'col-span-1' : 'col-span-2'}>
@@ -397,6 +398,7 @@ const RafflePage = (): ReactNode => {
                     ? 'Claim'
                     : 'Unclaim'}
                 </span>
+                {(isClaimLoading || isUnClaimLoading) && <Spinner />}
               </Button>
             </div>
           ) : null}
@@ -486,9 +488,10 @@ const RafflePage = (): ReactNode => {
               <Button
                 className="bg-destructive hover:bg-destructive/90 h-12 w-full text-white"
                 onClick={handleRollAllIn}
-                disabled={raffleRecordId != null}
+                disabled={raffleRecordId != null || isRollLoading}
               >
                 Roll all in
+                {isRollLoading && <Spinner />}
               </Button>
               <p className="mt-1 text-center">
                 Previous winners are eligible to win

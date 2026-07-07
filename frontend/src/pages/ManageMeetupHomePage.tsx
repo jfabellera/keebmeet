@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useMemo, type ReactNode } from 'react';
@@ -20,12 +21,18 @@ dayjs.extend(isBetween);
 
 const ManageMeetupHomePage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
-  const { data: attendees } = useGetMeetupAttendeesQuery({
-    meetup_id: meetupId ?? '',
-  });
+  const { data: meetup, isLoading: isMeetupLoading } = useGetMeetupQuery(
+    meetupId ?? ''
+  );
+  const { data: attendees, isLoading: isAttendeesLoading } =
+    useGetMeetupAttendeesQuery({
+      meetup_id: meetupId ?? '',
+    });
 
-  const { data: raffleRecords } = useGetRaffleHistoryQuery(meetupId ?? '');
+  const { data: raffleRecords, isLoading: isRafflesLoading } =
+    useGetRaffleHistoryQuery(meetupId ?? '');
+
+  const isLoading = isMeetupLoading || isAttendeesLoading || isRafflesLoading;
   const navigate = useNavigate();
 
   const hasStarted = useMemo(
@@ -65,6 +72,14 @@ const ManageMeetupHomePage = (): ReactNode => {
         : 0,
     [raffleRecords]
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="m-4 flex flex-col justify-center">

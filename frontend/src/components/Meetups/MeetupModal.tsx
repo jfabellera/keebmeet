@@ -52,7 +52,7 @@ export const MeetupModal = ({
   isOpen,
   onClose,
 }: MeetupModalProps): ReactNode => {
-  const { data: meetup, error } = useGetMeetupQuery(meetupId, {
+  const { currentData: meetup, error } = useGetMeetupQuery(meetupId, {
     skip: meetupId === '',
   });
   const dispatch = useAppDispatch();

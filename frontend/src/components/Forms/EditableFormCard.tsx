@@ -67,10 +67,10 @@ const EditableFormCard = ({
             onClick={onEditSubmit}
             disabled={(isFormInvalid ?? false) || (isSubmitLoading ?? false)}
           >
+            Save
             {isSubmitLoading === true ? (
               <Loader2 className="animate-spin" />
             ) : null}
-            Save
           </Button>
         </div>
       ) : null}

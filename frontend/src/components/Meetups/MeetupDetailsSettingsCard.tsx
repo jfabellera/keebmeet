@@ -29,7 +29,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const currentUserId = useAppSelector((state) => state.user.user?.id);
   const hasStarted = meetup != null ? hasMeetupStarted(meetup) : false;
   const [isEditable, setIsEditable] = useBoolean(false);
-  const [editMeetup] = useEditMeetupMutation();
+  const [editMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -112,10 +112,9 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   }, [meetup]);
 
   const onSubmit = (): void => {
-    void (async () => {
-      await formik.submitForm();
-    })();
-    setIsEditable.off();
+    // Leave edit mode from within the formik onSubmit once the save resolves,
+    // so the Save button (and its spinner) stays visible while in flight.
+    void formik.submitForm();
   };
   const onCancel = (): void => {
     formik.resetForm();
@@ -131,6 +130,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditEnter={setIsEditable.on}
       onEditCancel={onCancel}
       onEditSubmit={onSubmit}
+      isSubmitLoading={isSaving}
       isFormInvalid={false}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
