@@ -72,6 +72,7 @@ jobs:
             VITE_KEEBMEET_AUTH_SERVER_URL=${{ vars.PUBLIC_AUTH_URL }}
             VITE_KEEBMEET_SOCKET_SERVER_URL=${{ vars.PUBLIC_SOCKET_URL }}
             VITE_KEEBMEET_APP_URL=${{ vars.PUBLIC_WEB_URL }}
+            VITE_KEEBMEET_CDN_BASE_URL=${{ vars.PUBLIC_CDN_URL }}
             VITE_DISCORD_CLIENT_ID=${{ vars.DISCORD_CLIENT_ID }}
             VITE_DISCORD_REDIRECT_URI=${{ vars.DISCORD_REDIRECT_URI }}
           tags: |
