@@ -5,6 +5,7 @@ interface Config {
   appUrl: string;
   discordClientId: string;
   discordRedirectUri: string;
+  cdnBaseUrl: string;
 }
 
 const appUrl = import.meta.env.VITE_KEEBMEET_APP_URL ?? 'http://localhost:5173';
@@ -21,6 +22,7 @@ const config: Config = {
   discordRedirectUri:
     import.meta.env.VITE_DISCORD_REDIRECT_URI ??
     `${appUrl}/auth/discord/callback`,
+  cdnBaseUrl: import.meta.env.VITE_KEEBMEET_CDN_BASE_URL ?? '',
 };
 
 export default config;

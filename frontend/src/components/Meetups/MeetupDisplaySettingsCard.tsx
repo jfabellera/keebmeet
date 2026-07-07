@@ -120,6 +120,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
             editable={isEditable}
             aspectRatio={16 / 9}
             className="max-w-none py-0"
+            previewWidth={360}
             useUpload={useMeetupImageUpload}
             onUploaded={(_imageKey, imageUrl) => setIdleUrl(index, imageUrl)}
             footer={
@@ -184,6 +185,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               editable={isEditable}
               aspectRatio={16 / 9}
               className="max-w-none py-0"
+              previewWidth={360}
               useUpload={useMeetupImageUpload}
               onUploaded={(_imageKey, imageUrl) =>
                 setRaffleBackgroundUrl(imageUrl)
@@ -203,6 +205,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
               editable={isEditable}
               aspectRatio={16 / 9}
               className="max-w-none py-0"
+              previewWidth={360}
               useUpload={useMeetupImageUpload}
               onUploaded={(_imageKey, imageUrl) =>
                 setBatchRaffleBackgroundUrl(imageUrl)

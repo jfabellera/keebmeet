@@ -23,6 +23,7 @@ export const MeetupCard = ({
       <AspectRatio ratio={2 / 1}>
         <ImageWithFallback
           src={meetup.image_url}
+          resizeWidth={640}
           className="size-full object-cover"
         />
       </AspectRatio>
