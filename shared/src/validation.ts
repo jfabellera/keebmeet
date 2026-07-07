@@ -104,6 +104,12 @@ export const editTicketSchema = z.object({
 
 export type EditTicketPayload = z.infer<typeof editTicketSchema>;
 
+export const createPhotoLinkSchema = z.object({
+  photo_link: z.url().max(1024),
+});
+
+export type CreatePhotoLinkPayload = z.infer<typeof createPhotoLinkSchema>;
+
 export const createUserSchema = z.object({
   email: z.email(),
   first_name: z.string(),

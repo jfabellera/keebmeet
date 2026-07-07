@@ -21,7 +21,7 @@ export class RaffleRecord extends BaseEntity {
   @OneToMany(() => RaffleWinner, (winner) => winner.raffle_record)
   winners: RaffleWinner[];
 
-  @Column({ type: 'boolean', default: 'false' })
+  @Column({ type: 'boolean', default: false })
   was_displayed: boolean;
 
   @Column({ type: 'timestamptz', default: () => 'now()' })

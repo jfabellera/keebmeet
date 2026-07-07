@@ -1,5 +1,11 @@
 import express, { type RequestHandler } from 'express';
 import {
+  createMeetupDiscordMessage,
+  deleteMeetupDiscordMessage,
+  getMeetupDiscordMessage,
+  updateMeetupDiscordMessage,
+} from '../controllers/meetupDiscord';
+import {
   createMeetup,
   createMeetupFromEventbrite,
   deleteMeetup,
@@ -12,11 +18,12 @@ import {
   uploadMeetupImage,
 } from '../controllers/meetups';
 import {
-  createMeetupDiscordMessage,
-  deleteMeetupDiscordMessage,
-  getMeetupDiscordMessage,
-  updateMeetupDiscordMessage,
-} from '../controllers/meetupDiscord';
+  createPhotoLink,
+  deletePhotoLink,
+  deletePhotoLinkForUser,
+  getMeetupPhotoLinkPreviews,
+  getMeetupPhotoLinks,
+} from '../controllers/photoLink';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
 import { Rule, authChecker } from '../middleware/authChecker';
@@ -121,6 +128,32 @@ router.delete(
   '/:meetup_id/discord/message',
   authChecker([Rule.requireOrganizer]) as RequestHandler,
   deleteMeetupDiscordMessage as RequestHandler
+);
+
+router.post(
+  '/:meetup_id/photo-link',
+  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
+  createPhotoLink as RequestHandler
+);
+
+router.delete(
+  '/:meetup_id/photo-link',
+  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
+  deletePhotoLink as RequestHandler
+);
+
+router.delete(
+  '/:meetup_id/photo-link/:target_user_id',
+  authChecker() as RequestHandler,
+  deletePhotoLinkForUser as RequestHandler
+);
+
+router.get('/:meetup_id/photo-links', getMeetupPhotoLinks as RequestHandler);
+
+// Public: server-scraped OpenGraph previews for those links.
+router.get(
+  '/:meetup_id/photo-links/previews',
+  getMeetupPhotoLinkPreviews as RequestHandler
 );
 
 export default router;
