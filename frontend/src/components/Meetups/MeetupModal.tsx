@@ -34,6 +34,7 @@ import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
+import { MeetupPhotoLinks } from './MeetupPhotoLinks';
 
 dayjs.extend(customParseFormat);
 
@@ -222,6 +223,9 @@ export const MeetupModal = ({
                 </div>
               ) : null}
             </div>
+
+            {/* Photos */}
+            <MeetupPhotoLinks meetup={meetup} isAttendee={ticket != null} />
 
             {/* Description */}
             {meetup.description !== '' ? (
