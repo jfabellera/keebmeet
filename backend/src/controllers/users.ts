@@ -6,6 +6,7 @@ import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { fetchDiscordUsername } from '../util/discord';
+import { normalizeImage } from '../util/imageProcessing';
 import {
   IMAGE_EXT_BY_MIME,
   buildTempImageKey,
@@ -37,8 +38,19 @@ export const uploadUserImage = async (
       .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
   }
 
+  let processed: Buffer;
+  try {
+    processed = await normalizeImage(file.buffer, file.mimetype, {
+      maxDimension: 1024,
+    });
+  } catch {
+    return res
+      .status(400)
+      .json({ message: 'Could not process the uploaded image.' });
+  }
+
   const key = buildTempImageKey('users', ext);
-  await upload(key, file.buffer, file.mimetype);
+  await upload(key, processed, file.mimetype);
 
   return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
 };

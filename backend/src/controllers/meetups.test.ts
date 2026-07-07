@@ -104,6 +104,13 @@ jest.mock('../util/objectStorage', () => {
   };
 });
 
+// Default: normalization is a passthrough so tests assert on the buffer flow
+// without depending on sharp's native binary.
+jest.mock('../util/imageProcessing', () => ({
+  __esModule: true,
+  normalizeImage: jest.fn(async (buffer: Buffer) => buffer),
+}));
+
 import {
   createMeetup,
   createMeetupFromEventbrite,
@@ -114,6 +121,7 @@ import {
   getMeetupDisplayAssets,
   syncEventbriteAttendees,
   updateMeetup,
+  uploadMeetupImage,
 } from './meetups';
 import { socket } from '../Server';
 import { In } from 'typeorm';
@@ -132,7 +140,8 @@ import {
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
-import { deleteObject, promoteImage } from '../util/objectStorage';
+import { deleteObject, promoteImage, upload } from '../util/objectStorage';
+import { normalizeImage } from '../util/imageProcessing';
 
 const mockedMeetup = jest.mocked(Meetup);
 const mockedUser = jest.mocked(User);
@@ -144,6 +153,8 @@ const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
+const mockedUpload = jest.mocked(upload);
+const mockedNormalizeImage = jest.mocked(normalizeImage);
 const mockedDisplayRecord = jest.mocked(MeetupDisplayRecord);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
@@ -1209,5 +1220,70 @@ describe('createMeetupFromEventbrite', () => {
       })
     );
     expect(res.statusCode).toBe(201);
+  });
+});
+
+// ---- uploadMeetupImage -----------------------------------------------------
+
+describe('uploadMeetupImage', () => {
+  const fileRequest = (file: unknown): Request =>
+    ({ body: {}, params: {}, query: {}, file }) as unknown as Request;
+
+  const pngFile = {
+    buffer: Buffer.from('original-bytes'),
+    mimetype: 'image/png',
+  };
+
+  it('normalizes the image, stores the processed buffer, and returns the key', async () => {
+    const processed = Buffer.from('processed-bytes');
+    mockedNormalizeImage.mockResolvedValueOnce(processed);
+    const res = mockResponse();
+
+    await uploadMeetupImage(fileRequest(pngFile), res);
+
+    expect(mockedNormalizeImage).toHaveBeenCalledWith(
+      pngFile.buffer,
+      'image/png',
+      { maxDimension: 3840 }
+    );
+    // The processed buffer is stored, not the original upload.
+    expect(mockedUpload).toHaveBeenCalledTimes(1);
+    const [key, storedBuffer, mimetype] = mockedUpload.mock.calls[0];
+    expect(key).toMatch(/^tmp\/meetups\/.*\.png$/);
+    expect(storedBuffer).toBe(processed);
+    expect(mimetype).toBe('image/png');
+    expect(res.statusCode).toBe(201);
+    expect((res.body as any).image_key).toBe(key);
+  });
+
+  it('returns 400 when no file is provided', async () => {
+    const res = mockResponse();
+    await uploadMeetupImage(fileRequest(undefined), res);
+    expect(res.statusCode).toBe(400);
+    expect(mockedUpload).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for an unsupported mimetype', async () => {
+    const res = mockResponse();
+    await uploadMeetupImage(
+      fileRequest({ buffer: Buffer.from('x'), mimetype: 'image/gif' }),
+      res
+    );
+    expect(res.statusCode).toBe(400);
+    expect(mockedNormalizeImage).not.toHaveBeenCalled();
+    expect(mockedUpload).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 and does not store when the image cannot be processed', async () => {
+    mockedNormalizeImage.mockRejectedValueOnce(new Error('bad image'));
+    const res = mockResponse();
+
+    await uploadMeetupImage(fileRequest(pngFile), res);
+
+    expect(res.statusCode).toBe(400);
+    expect((res.body as any).message).toBe(
+      'Could not process the uploaded image.'
+    );
+    expect(mockedUpload).not.toHaveBeenCalled();
   });
 });
