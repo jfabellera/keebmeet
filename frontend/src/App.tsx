@@ -38,7 +38,6 @@ import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
 import { ManageMeetupDisplayPage } from './pages/ManageMeetupDisplayPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
-import MeetupRsvpPage from './pages/MeetupRsvpPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import { store } from './store/store';
@@ -73,14 +72,8 @@ const App = (): ReactNode => {
               element={<DiscordCallbackPage />}
             />
             <Route path="/auth/discord/link" element={<DiscordLinkPage />} />
-            <Route
-              path="/meetup/:meetupId/rsvp"
-              element={
-                <RequireMeetup>
-                  <MeetupRsvpPage />
-                </RequireMeetup>
-              }
-            />
+            {/* Same element as the meetup route so the modal expands in place. */}
+            <Route path="/meetup/:meetupId/rsvp" element={<Homepage />} />
             <Route
               path="/organizer"
               element={
