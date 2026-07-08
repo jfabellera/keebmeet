@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type PhotoLinkInfo, type PhotoLinkPreview } from '@keebmeet/shared';
 import config from '../config';
+import { meetupSlice } from './meetupSlice';
 import { type RootState } from './store';
 
 export interface CreatePhotoLinkOptions {
@@ -57,6 +58,17 @@ export const photoLinkSlice = createApi({
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'PhotoLinks', id: meetupId },
       ],
+      // The "has photos" badge on meetup listings is derived from the meetups
+      // list query, which lives in a separate API slice. Cross-slice tags can't
+      // be declared in `invalidatesTags`, so refresh it once the link settles.
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+          dispatch(meetupSlice.util.invalidateTags(['Meetups']));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
     }),
     // Self-service delete: the backend keys off the requestor's token, so no
     // user id is sent.
@@ -68,6 +80,15 @@ export const photoLinkSlice = createApi({
       invalidatesTags: (result, error, meetupId) => [
         { type: 'PhotoLinks', id: meetupId },
       ],
+      // Deleting may remove the last link, clearing the badge — refresh the list.
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+          dispatch(meetupSlice.util.invalidateTags(['Meetups']));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
     }),
     deletePhotoLinkForUser: builder.mutation<void, DeletePhotoLinkForUserOptions>(
       {
@@ -78,6 +99,14 @@ export const photoLinkSlice = createApi({
         invalidatesTags: (result, error, { meetupId }) => [
           { type: 'PhotoLinks', id: meetupId },
         ],
+        onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+          try {
+            await queryFulfilled;
+            dispatch(meetupSlice.util.invalidateTags(['Meetups']));
+          } catch {
+            // Mutation failed — nothing to invalidate.
+          }
+        },
       }
     ),
   }),

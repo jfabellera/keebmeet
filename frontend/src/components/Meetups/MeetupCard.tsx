@@ -1,11 +1,16 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Badge } from '@/components/ui/badge';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { type ReactNode } from 'react';
-import { FiImage } from 'react-icons/fi';
-import type { MeetupInfo } from '@keebmeet/shared';
+import { FiCheck, FiImage } from 'react-icons/fi';
+import { hasMeetupEnded } from '../../util/timeUtil';
 
 dayjs.extend(customParseFormat);
 
@@ -18,6 +23,10 @@ export const MeetupCard = ({
   meetup,
   attending,
 }: MeetupCardProps): ReactNode => {
+  const attendedLabel = hasMeetupEnded(meetup)
+    ? "You've attended!"
+    : "You're attending!";
+
   return (
     <div className="bg-card text-card-foreground h-full cursor-pointer overflow-hidden rounded-md border shadow-sm">
       <AspectRatio ratio={2 / 1}>
@@ -35,9 +44,27 @@ export const MeetupCard = ({
                 'MMMM DD, YYYY'
               )}
             </p>
-            {attending === true ? (
-              <Badge className="ml-auto bg-green-500 text-white">RSVPED</Badge>
-            ) : null}
+            <div className="text-muted-foreground ml-auto flex items-center gap-2.5">
+              {attending === true ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    className="flex text-green-600"
+                    aria-label={attendedLabel}
+                  >
+                    <FiCheck className="size-5" strokeWidth={2.5} />
+                  </TooltipTrigger>
+                  <TooltipContent>{attendedLabel}</TooltipContent>
+                </Tooltip>
+              ) : null}
+              {meetup.has_photos === true ? (
+                <Tooltip>
+                  <TooltipTrigger className="flex" aria-label="Has photos">
+                    <FiImage className="size-5" />
+                  </TooltipTrigger>
+                  <TooltipContent>This meetup has photos!</TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
           </div>
           <h3 className="text-xl font-semibold">{meetup.name}</h3>
           <p>{`${meetup.location.city}, ${

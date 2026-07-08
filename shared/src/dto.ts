@@ -26,6 +26,7 @@ export interface MeetupInfo {
   image_url: string;
   eventbrite_url?: string;
   description?: string;
+  has_photos?: boolean;
 }
 
 export interface TicketInfo {

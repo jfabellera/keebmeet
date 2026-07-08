@@ -32,6 +32,9 @@ jest.mock('../entity/MeetupDisplayRecord', () => ({
 jest.mock('../entity/Ticket', () => ({
   Ticket: { count: jest.fn() },
 }));
+jest.mock('../entity/PhotoLinkRecord', () => ({
+  PhotoLinkRecord: { createQueryBuilder: jest.fn() },
+}));
 
 jest.mock('../util/eventbriteApi', () => ({
   createEventbriteWebhook: jest.fn(),
@@ -159,6 +162,15 @@ const mockedNormalizeImage = jest.mocked(normalizeImage);
 const mockedDisplayRecord = jest.mocked(MeetupDisplayRecord);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
+const mockedPhotoLinkRecord = jest.mocked(PhotoLinkRecord);
+// Chainable stub for PhotoLinkRecord.createQueryBuilder(...). getRawMany
+// returns the grouped meetup_ids that have photos; default is none.
+const photoLinkQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  groupBy: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([]),
+};
 const mockedSocket = jest.mocked(socket);
 const mockedGeocode = jest.mocked(geocode);
 const mockedGetUtcOffset = jest.mocked(getUtcOffset);
@@ -223,6 +235,10 @@ const geocodeResult = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  photoLinkQueryBuilder.getRawMany.mockResolvedValue([]);
+  mockedPhotoLinkRecord.createQueryBuilder.mockReturnValue(
+    photoLinkQueryBuilder as any
+  );
   mockedMeetup.create.mockImplementation((attrs: any) => ({
     organizers: [],
     ...attrs,
@@ -247,7 +263,24 @@ describe('getAllMeetups', () => {
     expect(body).toHaveLength(1);
     expect(body[0].location.city).toBe('Austin');
     expect(body[0].tickets).toBeUndefined();
+    expect(body[0].has_photos).toBe(false);
     expect(mockedTicket.count).not.toHaveBeenCalled();
+  });
+
+  it('flags meetups that have photo links', async () => {
+    mockedMeetup.find.mockResolvedValue([
+      fakeMeetupRow({ id: '10' }),
+      fakeMeetupRow({ id: '20' }),
+    ]);
+    // Only meetup 10 has photo links.
+    photoLinkQueryBuilder.getRawMany.mockResolvedValue([{ meetup_id: '10' }]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest(), res);
+
+    const body = res.body as any[];
+    expect(body.find((m) => m.id === '10').has_photos).toBe(true);
+    expect(body.find((m) => m.id === '20').has_photos).toBe(false);
   });
 
   it('includes ticket availability when detailed', async () => {
