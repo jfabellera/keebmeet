@@ -104,11 +104,13 @@ const ImageUploadField = ({
             editable && isTouch ? () => setRevealed((prev) => !prev) : undefined
           }
         >
-          <ImageWithFallback
-            src={previewUrl}
-            resizeWidth={previewWidth}
-            className="size-full object-cover"
-          />
+          {!isUploading ? (
+            <ImageWithFallback
+              src={previewUrl}
+              resizeWidth={previewWidth}
+              className="size-full object-cover"
+            />
+          ) : null}
           {editable ? (
             <div
               className={cn(
@@ -156,6 +158,19 @@ const ImageUploadField = ({
                 >
                   <Trash2 />
                 </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {isUploading ? (
+            <div
+              className={cn(
+                'bg-muted text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2',
+                rounded && 'rounded-full'
+              )}
+            >
+              <Spinner className="size-6" />
+              {!rounded ? (
+                <span className="text-sm font-medium">Uploading…</span>
               ) : null}
             </div>
           ) : null}
