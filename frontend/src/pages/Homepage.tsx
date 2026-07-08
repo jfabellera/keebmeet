@@ -8,8 +8,8 @@ import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
-import { useMeetupHoverPrefetch } from '../store/useMeetupPrefetch';
 import { useGetTicketsQuery } from '../store/ticketSlice';
+import { useMeetupHoverPrefetch } from '../store/useMeetupPrefetch';
 import {
   hasMeetupEnded,
   hasMeetupStarted,
@@ -82,7 +82,7 @@ const Homepage = (): ReactNode => {
   const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
     return (
       <div>
-        <h2 className="mb-2 text-3xl font-bold">{title}</h2>
+        <h2 className="mb-3 text-3xl font-bold">{title}</h2>
         <div className="grid [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))] gap-4">
           {meetups?.map((meetup) => (
             <div
@@ -112,7 +112,7 @@ const Homepage = (): ReactNode => {
           <Spinner className="size-10" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4 p-4">
+        <div className="flex flex-col gap-8 px-4 pt-6 pb-8">
           {currentMeetups != null && currentMeetups.length > 0
             ? meetupSection('Happening now', currentMeetups)
             : null}
