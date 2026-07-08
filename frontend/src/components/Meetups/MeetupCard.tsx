@@ -35,9 +35,17 @@ export const MeetupCard = ({
                 'MMMM DD, YYYY'
               )}
             </p>
-            {attending === true ? (
-              <Badge className="ml-auto bg-green-500 text-white">RSVPED</Badge>
-            ) : null}
+            <div className="ml-auto flex items-center gap-2">
+              {meetup.has_photos === true ? (
+                <Badge variant="secondary" className="gap-1">
+                  <FiImage className="size-3" />
+                  Photos
+                </Badge>
+              ) : null}
+              {attending === true ? (
+                <Badge className="bg-green-500 text-white">RSVPED</Badge>
+              ) : null}
+            </div>
           </div>
           <h3 className="text-xl font-semibold">{meetup.name}</h3>
           <p>{`${meetup.location.city}, ${

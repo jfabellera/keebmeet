@@ -67,7 +67,8 @@ enum MeetupInfoDetailLevel {
 
 const mapMeetupInfo = async (
   meetup: Meetup,
-  type: MeetupInfoDetailLevel
+  type: MeetupInfoDetailLevel,
+  hasPhotos?: boolean
 ): Promise<MeetupInfo> => {
   const meetupInfo: MeetupInfo = {
     id: meetup.id,
@@ -81,6 +82,10 @@ const mapMeetupInfo = async (
     },
     image_url: publicUrl(meetup.image_key),
   };
+
+  if (hasPhotos != null) {
+    meetupInfo.has_photos = hasPhotos;
+  }
 
   if (meetup.eventbriteRecord != null) {
     meetupInfo.eventbrite_url = meetup.eventbriteRecord.url;
@@ -185,20 +190,35 @@ export const getAllMeetups = async (
   const findOptionsOrder = createMeetupsSorting(req.query);
 
   // Query
-  const meetups: Array<Promise<MeetupInfo>> = (
-    await Meetup.find({
-      relations: {
-        organizers: true,
-        lead_organizer: true,
-        eventbriteRecord: true,
-      },
-      where: findOptionsWhere,
-      order: findOptionsOrder,
-    })
-  ).map(async (meetup: Meetup): Promise<MeetupInfo> => {
-    const meetupInfo = await mapMeetupInfo(meetup, detailLevel);
-    return meetupInfo;
+  const meetupEntities = await Meetup.find({
+    relations: {
+      organizers: true,
+      lead_organizer: true,
+      eventbriteRecord: true,
+    },
+    where: findOptionsWhere,
+    order: findOptionsOrder,
   });
+
+  // Determine which of these meetups have any photo links in a single grouped
+  // query, so the list carries a "has photos" flag without an N+1 per meetup.
+  const meetupIdsWithPhotos = new Set<string>();
+  const meetupIds = meetupEntities.map((meetup) => meetup.id);
+  if (meetupIds.length > 0) {
+    const rows = await PhotoLinkRecord.createQueryBuilder('photo')
+      .select('photo.meetup_id', 'meetup_id')
+      .where('photo.meetup_id IN (:...meetupIds)', { meetupIds })
+      .groupBy('photo.meetup_id')
+      .getRawMany<{ meetup_id: string }>();
+    for (const row of rows) {
+      meetupIdsWithPhotos.add(String(row.meetup_id));
+    }
+  }
+
+  const meetups = meetupEntities.map(
+    async (meetup: Meetup): Promise<MeetupInfo> =>
+      mapMeetupInfo(meetup, detailLevel, meetupIdsWithPhotos.has(meetup.id))
+  );
 
   return res.json(await Promise.all(meetups));
 };
