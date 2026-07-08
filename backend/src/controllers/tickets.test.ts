@@ -85,6 +85,7 @@ const fakeMeetup = (overrides = {}): any => ({
   id: '10',
   default_raffle_entries: 2,
   date: hoursFromNow(1),
+  utc_offset: 0,
   duration_hours: 2,
   ...overrides,
 });

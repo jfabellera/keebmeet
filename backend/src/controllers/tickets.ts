@@ -4,6 +4,8 @@ import {
   createTicketSchema,
   editTicketSchema,
 } from '@keebmeet/shared';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { type Request, type Response } from 'express';
 import { socket } from '../Server';
 import { Meetup } from '../entity/Meetup';
@@ -13,6 +15,8 @@ import { sendRsvpConfirmationEmail } from '../util/email';
 import { getEventbriteAttendeeByUri } from '../util/eventbriteApi';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { getMeetupEnd, isMeetupAtCapacity } from '../util/rsvp';
+
+dayjs.extend(utc);
 
 export const getAllTickets = async (
   req: Request,
@@ -101,7 +105,9 @@ export const createTicket = async (
   await sendRsvpConfirmationEmail(
     newTicket.ticket_holder_email,
     meetup.name,
-    meetup.date,
+    dayjs(meetup.date)
+      .utcOffset(meetup.utc_offset)
+      .format('dddd, MMMM D, YYYY [at] h:mm A'),
     meetup.address,
     newTicket.id
   );
