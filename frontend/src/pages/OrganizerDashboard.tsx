@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
-import { useGetMeetupsQuery } from '../store/meetupSlice';
+import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import {
   hasMeetupEnded,
   hasMeetupStarted,
@@ -21,6 +21,7 @@ const OrganizerDashboard = (): ReactNode => {
     detail_level: 'detailed',
   });
   const navigate = useNavigate();
+  const prefetchMeetup = meetupSlice.usePrefetch('getMeetup');
 
   const newMeetupOnClick = (): void => {
     void navigate('/new-meetup');
@@ -55,6 +56,9 @@ const OrganizerDashboard = (): ReactNode => {
         ticketsTotal={meetup.tickets?.total ?? NaN}
         onClick={() => {
           void navigate(`/meetup/${meetup.id}/manage`);
+        }}
+        onMouseEnter={() => {
+          prefetchMeetup(meetup.id);
         }}
       />
     );

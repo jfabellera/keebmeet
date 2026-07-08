@@ -21,3 +21,9 @@ export const resizedImageUrl = (
   const options = `width=${targetWidth},quality=${quality},format=auto,fit=scale-down`;
   return `${base}/cdn-cgi/image/${options}/${source}`;
 };
+
+export const preloadImage = (url: string): void => {
+  if (typeof window === 'undefined' || url === '') return;
+  const img = new Image();
+  img.src = url;
+};

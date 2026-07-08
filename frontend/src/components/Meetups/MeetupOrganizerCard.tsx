@@ -13,6 +13,7 @@ export interface MeetupOrganizerCardProps {
   ticketsAvailable: number;
   ticketsTotal: number;
   onClick: () => void;
+  onMouseEnter?: () => void;
 }
 
 export const MeetupOrganizerCard = ({
@@ -22,11 +23,13 @@ export const MeetupOrganizerCard = ({
   ticketsAvailable,
   ticketsTotal,
   onClick,
+  onMouseEnter,
 }: MeetupOrganizerCardProps): ReactNode => {
   return (
     <div
       className="bg-card text-card-foreground flex cursor-pointer flex-row overflow-hidden rounded-md border shadow-sm"
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
     >
       <div className="relative w-1/3 shrink-0 sm:w-2/5">
         <ImageWithFallback
