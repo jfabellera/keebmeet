@@ -23,10 +23,13 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    # Build the shared package first so its declarations exist for linting,
-    # type-checking, and the backend/frontend builds.
+    # Build the shared + emails packages first so their declarations exist for
+    # linting, type-checking, and the backend/frontend builds.
     - name: Build shared
       run: npm run build:shared
+
+    - name: Build emails
+      run: npm run build:emails
 
     - name: Lint
       run: npm run lint

@@ -1,3 +1,4 @@
+import { VerifyEmail } from '@keebmeet/emails';
 import { Resend } from 'resend';
 import { generateQrCodeBuffer } from './qrCode';
 
@@ -22,7 +23,7 @@ export const sendVerificationEmail = async (
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: 'Verify your email',
-    html: `<p>Click <a href="${verificationLink}">here</a> to verify your email. This link expires in one hour.</p>`,
+    react: VerifyEmail({ verificationLink }),
   });
 
   if (error) {

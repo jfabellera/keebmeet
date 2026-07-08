@@ -1,0 +1,24 @@
+{
+  "name": "@keebmeet/emails",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React Email templates for KeebMeet transactional email.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "email dev",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@react-email/ui": "^6.6.8",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "react-email": "^6.6.8",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
