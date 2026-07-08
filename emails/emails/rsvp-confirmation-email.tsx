@@ -33,15 +33,15 @@ export const RsvpConfirmationEmail = ({
         <strong>Location:</strong> {meetupLocation}
       </Text>
     </Section>
-    <Text className="m-0 mb-3 text-[15px] leading-6 text-foreground">
+    <Text className="m-0 mb-3 text-center text-[15px] leading-6 text-foreground">
       If asked, present this QR code at the event:
     </Text>
     <Img
       src={`cid:${qrCodeCid}`}
       alt="Your RSVP QR code"
-      width={180}
-      height={180}
-      className="rounded-md"
+      width={260}
+      height={260}
+      className="mx-auto block rounded-md"
     />
   </EmailLayout>
 );
