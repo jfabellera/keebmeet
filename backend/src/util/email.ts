@@ -1,4 +1,11 @@
-import { VerifyEmail } from '@keebmeet/emails';
+import {
+  OrganizerAddedEmail,
+  OrganizerApprovedEmail,
+  OrganizerDeniedEmail,
+  OrganizerRequestEmail,
+  RsvpConfirmationEmail,
+  VerifyEmail,
+} from '@keebmeet/emails';
 import { Resend } from 'resend';
 import { generateQrCodeBuffer } from './qrCode';
 
@@ -41,8 +48,7 @@ export const sendOrganizerRequestEmail = async (
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [adminEmail],
     subject: 'New organizer request',
-    html: `<p>${requesterName} (${requesterEmail}) has requested organizer access.</p>
-           <p>Review pending requests <a href="${reviewLink}">here</a>.</p>`,
+    react: OrganizerRequestEmail({ requesterName, requesterEmail, reviewLink }),
   });
 
   if (error) {
@@ -58,8 +64,7 @@ export const sendOrganizerApprovedEmail = async (
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: 'Your organizer request was approved',
-    html: `<p>Your request for organizer access has been approved!</p>
-           <p>Sign in again to start hosting meetups from your <a href="${dashboardLink}">organizer dashboard</a>.</p>`,
+    react: OrganizerApprovedEmail({ dashboardLink }),
   });
 
   if (error) {
@@ -72,8 +77,7 @@ export const sendOrganizerDeniedEmail = async (email: string) => {
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: 'Update on your organizer request',
-    html: `<p>Thanks for your interest in hosting meetups. Your request for organizer access wasn't approved at this time.</p>
-           <p>If you think this was a mistake, please reach out to an admin.</p>`,
+    react: OrganizerDeniedEmail(),
   });
 
   if (error) {
@@ -91,8 +95,7 @@ export const sendOrganizerAddedEmail = async (
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: `You've been added as an organizer for ${meetupName}`,
-    html: `<p>${leadOrganizerName} added you as an organizer for ${meetupName}.</p>
-           <p>Manage the meetup <a href="${manageLink}">here</a>.</p>`,
+    react: OrganizerAddedEmail({ meetupName, leadOrganizerName, manageLink }),
   });
 
   if (error) {
@@ -113,12 +116,7 @@ export const sendRsvpConfirmationEmail = async (
     from: 'KeebMeet <noreply@keebmeet.com>',
     to: [email],
     subject: `RSVP Confirmation for ${meetupName}`,
-    html: `<p>Thank you for RSVPing to ${meetupName}!</p>
-           <p>Date: ${meetupDate}</p>
-           <p>Location: ${meetupLocation}</p>
-           <br/>
-            <p>If asked, please present this QR code at the event:</p>
-           <p><img src="cid:qr-code" alt="QR Code"></p>`,
+    react: RsvpConfirmationEmail({ meetupName, meetupDate, meetupLocation }),
     attachments: [
       {
         filename: 'qr-code.png',
