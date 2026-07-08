@@ -11,17 +11,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 # can resolve the workspace graph from the root lockfile.
 COPY package.json package-lock.json ./
 COPY shared/package.json ./shared/
+COPY emails/package.json ./emails/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 COPY bot/package.json ./bot/
-# Install ONLY what the backend needs (api + shared) — not frontend/bot deps.
-RUN npm ci --workspace=api --workspace=@keebmeet/shared --include-workspace-root
-# Build shared first (backend imports its compiled output), then the backend.
+# Install ONLY what the backend needs (api + shared + emails) — not frontend/bot deps.
+RUN npm ci --workspace=api --workspace=@keebmeet/shared --workspace=@keebmeet/emails --include-workspace-root
+# Build shared + emails first (backend imports their compiled output), then the backend.
 COPY shared ./shared
 RUN npm run build --workspace=@keebmeet/shared
+COPY emails ./emails
+RUN npm run build --workspace=@keebmeet/emails
 COPY backend ./backend
 RUN npm run build --workspace=api
-RUN npm prune --omit=dev --workspace=api --workspace=@keebmeet/shared --include-workspace-root
+RUN npm prune --omit=dev --workspace=api --workspace=@keebmeet/shared --workspace=@keebmeet/emails --include-workspace-root
 
 # ---- runtime stage ----
 FROM node:22-bookworm-slim AS runtime
@@ -29,6 +32,7 @@ ENV NODE_ENV=production
 WORKDIR /app/backend
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/shared /app/shared
+COPY --from=build /app/emails /app/emails
 COPY --from=build /app/backend/build ./build
 COPY --from=build /app/backend/package.json ./package.json
 # The entrypoint (Server.js / AuthServer.js / SocketServer.js) is set per-service

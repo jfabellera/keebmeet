@@ -32,9 +32,13 @@ jobs:
         run: npm install
         working-directory: .
 
-      # Backend tests import @keebmeet/shared, so build it first.
+      # Backend tests import @keebmeet/shared and @keebmeet/emails, so build them first.
       - name: Build shared
         run: npm run build:shared
+        working-directory: .
+
+      - name: Build emails
+        run: npm run build:emails
         working-directory: .
 
       - name: Run tests

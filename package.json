@@ -9,6 +9,7 @@
   },
   "workspaces": [
     "shared",
+    "emails",
     "backend",
     "frontend",
     "bot"
@@ -16,9 +17,10 @@
   "scripts": {
     "install:all": "npm install",
     "build:shared": "npm run build -w @keebmeet/shared",
-    "build:backend": "npm run build:shared && npm run build -w api",
+    "build:emails": "npm run build -w @keebmeet/emails",
+    "build:backend": "npm run build:shared && npm run build:emails && npm run build -w api",
     "build:frontend": "npm run build:shared && npm run build -w @keebmeet/frontend",
-    "build:all": "npm run build:shared && npm run build -w api && npm run build -w @keebmeet/frontend",
+    "build:all": "npm run build:shared && npm run build:emails && npm run build -w api && npm run build -w @keebmeet/frontend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "style:all": "npx prettier --write ."

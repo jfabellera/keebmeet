@@ -15,5 +15,8 @@ export const generateQrCodeBuffer = (ticketId: string): Promise<Buffer> => {
   const hmac = hmacTicket(ticketId);
   return QRCode.toBuffer(hmac, {
     type: 'png',
+    // Render at a high resolution so the code stays crisp when displayed large
+    // in the RSVP email and on Discord. Both paths share this single buffer.
+    width: 400,
   });
 };

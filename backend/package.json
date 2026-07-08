@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",
+    "@keebmeet/emails": "*",
     "@keebmeet/shared": "*",
     "axios": "^1.6.2",
     "bcrypt": "^6.0.0",
