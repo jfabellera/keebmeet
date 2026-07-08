@@ -12,7 +12,7 @@ import { FormField } from '@/components/ui/form-field';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import { useFormik } from 'formik';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiLock, FiUserCheck, FiUserX } from 'react-icons/fi';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
@@ -52,7 +52,11 @@ export const MeetupRsvpForm = ({
     skip: user == null,
   });
 
-  const isManaging = ticket != null;
+  const [isManaging, setIsManaging] = useState(ticket != null);
+  const submittedRef = useRef(false);
+  useEffect(() => {
+    if (!submittedRef.current) setIsManaging(ticket != null);
+  }, [ticket]);
   const { data: ticketDetails } = useGetTicketQuery(ticket?.id ?? '', {
     skip: ticket == null,
   });
@@ -85,6 +89,9 @@ export const MeetupRsvpForm = ({
     validationSchema: TicketHolderSchema,
     onSubmit: (values) => {
       void (async () => {
+        // Latch the mode before the mutation so the ticket-cache update it
+        // triggers can't flip the copy while the panel collapses.
+        submittedRef.current = true;
         const ticketHolder = {
           display_name: values.displayName,
           first_name: values.firstName,
@@ -113,6 +120,7 @@ export const MeetupRsvpForm = ({
   const onCancelRsvp = (): void => {
     void (async () => {
       if (ticket == null) return;
+      submittedRef.current = true;
       try {
         await deleteTicket(ticket.id).unwrap();
         setCancelConfirmOpen(false);

@@ -27,7 +27,7 @@ export const MeetupOrganizerCard = ({
 }: MeetupOrganizerCardProps): ReactNode => {
   return (
     <div
-      className="bg-card text-card-foreground flex cursor-pointer flex-row overflow-hidden rounded-md border shadow-sm"
+      className="bg-card text-card-foreground flex cursor-pointer flex-row overflow-hidden rounded-md border shadow-sm transition duration-200 ease-out hover:translate-x-1 hover:shadow-lg"
       onClick={onClick}
       onMouseEnter={onMouseEnter}
     >
