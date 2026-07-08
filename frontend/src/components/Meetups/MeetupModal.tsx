@@ -75,9 +75,23 @@ export const MeetupModal = ({
   isRsvp,
   onClose,
 }: MeetupModalProps): ReactNode => {
-  const { currentData: meetup, error } = useGetMeetupQuery(meetupId, {
+  const { currentData, error } = useGetMeetupQuery(meetupId, {
     skip: meetupId === '',
   });
+  const [retainedMeetup, setRetainedMeetup] = useState(currentData);
+  useEffect(() => {
+    if (currentData != null) setRetainedMeetup(currentData);
+  }, [currentData]);
+  const meetup = currentData ?? retainedMeetup;
+  const [rsvpPanelOpen, setRsvpPanelOpen] = useState(isRsvp);
+  useEffect(() => {
+    if (isOpen) setRsvpPanelOpen(isRsvp);
+  }, [isOpen, isRsvp]);
+  const [retainedTicket, setRetainedTicket] = useState(ticket);
+  useEffect(() => {
+    if (isOpen) setRetainedTicket(ticket);
+  }, [isOpen, ticket]);
+  const displayTicket = isOpen ? ticket : retainedTicket;
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isWide = useIsWide();
@@ -154,7 +168,7 @@ export const MeetupModal = ({
           <div
             className={cn(
               'flex-col sm:w-lg lg:min-h-0 lg:shrink-0 lg:overflow-hidden',
-              isRsvp ? 'hidden lg:flex' : 'flex'
+              rsvpPanelOpen ? 'hidden lg:flex' : 'flex'
             )}
           >
             <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -165,7 +179,7 @@ export const MeetupModal = ({
                     resizeWidth={768}
                     className={cn(
                       'size-full rounded-tl-md object-cover',
-                      !isRsvp && 'rounded-tr-md'
+                      !rsvpPanelOpen && 'rounded-tr-md'
                     )}
                   />
                 </AspectRatio>
@@ -265,10 +279,10 @@ export const MeetupModal = ({
                 </div>
 
                 {/* Photos */}
-                {!isRsvp ? (
+                {!rsvpPanelOpen ? (
                   <MeetupPhotoLinks
                     meetup={meetup}
-                    isAttendee={ticket != null}
+                    isAttendee={displayTicket != null}
                   />
                 ) : null}
 
@@ -309,7 +323,7 @@ export const MeetupModal = ({
                         RSVP
                       </Button>
                     </a>
-                  ) : ticket != null ? (
+                  ) : displayTicket != null ? (
                     <Button
                       variant="outline"
                       disabled={!isLoggedIn}
@@ -350,20 +364,23 @@ export const MeetupModal = ({
           </div>
 
           <AnimatePresence initial={false}>
-            {isRsvp ? (
+            {rsvpPanelOpen ? (
               <motion.div
                 key="rsvp-panel"
                 initial={isWide ? { width: 0, opacity: 0 } : false}
                 animate={isWide ? { width: 'auto', opacity: 1 } : {}}
                 exit={isWide ? { width: 0, opacity: 0 } : {}}
-                transition={{ duration: isWide ? 0.3 : 0, ease: 'easeOut' }}
+                transition={{
+                  duration: isWide ? 0.2 : 0,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className="shrink-0 overflow-hidden lg:min-h-0 lg:border-l"
               >
                 <div className="sm:w-lg lg:h-full lg:w-96">
                   <MeetupRsvpForm
                     meetup={meetup}
                     isLoggedIn={isLoggedIn}
-                    ticket={ticket}
+                    ticket={displayTicket}
                     onCollapse={handleCollapse}
                   />
                 </div>
