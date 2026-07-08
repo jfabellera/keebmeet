@@ -33,10 +33,10 @@ const Page = ({
               value={sidebarValue}
               setValue={setSidebarValue}
             />
-            <div className="grow overflow-auto">{children}</div>
+            <div className="relative grow overflow-auto">{children}</div>
           </div>
         ) : (
-          <div className="h-full overflow-auto">{children}</div>
+          <div className="relative h-full overflow-auto">{children}</div>
         )}
       </div>
     </div>
