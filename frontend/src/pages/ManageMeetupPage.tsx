@@ -114,6 +114,7 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       sidebarItems={sidebarItems}
       sidebarValue={sidebarValue}
       setSidebarValue={setSidebarValue}
+      sidebarBackTo={{ label: 'Organizer Dashboard', url: '/organizer' }}
     >
       <div className="flex h-full flex-col">
         <h1 className="mt-4 line-clamp-2 w-full shrink-0 px-6 text-center text-3xl font-bold">

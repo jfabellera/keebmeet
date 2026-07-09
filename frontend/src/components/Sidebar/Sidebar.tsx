@@ -3,12 +3,14 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { type IconType } from 'react-icons';
+import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
 export interface SidebarItem {
@@ -18,10 +20,17 @@ export interface SidebarItem {
   url: string;
 }
 
+export interface SidebarBackLink {
+  label: string;
+  url: string;
+}
+
 interface SidebarProps {
   sidebarItems: SidebarItem[];
   value: string;
   setValue: Dispatch<SetStateAction<string>>;
+  /** Optional link rendered above the nav for returning to a parent view. */
+  backTo?: SidebarBackLink;
 }
 
 /**
@@ -32,6 +41,7 @@ const Sidebar = ({
   sidebarItems,
   value,
   setValue,
+  backTo,
 }: SidebarProps): ReactNode => {
   const navigate = useNavigate();
 
@@ -40,6 +50,23 @@ const Sidebar = ({
       collapsible="none"
       className="hidden h-full border-r md:flex"
     >
+      {backTo != null ? (
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="text-muted-foreground"
+                onClick={() => {
+                  void navigate(backTo.url);
+                }}
+              >
+                <FiArrowLeft />
+                <span>{backTo.label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+      ) : null}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>

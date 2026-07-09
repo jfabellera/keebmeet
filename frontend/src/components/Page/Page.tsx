@@ -2,13 +2,18 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import BottomNav from '../BottomNav/BottomNav';
 import Navbar from '../Navbar/Navbar';
-import Sidebar, { type SidebarItem } from '../Sidebar/Sidebar';
+import Sidebar, {
+  type SidebarBackLink,
+  type SidebarItem,
+} from '../Sidebar/Sidebar';
 
 export interface PageProps {
   children: ReactNode;
   sidebarItems?: SidebarItem[];
   sidebarValue?: string;
   setSidebarValue?: Dispatch<SetStateAction<string>>;
+  /** Optional link shown atop the sidebar for returning to a parent view. */
+  sidebarBackTo?: SidebarBackLink;
 }
 
 const Page = ({
@@ -16,6 +21,7 @@ const Page = ({
   children,
   sidebarValue,
   setSidebarValue,
+  sidebarBackTo,
 }: PageProps): ReactNode => {
   const hasSidebar =
     sidebarItems != null && sidebarValue != null && setSidebarValue != null;
@@ -31,6 +37,7 @@ const Page = ({
               sidebarItems={sidebarItems}
               value={sidebarValue}
               setValue={setSidebarValue}
+              backTo={sidebarBackTo}
             />
             <SidebarInset className="min-h-0 overflow-auto bg-transparent">
               {children}
