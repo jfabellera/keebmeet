@@ -77,16 +77,16 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       url: `/meetup/${meetupId}/manage/raffle`,
     },
     {
-      name: 'Display',
-      value: 'display',
-      icon: FiMonitor,
-      url: `/meetup/${meetupId}/manage/display`,
-    },
-    {
       name: 'Attendees',
       value: 'attendees',
       icon: FiUsers,
       url: `/meetup/${meetupId}/manage/attendees`,
+    },
+    {
+      name: 'Display',
+      value: 'display',
+      icon: FiMonitor,
+      url: `/meetup/${meetupId}/manage/display`,
     },
     {
       name: 'Meetup Settings',
@@ -114,6 +114,7 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
       sidebarItems={sidebarItems}
       sidebarValue={sidebarValue}
       setSidebarValue={setSidebarValue}
+      sidebarBackTo={{ label: 'Organizer Dashboard', url: '/organizer' }}
     >
       <div className="flex h-full flex-col">
         <h1 className="mt-4 line-clamp-2 w-full shrink-0 px-6 text-center text-3xl font-bold">

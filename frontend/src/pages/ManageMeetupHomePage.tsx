@@ -82,75 +82,54 @@ const ManageMeetupHomePage = (): ReactNode => {
   }
 
   return (
-    <div className="m-4 flex flex-col justify-center">
+    <div className="p-4">
       {meetup != null && attendees != null ? (
-        <div className="grid grid-cols-2 [grid-template-rows:repeat(3,100px)] gap-4 py-3">
-          <div>
-            {/* Show how many have checked in if meetup is currently happening, otherwise show how many have signed up */}
-            <FractionCard
-              numerator={
-                isHappeningNow
-                  ? attendees.filter((attendee) => attendee.is_checked_in)
-                      .length
-                  : (meetup.tickets?.total ?? 0) -
-                    (meetup.tickets?.available ?? 0)
-              }
-              denominator={
-                isHappeningNow ? attendees.length : (meetup.tickets?.total ?? 0)
-              }
-              label={isHappeningNow ? 'checked in' : 'signed up'}
-              onClick={() => {
-                void navigate(
-                  `/meetup/${meetupId}/manage/${
-                    isHappeningNow ? 'checkin' : 'attendees'
-                  }`
-                );
-              }}
-              className="w-full cursor-pointer"
-            />
-          </div>
+        <div className="grid grid-cols-2 [grid-template-rows:repeat(2,100px)] gap-4">
+          {/* Show how many have checked in if meetup is currently happening, otherwise show how many have signed up */}
+          <FractionCard
+            numerator={
+              isHappeningNow
+                ? attendees.filter((attendee) => attendee.is_checked_in).length
+                : (meetup.tickets?.total ?? 0) -
+                  (meetup.tickets?.available ?? 0)
+            }
+            denominator={
+              isHappeningNow ? attendees.length : (meetup.tickets?.total ?? 0)
+            }
+            label={isHappeningNow ? 'checked in' : 'signed up'}
+            onClick={() => {
+              void navigate(
+                `/meetup/${meetupId}/manage/${
+                  isHappeningNow ? 'checkin' : 'attendees'
+                }`
+              );
+            }}
+            className="flex h-full w-full cursor-pointer items-center justify-center"
+          />
 
-          <div>
-            {/* Show detailed countdown until meetup end if meetup is currently happening, otherwise show relative time until start of meetup or end of meetup */}
-            <CountDownCard
-              date={
-                hasStarted || hasEnded
-                  ? dayjs(meetup.date).add(meetup.duration_hours ?? 0, 'hours')
-                  : dayjs(meetup.date)
-              }
-              futureText={!hasStarted ? 'left' : 'until end'}
-              pastText={'ago'}
-              className="w-full"
-              simple={!isHappeningNow}
-            />
-          </div>
+          {/* Show detailed countdown until meetup end if meetup is currently happening, otherwise show relative time until start of meetup or end of meetup */}
+          <CountDownCard
+            date={
+              hasStarted || hasEnded
+                ? dayjs(meetup.date).add(meetup.duration_hours ?? 0, 'hours')
+                : dayjs(meetup.date)
+            }
+            futureText={!hasStarted ? 'left' : 'until end'}
+            pastText={'ago'}
+            className="flex h-full w-full items-center justify-center"
+            simple={!isHappeningNow}
+          />
 
-          {/* TODO(jan): Clean this up. This was done last minute before Roundup */}
-          <div className="col-span-2">
-            <div className="bg-card text-card-foreground size-full rounded-md shadow-sm">
-              <div className="grid h-full grid-cols-2">
-                <div className="flex h-full flex-col items-center justify-center">
-                  <p className="text-4xl">{numRaffleRolls}</p>
-                  <p className="text-xs">WINNERS</p>
-                </div>
-
-                <div className="flex h-full flex-col items-center justify-center">
-                  <p className="text-4xl">{numRaffleClaims}</p>
-                  <p className="text-xs">CLAIMED</p>
-                </div>
-              </div>
+          <div className="bg-card text-card-foreground col-span-2 grid grid-cols-2 rounded-md shadow-sm">
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-4xl">{numRaffleRolls}</p>
+              <p className="text-xs">WINNERS</p>
             </div>
-          </div>
 
-          <div className="col-span-2">
-            <Button
-              className="size-full"
-              onClick={() => {
-                void navigate(`/meetup/${meetupId}/manage/raffle`);
-              }}
-            >
-              Raffles
-            </Button>
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-4xl">{numRaffleClaims}</p>
+              <p className="text-xs">CLAIMED</p>
+            </div>
           </div>
         </div>
       ) : null}
