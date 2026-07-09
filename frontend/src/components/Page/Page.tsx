@@ -1,7 +1,8 @@
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import BottomNav from '../BottomNav/BottomNav';
 import Navbar from '../Navbar/Navbar';
 import Sidebar, { type SidebarItem } from '../Sidebar/Sidebar';
-import { useDisclosure } from '@/hooks/useDisclosure';
 
 export interface PageProps {
   children: ReactNode;
@@ -16,29 +17,38 @@ const Page = ({
   sidebarValue,
   setSidebarValue,
 }: PageProps): ReactNode => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const hasSidebar =
+    sidebarItems != null && sidebarValue != null && setSidebarValue != null;
 
   return (
     <div className="bg-muted flex h-svh flex-col">
-      <Navbar sidebar={sidebarItems != null} onOpen={onOpen} />
-      <div className="h-full w-auto overflow-hidden">
-        {sidebarItems != null &&
-        sidebarValue != null &&
-        setSidebarValue != null ? (
-          <div className="flex h-full flex-row">
+      <Navbar />
+      {hasSidebar ? (
+        <>
+          {/* Desktop: navigation rail beside the content. */}
+          <SidebarProvider className="min-h-0 flex-1">
             <Sidebar
               sidebarItems={sidebarItems}
-              isOpen={isOpen}
-              onClose={onClose}
               value={sidebarValue}
               setValue={setSidebarValue}
             />
-            <div className="relative grow overflow-auto">{children}</div>
-          </div>
-        ) : (
+            <SidebarInset className="min-h-0 overflow-auto bg-transparent">
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+          {/* Mobile: bottom navigation takes over for the sidebar. */}
+          <BottomNav
+            items={sidebarItems}
+            value={sidebarValue}
+            setValue={setSidebarValue}
+            className="md:hidden"
+          />
+        </>
+      ) : (
+        <div className="h-full w-auto overflow-hidden">
           <div className="relative h-full overflow-auto">{children}</div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
