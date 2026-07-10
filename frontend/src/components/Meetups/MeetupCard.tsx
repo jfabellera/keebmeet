@@ -28,7 +28,7 @@ export const MeetupCard = ({
     : "You're attending!";
 
   return (
-    <div className="bg-card text-card-foreground h-full cursor-pointer overflow-hidden rounded-md border shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg">
+    <div className="bg-card text-card-foreground h-full cursor-pointer overflow-hidden rounded-md border shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.97] active:shadow-md active:duration-100">
       <AspectRatio ratio={2 / 1}>
         <ImageWithFallback
           src={meetup.image_url}
