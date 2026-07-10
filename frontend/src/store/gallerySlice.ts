@@ -1,30 +1,30 @@
-import { type PhotoLinkInfo, type PhotoLinkPreview } from '@keebmeet/shared';
+import { type GalleryInfo, type GalleryPreview } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { meetupSlice } from './meetupSlice';
 import { type RootState } from './store';
 
-export interface CreatePhotoLinkOptions {
+export interface CreateGalleryOptions {
   meetupId: string;
-  photoLink: string;
+  gallery: string;
   contributorName?: string;
 }
 
 /** Organizer-moderation delete: removes another attendee's link. */
-export interface DeletePhotoLinkForUserOptions {
+export interface DeleteGalleryForUserOptions {
   meetupId: string;
   targetUserId: string;
 }
 
 /** Organizer delete by record id — for archive links, which have no user id. */
-export interface DeletePhotoLinkByIdOptions {
+export interface DeleteGalleryByIdOptions {
   meetupId: string;
-  photoLinkId: string;
+  galleryId: string;
 }
 
-export const photoLinkSlice = createApi({
-  reducerPath: 'photoLinkSlice',
-  tagTypes: ['PhotoLinks'],
+export const gallerySlice = createApi({
+  reducerPath: 'gallerySlice',
+  tagTypes: ['Galleries'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -38,32 +38,32 @@ export const photoLinkSlice = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getMeetupPhotoLinks: builder.query<PhotoLinkInfo[], string>({
+    getMeetupGallery: builder.query<GalleryInfo[], string>({
       query: (meetupId) => ({
-        url: `meetups/${meetupId}/photo-links`,
+        url: `meetups/${meetupId}/galleries`,
       }),
       providesTags: (result, error, meetupId) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
     }),
     // Server-scraped OpenGraph previews, keyed by user_id. Shares the per-meetup
     // tag so adding/removing a link refreshes previews too.
-    getMeetupPhotoLinkPreviews: builder.query<PhotoLinkPreview[], string>({
+    getMeetupGalleryPreviews: builder.query<GalleryPreview[], string>({
       query: (meetupId) => ({
-        url: `meetups/${meetupId}/photo-links/previews`,
+        url: `meetups/${meetupId}/galleries/previews`,
       }),
       providesTags: (result, error, meetupId) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
     }),
-    createPhotoLink: builder.mutation<PhotoLinkInfo, CreatePhotoLinkOptions>({
-      query: ({ meetupId, photoLink, contributorName }) => ({
-        url: `meetups/${meetupId}/photo-link`,
+    createGallery: builder.mutation<GalleryInfo, CreateGalleryOptions>({
+      query: ({ meetupId, gallery, contributorName }) => ({
+        url: `meetups/${meetupId}/gallery`,
         method: 'POST',
-        body: { photo_link: photoLink, contributor_name: contributorName },
+        body: { gallery: gallery, contributor_name: contributorName },
       }),
       invalidatesTags: (result, error, { meetupId }) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
       // The "has photos" badge on meetup listings is derived from the meetups
       // list query, which lives in a separate API slice. Cross-slice tags can't
@@ -79,13 +79,13 @@ export const photoLinkSlice = createApi({
     }),
     // Self-service delete: the backend keys off the requestor's token, so no
     // user id is sent.
-    deletePhotoLink: builder.mutation<void, string>({
+    deleteGallery: builder.mutation<void, string>({
       query: (meetupId) => ({
-        url: `meetups/${meetupId}/photo-link`,
+        url: `meetups/${meetupId}/gallery`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, meetupId) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
       // Deleting may remove the last link, clearing the badge — refresh the list.
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
@@ -97,16 +97,16 @@ export const photoLinkSlice = createApi({
         }
       },
     }),
-    deletePhotoLinkForUser: builder.mutation<
+    deleteGalleryForUser: builder.mutation<
       void,
-      DeletePhotoLinkForUserOptions
+      DeleteGalleryForUserOptions
     >({
       query: ({ meetupId, targetUserId }) => ({
-        url: `meetups/${meetupId}/photo-link/${targetUserId}`,
+        url: `meetups/${meetupId}/gallery/${targetUserId}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, { meetupId }) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
@@ -117,13 +117,13 @@ export const photoLinkSlice = createApi({
         }
       },
     }),
-    deletePhotoLinkById: builder.mutation<void, DeletePhotoLinkByIdOptions>({
-      query: ({ meetupId, photoLinkId }) => ({
-        url: `meetups/${meetupId}/photo-links/${photoLinkId}`,
+    deleteGalleryById: builder.mutation<void, DeleteGalleryByIdOptions>({
+      query: ({ meetupId, galleryId }) => ({
+        url: `meetups/${meetupId}/galleries/${galleryId}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, { meetupId }) => [
-        { type: 'PhotoLinks', id: meetupId },
+        { type: 'Galleries', id: meetupId },
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
@@ -138,10 +138,10 @@ export const photoLinkSlice = createApi({
 });
 
 export const {
-  useGetMeetupPhotoLinksQuery,
-  useGetMeetupPhotoLinkPreviewsQuery,
-  useCreatePhotoLinkMutation,
-  useDeletePhotoLinkMutation,
-  useDeletePhotoLinkForUserMutation,
-  useDeletePhotoLinkByIdMutation,
-} = photoLinkSlice;
+  useGetMeetupGalleryQuery,
+  useGetMeetupGalleryPreviewsQuery,
+  useCreateGalleryMutation,
+  useDeleteGalleryMutation,
+  useDeleteGalleryForUserMutation,
+  useDeleteGalleryByIdMutation,
+} = gallerySlice;

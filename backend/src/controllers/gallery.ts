@@ -1,12 +1,12 @@
 import {
-  createPhotoLinkSchema,
-  type PhotoLinkInfo,
-  type PhotoLinkPreview,
+  createGallerySchema,
+  type GalleryInfo,
+  type GalleryPreview,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { socket } from '../Server';
 import { type Meetup } from '../entity/Meetup';
-import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { fetchLinkPreview } from '../util/linkPreview';
@@ -15,13 +15,13 @@ const isMeetupOrganizer = (meetup: Meetup, user: User): boolean =>
   meetup.lead_organizer?.id === user.id ||
   (meetup.organizers?.some((organizer) => organizer.id === user.id) ?? false);
 
-// Two kinds of photo link:
+// Two kinds of gallery:
 //  - A self link is keyed by (meetup_id, user_id): an attendee or organizer may
 //    have at most one per meetup (enforced by a partial unique index).
 //  - A credited link (contributor_name, no user) lets an organizer attribute a
 //    link to someone without an account, e.g. a hired photographer. Many are
 //    allowed. Every link is identified by its surrogate record id.
-export const createPhotoLink = async (
+export const createGallery = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -32,7 +32,7 @@ export const createPhotoLink = async (
     return res.status(400).end();
   }
 
-  const result = createPhotoLinkSchema.safeParse(req.body ?? {});
+  const result = createGallerySchema.safeParse(req.body ?? {});
   if (!result.success) {
     return res.status(400).json(result.error);
   }
@@ -48,14 +48,14 @@ export const createPhotoLink = async (
   if (contributorName != null && contributorName !== '') {
     if (!isOrganizer) {
       return res.status(403).json({
-        message: 'Only an organizer can credit a photo link to someone else.',
+        message: 'Only an organizer can credit a gallery to someone else.',
       });
     }
 
-    const record = PhotoLinkRecord.create({
+    const record = GalleryRecord.create({
       meetup,
       contributor_name: contributorName,
-      photo_link: result.data.photo_link,
+      gallery: result.data.gallery,
     });
     await record.save();
 
@@ -65,8 +65,8 @@ export const createPhotoLink = async (
       id: record.id,
       user_id: null,
       display_name: contributorName,
-      photo_link: record.photo_link,
-    } satisfies PhotoLinkInfo);
+      gallery: record.gallery,
+    } satisfies GalleryInfo);
   }
 
   if (!isOrganizer) {
@@ -79,12 +79,12 @@ export const createPhotoLink = async (
 
     if (ticket == null) {
       return res.status(403).json({
-        message: 'Only meetup attendees or organizers can add a photo link.',
+        message: 'Only meetup attendees or organizers can add a gallery.',
       });
     }
   }
 
-  const existing = await PhotoLinkRecord.findOne({
+  const existing = await GalleryRecord.findOne({
     where: {
       meetup: { id: meetup.id },
       user: { id: user.id },
@@ -92,13 +92,13 @@ export const createPhotoLink = async (
   });
 
   if (existing != null) {
-    return res.status(409).json({ message: 'Photo link already exists.' });
+    return res.status(409).json({ message: 'Gallery already exists.' });
   }
 
-  const record = PhotoLinkRecord.create({
+  const record = GalleryRecord.create({
     meetup,
     user,
-    photo_link: result.data.photo_link,
+    gallery: result.data.gallery,
   });
   await record.save();
 
@@ -108,12 +108,12 @@ export const createPhotoLink = async (
     id: record.id,
     user_id: user.id,
     display_name: user.nick_name,
-    photo_link: record.photo_link,
-  } satisfies PhotoLinkInfo);
+    gallery: record.gallery,
+  } satisfies GalleryInfo);
 };
 
-// Self-service: the requestor removes their own photo link for the meetup.
-export const deletePhotoLink = async (
+// Self-service: the requestor removes their own gallery for the meetup.
+export const deleteGallery = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -124,7 +124,7 @@ export const deletePhotoLink = async (
     return res.status(400).end();
   }
 
-  const record = await PhotoLinkRecord.findOne({
+  const record = await GalleryRecord.findOne({
     where: {
       meetup: { id: meetup.id },
       user: { id: user.id },
@@ -134,10 +134,10 @@ export const deletePhotoLink = async (
   return finishRemoval(res, meetup.id, record);
 };
 
-// Moderation: a meetup organizer removes another attendee's photo link. The
+// Moderation: a meetup organizer removes another attendee's gallery. The
 // organizer check is enforced by authChecker on the :meetup_id param (the route
 // omits Rule.ignoreMeetupOrganizer).
-export const deletePhotoLinkForUser = async (
+export const deleteGalleryForUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -148,7 +148,7 @@ export const deletePhotoLinkForUser = async (
     return res.status(400).end();
   }
 
-  const record = await PhotoLinkRecord.findOne({
+  const record = await GalleryRecord.findOne({
     where: {
       meetup: { id: meetup.id },
       user: { id: target_user_id },
@@ -161,20 +161,20 @@ export const deletePhotoLinkForUser = async (
 // Organizer moderation by record id — the only way to remove an archive's
 // account-less contributor links (which have no user_id to target). Organizer
 // status is enforced by authChecker on the :meetup_id param.
-export const deletePhotoLinkById = async (
+export const deleteGalleryById = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   const meetup = res.locals.meetup as Meetup;
-  const { photo_link_id } = req.params as Record<string, string>;
+  const { gallery_id } = req.params as Record<string, string>;
 
   if (meetup == null) {
     return res.status(400).end();
   }
 
-  const record = await PhotoLinkRecord.findOne({
+  const record = await GalleryRecord.findOne({
     where: {
-      id: photo_link_id,
+      id: gallery_id,
       meetup: { id: meetup.id },
     },
   });
@@ -185,10 +185,10 @@ export const deletePhotoLinkById = async (
 const finishRemoval = async (
   res: Response,
   meetupId: string,
-  record: PhotoLinkRecord | null
+  record: GalleryRecord | null
 ): Promise<Response> => {
   if (record == null) {
-    return res.status(404).json({ message: 'Photo link not found.' });
+    return res.status(404).json({ message: 'Gallery not found.' });
   }
 
   await record.remove();
@@ -198,13 +198,13 @@ const finishRemoval = async (
   return res.status(204).end();
 };
 
-export const getMeetupPhotoLinks = async (
+export const getMeetupGallery = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
 
-  const records = await PhotoLinkRecord.find({
+  const records = await GalleryRecord.find({
     relations: { user: true },
     where: {
       meetup: { id: meetup_id },
@@ -220,25 +220,25 @@ export const getMeetupPhotoLinks = async (
         id: record.id,
         user_id: record.user_id,
         display_name: record.contributor_name ?? record.user?.nick_name ?? '',
-        photo_link: record.photo_link,
-      }) satisfies PhotoLinkInfo
+        gallery: record.gallery,
+      }) satisfies GalleryInfo
   );
 
   return res.status(200).json(response);
 };
 
-// OpenGraph-style previews for the meetup's photo links, scraped server-side
+// OpenGraph-style previews for the meetup's galleries, scraped server-side
 // (the browser can't fetch cross-origin). Only the meetup's own stored links are
 // ever fetched — the client never supplies a URL — so there's no open SSRF
 // surface. fetchLinkPreview caches and never throws, so one bad link can't fail
 // the batch.
-export const getMeetupPhotoLinkPreviews = async (
+export const getMeetupGalleryPreviews = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
 
-  const records = await PhotoLinkRecord.find({
+  const records = await GalleryRecord.find({
     where: {
       meetup: { id: meetup_id },
     },
@@ -249,13 +249,13 @@ export const getMeetupPhotoLinkPreviews = async (
 
   const previews = await Promise.all(
     records.map(async (record) => {
-      const preview = await fetchLinkPreview(record.photo_link);
+      const preview = await fetchLinkPreview(record.gallery);
       return {
         id: record.id,
         title: preview.title,
         image: preview.image,
         siteName: preview.siteName,
-      } satisfies PhotoLinkPreview;
+      } satisfies GalleryPreview;
     })
   );
 

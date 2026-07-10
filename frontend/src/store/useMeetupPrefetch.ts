@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { preloadImage, resizedImageUrl } from '../util/imageUrl';
 import { useAppDispatch } from './hooks';
 import { meetupSlice } from './meetupSlice';
-import { photoLinkSlice } from './photoLinkSlice';
+import { gallerySlice } from './gallerySlice';
 
 const MODAL_HERO_WIDTH = 768;
 const PHOTO_THUMBNAIL_WIDTH = 256;
@@ -11,7 +11,7 @@ const PHOTO_THUMBNAIL_WIDTH = 256;
 export const useMeetupHoverPrefetch = (): ((meetup: MeetupInfo) => void) => {
   const dispatch = useAppDispatch();
   const prefetchMeetup = meetupSlice.usePrefetch('getMeetup');
-  const prefetchPhotoLinks = photoLinkSlice.usePrefetch('getMeetupPhotoLinks');
+  const prefetchGalleries = gallerySlice.usePrefetch('getMeetupGallery');
 
   return useCallback(
     (meetup: MeetupInfo) => {
@@ -28,10 +28,10 @@ export const useMeetupHoverPrefetch = (): ((meetup: MeetupInfo) => void) => {
       // Only meetups with photos render the Photos section.
       if (meetup.has_photos !== true) return;
 
-      prefetchPhotoLinks(meetup.id);
+      prefetchGalleries(meetup.id);
 
       const previews = dispatch(
-        photoLinkSlice.endpoints.getMeetupPhotoLinkPreviews.initiate(meetup.id)
+        gallerySlice.endpoints.getMeetupGalleryPreviews.initiate(meetup.id)
       );
       previews
         .unwrap()
@@ -49,6 +49,6 @@ export const useMeetupHoverPrefetch = (): ((meetup: MeetupInfo) => void) => {
           previews.unsubscribe();
         });
     },
-    [dispatch, prefetchMeetup, prefetchPhotoLinks]
+    [dispatch, prefetchMeetup, prefetchGalleries]
   );
 };

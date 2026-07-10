@@ -5,8 +5,8 @@ import { type Request, type Response } from 'express';
 
 jest.mock('../Server', () => ({ socket: { emit: jest.fn() } }));
 
-jest.mock('../entity/PhotoLinkRecord', () => ({
-  PhotoLinkRecord: { create: jest.fn(), find: jest.fn(), findOne: jest.fn() },
+jest.mock('../entity/GalleryRecord', () => ({
+  GalleryRecord: { create: jest.fn(), find: jest.fn(), findOne: jest.fn() },
 }));
 jest.mock('../entity/Ticket', () => ({
   Ticket: { findOne: jest.fn() },
@@ -16,19 +16,19 @@ jest.mock('../entity/Ticket', () => ({
 jest.mock('../util/linkPreview', () => ({ fetchLinkPreview: jest.fn() }));
 
 import {
-  createPhotoLink,
-  deletePhotoLink,
-  deletePhotoLinkById,
-  deletePhotoLinkForUser,
-  getMeetupPhotoLinkPreviews,
-  getMeetupPhotoLinks,
-} from './photoLink';
+  createGallery,
+  deleteGallery,
+  deleteGalleryById,
+  deleteGalleryForUser,
+  getMeetupGalleryPreviews,
+  getMeetupGallery,
+} from './gallery';
 import { socket } from '../Server';
-import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import { fetchLinkPreview } from '../util/linkPreview';
 
-const mockedPhotoLinkRecord = jest.mocked(PhotoLinkRecord);
+const mockedGalleryRecord = jest.mocked(GalleryRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
 const mockedFetchLinkPreview = jest.mocked(fetchLinkPreview);
@@ -72,31 +72,31 @@ const meetupWithoutUser = (): any => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockedPhotoLinkRecord.create.mockImplementation((attrs: any) => ({
+  mockedGalleryRecord.create.mockImplementation((attrs: any) => ({
     id: 'p1',
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
   }));
 });
 
-// ---- createPhotoLink -------------------------------------------------------
+// ---- createGallery -------------------------------------------------------
 
-describe('createPhotoLink', () => {
+describe('createGallery', () => {
   it('returns 400 when the meetup or requestor is missing', async () => {
     const res = mockResponse();
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(400);
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for an invalid (non-URL) photo_link', async () => {
+  it('returns 400 for an invalid (non-URL) gallery', async () => {
     const res = mockResponse();
     res.locals.meetup = meetupWithoutUser();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
-    await createPhotoLink(mockRequest({ photo_link: 'not-a-url' }), res);
+    await createGallery(mockRequest({ gallery: 'not-a-url' }), res);
 
     expect(res.statusCode).toBe(400);
   });
@@ -108,27 +108,27 @@ describe('createPhotoLink', () => {
     res.locals.meetup = meetupWithoutUser();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(403);
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
   it('creates a link (201) for an attendee holding a ticket', async () => {
     mockedTicket.findOne.mockResolvedValue({ id: '5' } as any);
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = meetupWithoutUser();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
       id: 'p1',
       user_id: '1',
       display_name: 'jane',
-      photo_link: VALID_LINK,
+      gallery: VALID_LINK,
     });
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: '10',
@@ -136,7 +136,7 @@ describe('createPhotoLink', () => {
   });
 
   it('creates a link (201) for the lead organizer without needing a ticket', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = {
       id: '10',
@@ -146,14 +146,14 @@ describe('createPhotoLink', () => {
     };
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(201);
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
   });
 
   it('creates a link (201) for a co-organizer without needing a ticket', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = {
       id: '10',
@@ -163,7 +163,7 @@ describe('createPhotoLink', () => {
     };
     res.locals.requestor = { id: '1', nick_name: 'co' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(201);
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
@@ -180,30 +180,30 @@ describe('createPhotoLink', () => {
     };
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ message: 'Meetup has not started yet.' });
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
   // Requirement: each attendee/organizer may hold at most one link per meetup.
   it('returns 409 when the requestor already has a link for the meetup', async () => {
     mockedTicket.findOne.mockResolvedValue({ id: '5' } as any);
-    mockedPhotoLinkRecord.findOne.mockResolvedValue({
+    mockedGalleryRecord.findOne.mockResolvedValue({
       meetup_id: '10',
       user_id: '1',
-      photo_link: 'https://old.example.com',
+      gallery: 'https://old.example.com',
     } as any);
     const res = mockResponse();
     res.locals.meetup = meetupWithoutUser();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(409);
-    expect(res.body).toEqual({ message: 'Photo link already exists.' });
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(res.body).toEqual({ message: 'Gallery already exists.' });
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
   // ---- archive meetups ----
@@ -222,8 +222,8 @@ describe('createPhotoLink', () => {
     res.locals.meetup = archiveMeetup();
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(
-      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Old Timer' }),
+    await createGallery(
+      mockRequest({ gallery: VALID_LINK, contributor_name: 'Old Timer' }),
       res
     );
 
@@ -232,11 +232,11 @@ describe('createPhotoLink', () => {
       id: 'p1',
       user_id: null,
       display_name: 'Old Timer',
-      photo_link: VALID_LINK,
+      gallery: VALID_LINK,
     });
     // No ticket check and no per-person duplicate lookup for archives.
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
-    expect(mockedPhotoLinkRecord.findOne).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.findOne).not.toHaveBeenCalled();
   });
 
   it('returns 403 when a non-organizer tries to add to an archive', async () => {
@@ -244,45 +244,45 @@ describe('createPhotoLink', () => {
     res.locals.meetup = archiveMeetup();
     res.locals.requestor = { id: '2', nick_name: 'rando' };
 
-    await createPhotoLink(
-      mockRequest({ photo_link: VALID_LINK, contributor_name: 'x' }),
+    await createGallery(
+      mockRequest({ gallery: VALID_LINK, contributor_name: 'x' }),
       res
     );
 
     expect(res.statusCode).toBe(403);
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
   // No contributor name = "I took these": tie the link to the organizer's own
   // account, credited by their nick_name.
   it('links the organizer\'s own account when no contributor name is given', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = archiveMeetup();
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
       id: 'p1',
       user_id: '1',
       display_name: 'lead',
-      photo_link: VALID_LINK,
+      gallery: VALID_LINK,
     });
   });
 
   // The organizer's own account-linked archive photo is still one-per-person.
   it('returns 409 when the organizer already has their own archive link', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue({ id: 'existing' } as any);
+    mockedGalleryRecord.findOne.mockResolvedValue({ id: 'existing' } as any);
     const res = mockResponse();
     res.locals.meetup = archiveMeetup();
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+    await createGallery(mockRequest({ gallery: VALID_LINK }), res);
 
     expect(res.statusCode).toBe(409);
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 
   // ---- crediting others on a live (non-archive) meetup ----
@@ -298,8 +298,8 @@ describe('createPhotoLink', () => {
     };
     res.locals.requestor = { id: '1', nick_name: 'lead' };
 
-    await createPhotoLink(
-      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Photog' }),
+    await createGallery(
+      mockRequest({ gallery: VALID_LINK, contributor_name: 'Photog' }),
       res
     );
 
@@ -308,11 +308,11 @@ describe('createPhotoLink', () => {
       id: 'p1',
       user_id: null,
       display_name: 'Photog',
-      photo_link: VALID_LINK,
+      gallery: VALID_LINK,
     });
     // Credited links are account-less: no ticket gate, no per-person lookup.
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
-    expect(mockedPhotoLinkRecord.findOne).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.findOne).not.toHaveBeenCalled();
   });
 
   it('returns 403 when a non-organizer tries to credit someone else', async () => {
@@ -322,34 +322,34 @@ describe('createPhotoLink', () => {
     res.locals.meetup = meetupWithoutUser();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
-    await createPhotoLink(
-      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Photog' }),
+    await createGallery(
+      mockRequest({ gallery: VALID_LINK, contributor_name: 'Photog' }),
       res
     );
 
     expect(res.statusCode).toBe(403);
-    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+    expect(mockedGalleryRecord.create).not.toHaveBeenCalled();
   });
 });
 
-// ---- deletePhotoLink (self-service) ----------------------------------------
+// ---- deleteGallery (self-service) ----------------------------------------
 
-describe('deletePhotoLink', () => {
+describe('deleteGallery', () => {
   it('returns 400 when the meetup or requestor is missing', async () => {
     const res = mockResponse();
 
-    await deletePhotoLink(mockRequest(), res);
+    await deleteGallery(mockRequest(), res);
 
     expect(res.statusCode).toBe(400);
   });
 
   it('returns 404 when the requestor has no link for the meetup', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
     res.locals.requestor = { id: '1' };
 
-    await deletePhotoLink(mockRequest(), res);
+    await deleteGallery(mockRequest(), res);
 
     expect(res.statusCode).toBe(404);
   });
@@ -358,14 +358,14 @@ describe('deletePhotoLink', () => {
   // requestor's id, so a user can only ever remove their own record this way.
   it('removes the requestor\'s own link (204) and emits an update', async () => {
     const record = { remove: jest.fn().mockResolvedValue(undefined) };
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(record as any);
+    mockedGalleryRecord.findOne.mockResolvedValue(record as any);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
     res.locals.requestor = { id: '1' };
 
-    await deletePhotoLink(mockRequest(), res);
+    await deleteGallery(mockRequest(), res);
 
-    const whereArg = (mockedPhotoLinkRecord.findOne.mock.calls[0][0] as any)
+    const whereArg = (mockedGalleryRecord.findOne.mock.calls[0][0] as any)
       .where;
     expect(whereArg).toEqual({ meetup: { id: '10' }, user: { id: '1' } });
     expect(record.remove).toHaveBeenCalled();
@@ -376,23 +376,23 @@ describe('deletePhotoLink', () => {
   });
 });
 
-// ---- deletePhotoLinkForUser (organizer moderation) -------------------------
+// ---- deleteGalleryForUser (organizer moderation) -------------------------
 
-describe('deletePhotoLinkForUser', () => {
+describe('deleteGalleryForUser', () => {
   it('returns 400 when the meetup is missing', async () => {
     const res = mockResponse();
 
-    await deletePhotoLinkForUser(mockRequest({}, { target_user_id: '2' }), res);
+    await deleteGalleryForUser(mockRequest({}, { target_user_id: '2' }), res);
 
     expect(res.statusCode).toBe(400);
   });
 
   it('returns 404 when the target user has no link for the meetup', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
 
-    await deletePhotoLinkForUser(mockRequest({}, { target_user_id: '2' }), res);
+    await deleteGalleryForUser(mockRequest({}, { target_user_id: '2' }), res);
 
     expect(res.statusCode).toBe(404);
   });
@@ -401,13 +401,13 @@ describe('deletePhotoLinkForUser', () => {
   // remove another attendee's link, addressed by :target_user_id.
   it("removes the target user's link (204) and emits an update", async () => {
     const record = { remove: jest.fn().mockResolvedValue(undefined) };
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(record as any);
+    mockedGalleryRecord.findOne.mockResolvedValue(record as any);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
 
-    await deletePhotoLinkForUser(mockRequest({}, { target_user_id: '2' }), res);
+    await deleteGalleryForUser(mockRequest({}, { target_user_id: '2' }), res);
 
-    const whereArg = (mockedPhotoLinkRecord.findOne.mock.calls[0][0] as any)
+    const whereArg = (mockedGalleryRecord.findOne.mock.calls[0][0] as any)
       .where;
     expect(whereArg).toEqual({ meetup: { id: '10' }, user: { id: '2' } });
     expect(record.remove).toHaveBeenCalled();
@@ -418,27 +418,27 @@ describe('deletePhotoLinkForUser', () => {
   });
 });
 
-// ---- getMeetupPhotoLinks ---------------------------------------------------
+// ---- getMeetupGallery ---------------------------------------------------
 
-describe('getMeetupPhotoLinks', () => {
+describe('getMeetupGallery', () => {
   it('maps every link for the meetup to the response shape', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([
+    mockedGalleryRecord.find.mockResolvedValue([
       {
         id: 'p1',
         user_id: '1',
         user: { id: '1', nick_name: 'jane' },
-        photo_link: 'https://a.example.com',
+        gallery: 'https://a.example.com',
       },
       {
         id: 'p2',
         user_id: '2',
         user: { id: '2', nick_name: 'bob' },
-        photo_link: 'https://b.example.com',
+        gallery: 'https://b.example.com',
       },
     ] as any);
     const res = mockResponse();
 
-    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGallery(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
@@ -446,71 +446,71 @@ describe('getMeetupPhotoLinks', () => {
         id: 'p1',
         user_id: '1',
         display_name: 'jane',
-        photo_link: 'https://a.example.com',
+        gallery: 'https://a.example.com',
       },
       {
         id: 'p2',
         user_id: '2',
         display_name: 'bob',
-        photo_link: 'https://b.example.com',
+        gallery: 'https://b.example.com',
       },
     ]);
   });
 
   // Archive links have no user; the free-text contributor_name is the credit.
   it('credits an account-less archive link by its contributor_name', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([
+    mockedGalleryRecord.find.mockResolvedValue([
       {
         id: 'p9',
         user_id: null,
         user: null,
         contributor_name: 'Old Timer',
-        photo_link: 'https://c.example.com',
+        gallery: 'https://c.example.com',
       },
     ] as any);
     const res = mockResponse();
 
-    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGallery(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.body).toEqual([
       {
         id: 'p9',
         user_id: null,
         display_name: 'Old Timer',
-        photo_link: 'https://c.example.com',
+        gallery: 'https://c.example.com',
       },
     ]);
   });
 
   // Records are returned oldest-first (contribution order) for a stable list.
   it('requests the links ordered by created_at ascending', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([]);
+    mockedGalleryRecord.find.mockResolvedValue([]);
     const res = mockResponse();
 
-    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGallery(mockRequest({}, { meetup_id: '10' }), res);
 
-    const findArg = mockedPhotoLinkRecord.find.mock.calls[0][0] as any;
+    const findArg = mockedGalleryRecord.find.mock.calls[0][0] as any;
     expect(findArg.order).toEqual({ created_at: 'ASC' });
   });
 
-  it('returns an empty list when the meetup has no photo links', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([]);
+  it('returns an empty list when the meetup has no galleries', async () => {
+    mockedGalleryRecord.find.mockResolvedValue([]);
     const res = mockResponse();
 
-    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGallery(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
   });
 });
 
-// ---- getMeetupPhotoLinkPreviews --------------------------------------------
+// ---- getMeetupGalleryPreviews --------------------------------------------
 
-describe('getMeetupPhotoLinkPreviews', () => {
+describe('getMeetupGalleryPreviews', () => {
   it('maps the util preview onto each link, keyed by record id', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([
-      { id: 'p1', photo_link: 'https://album.example.com/1' },
-      { id: 'p2', photo_link: 'https://img.example.com/photo.jpg' },
+    mockedGalleryRecord.find.mockResolvedValue([
+      { id: 'p1', gallery: 'https://album.example.com/1' },
+      { id: 'p2', gallery: 'https://img.example.com/photo.jpg' },
     ] as any);
     mockedFetchLinkPreview.mockImplementation(async (url: string) =>
       url === 'https://album.example.com/1'
@@ -523,7 +523,7 @@ describe('getMeetupPhotoLinkPreviews', () => {
     );
     const res = mockResponse();
 
-    await getMeetupPhotoLinkPreviews(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGalleryPreviews(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
@@ -543,8 +543,8 @@ describe('getMeetupPhotoLinkPreviews', () => {
   });
 
   it('returns null fields when the util yields no preview', async () => {
-    mockedPhotoLinkRecord.find.mockResolvedValue([
-      { id: 'p3', photo_link: 'https://broken.example.com/1' },
+    mockedGalleryRecord.find.mockResolvedValue([
+      { id: 'p3', gallery: 'https://broken.example.com/1' },
     ] as any);
     mockedFetchLinkPreview.mockResolvedValue({
       title: null,
@@ -553,7 +553,7 @@ describe('getMeetupPhotoLinkPreviews', () => {
     });
     const res = mockResponse();
 
-    await getMeetupPhotoLinkPreviews(mockRequest({}, { meetup_id: '10' }), res);
+    await getMeetupGalleryPreviews(mockRequest({}, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
@@ -562,23 +562,23 @@ describe('getMeetupPhotoLinkPreviews', () => {
   });
 });
 
-// ---- deletePhotoLinkById (organizer, by record id) -------------------------
+// ---- deleteGalleryById (organizer, by record id) -------------------------
 
-describe('deletePhotoLinkById', () => {
+describe('deleteGalleryById', () => {
   it('returns 400 when the meetup is missing', async () => {
     const res = mockResponse();
 
-    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+    await deleteGalleryById(mockRequest({}, { gallery_id: 'p1' }), res);
 
     expect(res.statusCode).toBe(400);
   });
 
   it('returns 404 when no link with that id exists for the meetup', async () => {
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
 
-    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+    await deleteGalleryById(mockRequest({}, { gallery_id: 'p1' }), res);
 
     expect(res.statusCode).toBe(404);
   });
@@ -587,13 +587,13 @@ describe('deletePhotoLinkById', () => {
   // an account-less archive link addressed by its record id, scoped to the meetup.
   it('removes the link (204) and emits an update', async () => {
     const record = { remove: jest.fn().mockResolvedValue(undefined) };
-    mockedPhotoLinkRecord.findOne.mockResolvedValue(record as any);
+    mockedGalleryRecord.findOne.mockResolvedValue(record as any);
     const res = mockResponse();
     res.locals.meetup = { id: '10' };
 
-    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+    await deleteGalleryById(mockRequest({}, { gallery_id: 'p1' }), res);
 
-    const whereArg = (mockedPhotoLinkRecord.findOne.mock.calls[0][0] as any)
+    const whereArg = (mockedGalleryRecord.findOne.mock.calls[0][0] as any)
       .where;
     expect(whereArg).toEqual({ id: 'p1', meetup: { id: '10' } });
     expect(record.remove).toHaveBeenCalled();

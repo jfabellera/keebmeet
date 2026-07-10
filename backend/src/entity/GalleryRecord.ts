@@ -9,8 +9,8 @@ import {
 import { Meetup } from './Meetup';
 import { User } from './User';
 
-@Entity({ name: 'photo_link_record' })
-export class PhotoLinkRecord extends BaseEntity {
+@Entity({ name: 'gallery_record' })
+export class GalleryRecord extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
@@ -32,7 +32,7 @@ export class PhotoLinkRecord extends BaseEntity {
   contributor_name?: string | null;
 
   @Column({ type: 'varchar', length: 1024, nullable: false })
-  photo_link: string;
+  gallery: string;
 
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;

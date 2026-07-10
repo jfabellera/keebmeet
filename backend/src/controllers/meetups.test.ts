@@ -32,8 +32,8 @@ jest.mock('../entity/MeetupDisplayRecord', () => ({
 jest.mock('../entity/Ticket', () => ({
   Ticket: { count: jest.fn() },
 }));
-jest.mock('../entity/PhotoLinkRecord', () => ({
-  PhotoLinkRecord: { createQueryBuilder: jest.fn() },
+jest.mock('../entity/GalleryRecord', () => ({
+  GalleryRecord: { createQueryBuilder: jest.fn() },
 }));
 
 jest.mock('../util/eventbriteApi', () => ({
@@ -134,7 +134,7 @@ import { Meetup } from '../entity/Meetup';
 import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
-import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import {
   createEventbriteWebhook,
@@ -163,10 +163,10 @@ const mockedNormalizeImage = jest.mocked(normalizeImage);
 const mockedDisplayRecord = jest.mocked(MeetupDisplayRecord);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
-const mockedPhotoLinkRecord = jest.mocked(PhotoLinkRecord);
-// Chainable stub for PhotoLinkRecord.createQueryBuilder(...). getRawMany
+const mockedGalleryRecord = jest.mocked(GalleryRecord);
+// Chainable stub for GalleryRecord.createQueryBuilder(...). getRawMany
 // returns the grouped meetup_ids that have photos; default is none.
-const photoLinkQueryBuilder = {
+const galleryQueryBuilder = {
   select: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   groupBy: jest.fn().mockReturnThis(),
@@ -236,9 +236,9 @@ const geocodeResult = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  photoLinkQueryBuilder.getRawMany.mockResolvedValue([]);
-  mockedPhotoLinkRecord.createQueryBuilder.mockReturnValue(
-    photoLinkQueryBuilder as any
+  galleryQueryBuilder.getRawMany.mockResolvedValue([]);
+  mockedGalleryRecord.createQueryBuilder.mockReturnValue(
+    galleryQueryBuilder as any
   );
   mockedMeetup.create.mockImplementation((attrs: any) => ({
     organizers: [],
@@ -268,13 +268,13 @@ describe('getAllMeetups', () => {
     expect(mockedTicket.count).not.toHaveBeenCalled();
   });
 
-  it('flags meetups that have photo links', async () => {
+  it('flags meetups that have galleries', async () => {
     mockedMeetup.find.mockResolvedValue([
       fakeMeetupRow({ id: '10' }),
       fakeMeetupRow({ id: '20' }),
     ]);
-    // Only meetup 10 has photo links.
-    photoLinkQueryBuilder.getRawMany.mockResolvedValue([{ meetup_id: '10' }]);
+    // Only meetup 10 has galleries.
+    galleryQueryBuilder.getRawMany.mockResolvedValue([{ meetup_id: '10' }]);
     const res = mockResponse();
 
     await getAllMeetups(mockRequest(), res);
@@ -1117,9 +1117,9 @@ describe('deleteMeetup', () => {
     expect(res.statusCode).toBe(204);
   });
 
-  // photo_link_record uses ON DELETE NO ACTION, so its rows must be removed by
+  // gallery_record uses ON DELETE NO ACTION, so its rows must be removed by
   // hand before the meetup, or the delete fails on a FK violation.
-  it("removes the meetup's photo links inside the delete transaction", async () => {
+  it("removes the meetup's galleries inside the delete transaction", async () => {
     const builder = {
       delete: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
@@ -1150,7 +1150,7 @@ describe('deleteMeetup', () => {
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
-    expect(builder.from).toHaveBeenCalledWith(PhotoLinkRecord);
+    expect(builder.from).toHaveBeenCalledWith(GalleryRecord);
     expect(builder.where).toHaveBeenCalledWith('meetup_id = :meetupId', {
       meetupId: '10',
     });
