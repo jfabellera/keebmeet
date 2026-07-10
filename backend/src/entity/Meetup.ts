@@ -1,6 +1,5 @@
 import {
   BaseEntity,
-  Check,
   Column,
   Entity,
   JoinColumn,
@@ -19,7 +18,6 @@ import { Ticket } from './Ticket';
 import { User } from './User';
 
 @Entity({ name: 'meetups' })
-@Check(`"is_archive" = true OR "lead_organizer" IS NOT NULL`)
 export class Meetup extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
@@ -30,7 +28,7 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'timestamp with time zone' })
   date: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'lead_organizer' })
   lead_organizer: User;
 
@@ -92,9 +90,8 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   is_archive: boolean;
 
-  @Column({ type: 'bigint', nullable: true })
-  archived_by?: string;
-
+  // Free-text credit for who ran an archived meetup (its lead_organizer is
+  // always the submitter). Null when the submitter ran it themselves.
   @Column({ type: 'varchar', length: 30, nullable: true })
   organizer_name?: string;
 }

@@ -11,23 +11,17 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { useAppSelector } from '@/store/hooks';
 import { useFormik } from 'formik';
 import { type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
-import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
 import { useCreateArchiveMeetupMutation } from '../store/meetupSlice';
 import ArchiveMeetupFormSchema from '../util/schemas/ArchiveMeetupFormSchema';
 
-type OrganizerType = 'me' | 'registered' | 'unregistered';
-
 const NewArchiveMeetupPage = (): ReactNode => {
-  const [createArchiveMeetup, { isLoading }] =
-    useCreateArchiveMeetupMutation();
-  const currentUserId = useAppSelector((state) => state.user.user?.id);
+  const [createArchiveMeetup, { isLoading }] = useCreateArchiveMeetupMutation();
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -37,10 +31,9 @@ const NewArchiveMeetupPage = (): ReactNode => {
       imageUrl: '',
       imageKey: '',
       description: '',
-      // No default: whoever archives a past meetup often isn't its organizer,
-      // so they must consciously pick rather than silently be credited.
-      organizerType: '' as OrganizerType | '',
-      organizerId: '',
+      // No default so crediting is a deliberate choice; 'other' reveals a
+      // required organizer-name field (see the schema).
+      organizerType: '' as 'me' | 'other' | '',
       organizerName: '',
     },
     onSubmit: async (values) => {
@@ -52,17 +45,10 @@ const NewArchiveMeetupPage = (): ReactNode => {
         address: values.address,
         image_key: values.imageKey,
         description: values.description,
-        // The three organizer modes are mutually exclusive; the backend keeps
-        // whichever identifies a lead and drops a redundant name.
-        is_organizer: values.organizerType === 'me',
-        organizer_id:
-          values.organizerType === 'registered'
-            ? values.organizerId
-            : undefined,
+        // The submitter always owns the archive. The credit is either
+        // themselves ('me') or the typed name ('other').
         organizer_name:
-          values.organizerType === 'unregistered'
-            ? values.organizerName
-            : undefined,
+          values.organizerType === 'other' ? values.organizerName : undefined,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -102,52 +88,25 @@ const NewArchiveMeetupPage = (): ReactNode => {
                     value={formik.values.organizerType}
                     onValueChange={(value) => {
                       void formik.setFieldValue('organizerType', value);
-                      // Clear the fields for the modes we're leaving so a stale
-                      // value can't linger behind the form.
-                      void formik.setFieldValue('organizerId', '');
-                      void formik.setFieldValue('organizerName', '');
+                      // Clear a stale name when switching back to self-credit.
+                      if (value === 'me') {
+                        void formik.setFieldValue('organizerName', '');
+                      }
                     }}
                   >
                     <SelectTrigger id="organizerType" className="w-full">
-                      <SelectValue placeholder="Select who organized this meetup" />
+                      <SelectValue placeholder="Who organized this meetup?" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="me">I organized this meetup</SelectItem>
-                      <SelectItem value="registered">
-                        A registered organizer
-                      </SelectItem>
-                      <SelectItem value="unregistered">
-                        Someone without an account
+                      <SelectItem value="me">I organized this</SelectItem>
+                      <SelectItem value="other">
+                        Someone else organized this
                       </SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
 
-                {formik.values.organizerType === 'registered' && (
-                  <Field>
-                    <FieldLabel htmlFor="organizer">
-                      Registered Organizer
-                    </FieldLabel>
-                    <OrganizerCombobox
-                      id="organizer"
-                      // Single-select: keep only the most recently chosen id.
-                      value={
-                        formik.values.organizerId
-                          ? [formik.values.organizerId]
-                          : []
-                      }
-                      onChange={(organizerIds) =>
-                        void formik.setFieldValue(
-                          'organizerId',
-                          organizerIds.at(-1) ?? ''
-                        )
-                      }
-                      excludeIds={currentUserId ? [currentUserId] : []}
-                    />
-                  </Field>
-                )}
-
-                {formik.values.organizerType === 'unregistered' && (
+                {formik.values.organizerType === 'other' && (
                   <FormField
                     formik={formik}
                     name="organizerName"

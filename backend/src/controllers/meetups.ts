@@ -82,7 +82,13 @@ const mapMeetupInfo = async (
       country: meetup.country,
     },
     image_url: publicUrl(meetup.image_key),
+    is_archive: meetup.is_archive,
   };
+
+  // Display-only credit for an archive's organizer, surfaced on cards/detail.
+  if (meetup.organizer_name != null) {
+    meetupInfo.organizer_name = meetup.organizer_name;
+  }
 
   if (hasPhotos != null) {
     meetupInfo.has_photos = hasPhotos;
@@ -400,17 +406,6 @@ export const createArchiveMeetup = async (
 
   const requestor = res.locals.requestor as User;
 
-  // Schema guarantees exactly one organizer source. Resolve the leader
-  let leadOrganizer: User | null = null;
-  if (result.data.is_organizer) {
-    leadOrganizer = requestor;
-  } else if (result.data.organizer_id != null) {
-    leadOrganizer = await User.findOneBy({ id: result.data.organizer_id });
-    if (leadOrganizer == null) {
-      return res.status(404).json({ message: 'Invalid organizer ID.' });
-    }
-  }
-
   // Check if meetup name is taken
   const existingMeetup = await Meetup.findOne({
     where: {
@@ -434,13 +429,15 @@ export const createArchiveMeetup = async (
     duration_hours: 0,
     has_raffle: false,
     is_archive: true,
-    archived_by: requestor.id,
+    // organizer_name is a display-only credit; who actually ran the meetup.
+    // Omitted (null) when the submitter ran it themselves.
     organizer_name: result.data.organizer_name,
   });
 
-  if (leadOrganizer != null) {
-    newMeetup.lead_organizer = leadOrganizer;
-  }
+  // The submitter always owns the archive so it can never be orphaned — they
+  // can manage and delete it. Who ran it is recorded separately in
+  // organizer_name for display only.
+  newMeetup.lead_organizer = requestor;
 
   // Get UTC offset for the inputted address
   try {

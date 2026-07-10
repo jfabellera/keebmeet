@@ -2,9 +2,10 @@ import * as Yup from 'yup';
 
 /**
  * Validation for the archive-meetup form. Unlike a live meetup, an archive
- * records a *past* event and has no capacity/duration/raffle. Its organizer is
- * chosen one of three ways (`organizerType`), and the dependent field for the
- * chosen type is required.
+ * records a *past* event and has no capacity/duration/raffle. The submitter
+ * always owns it; `organizerType` records who ran it. It has no default, so
+ * crediting is a deliberate choice rather than a silent self-attribution; when
+ * someone else ran it, an organizer name is required.
  */
 const ArchiveMeetupFormSchema = Yup.object().shape({
   name: Yup.string()
@@ -15,19 +16,13 @@ const ArchiveMeetupFormSchema = Yup.object().shape({
     .required('Required'),
   address: Yup.string().required('Required'),
   imageKey: Yup.string(),
-  organizerType: Yup.string()
-    .oneOf(['me', 'registered', 'unregistered'])
-    .required('Required'),
-  organizerId: Yup.string().when('organizerType', {
-    is: 'registered',
-    then: (schema) => schema.required('Select an organizer'),
-  }),
+  organizerType: Yup.string().oneOf(['me', 'other']).required('Required'),
   organizerName: Yup.string().when('organizerType', {
-    is: 'unregistered',
+    is: 'other',
     then: (schema) =>
       schema
         .max(30, 'Name must be at most 30 characters')
-        .required('Enter an organizer name'),
+        .required('Enter who organized this meetup'),
   }),
 });
 

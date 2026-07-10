@@ -92,7 +92,6 @@ jest.mock('../datasource', () => {
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
-    findOneBy: jest.fn(),
   },
 }));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
@@ -507,7 +506,6 @@ const validArchiveBody = (overrides = {}) => ({
   date: '2019-08-01T18:00:00.000Z',
   address: '500 Congress Ave',
   image_key: 'http://img',
-  is_organizer: true,
   ...overrides,
 });
 
@@ -521,155 +519,46 @@ describe('createArchiveMeetup', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('returns 400 when no organizer is identified', async () => {
-    const res = mockResponse();
-    res.locals.requestor = { id: '1' };
-
-    // No is_organizer, organizer_id, or organizer_name — rejected by the schema.
-    await createArchiveMeetup(
-      mockRequest(validArchiveBody({ is_organizer: false })),
-      res
-    );
-
-    expect(res.statusCode).toBe(400);
-    expect(mockedMeetup.create).not.toHaveBeenCalled();
-  });
-
-  it('drops a redundant organizer_name when the requestor is the lead', async () => {
+  it('makes the submitter the lead so the archive is never orphaned', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
     const res = mockResponse();
     res.locals.requestor = { id: '7', nick_name: 'jane' };
 
-    // is_organizer wins; the name is redundant and silently discarded.
-    await createArchiveMeetup(
-      mockRequest(
-        validArchiveBody({ is_organizer: true, organizer_name: 'Old Timer' })
-      ),
-      res
-    );
-
-    expect(res.statusCode).toBe(201);
-    const created = res.body as any;
-    expect(created.lead_organizer).toEqual({ id: '7', nick_name: 'jane' });
-    expect(created.organizer_name).toBeUndefined();
-  });
-
-  it('drops a redundant organizer_name when a registered organizer_id is given', async () => {
-    mockedMeetup.findOne.mockResolvedValue(null);
-    mockedGeocode.mockResolvedValue(geocodeResult);
-    mockedGetUtcOffset.mockResolvedValue(-5);
-    mockedUser.findOneBy.mockResolvedValue({
-      id: '2',
-      nick_name: 'john',
-    } as never);
-    const res = mockResponse();
-    res.locals.requestor = { id: '1' };
-
-    await createArchiveMeetup(
-      mockRequest(
-        validArchiveBody({
-          is_organizer: false,
-          organizer_id: '2',
-          organizer_name: 'Old Timer',
-        })
-      ),
-      res
-    );
-
-    expect(res.statusCode).toBe(201);
-    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '2' });
-    const created = res.body as any;
-    expect(created.lead_organizer).toEqual({ id: '2', nick_name: 'john' });
-    expect(created.organizer_name).toBeUndefined();
-  });
-
-  it('archives with the requestor as lead when is_organizer is set', async () => {
-    mockedMeetup.findOne.mockResolvedValue(null);
-    mockedGeocode.mockResolvedValue(geocodeResult);
-    mockedGetUtcOffset.mockResolvedValue(-5);
-    const res = mockResponse();
-    res.locals.requestor = { id: '7', nick_name: 'jane' };
-
+    // No organizer_name: the submitter ran it themselves.
     await createArchiveMeetup(mockRequest(validArchiveBody()), res);
 
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
     expect(created.is_archive).toBe(true);
-    expect(created.archived_by).toBe('7');
+    // The submitter always owns the archive (so they can manage/delete it).
     expect(created.lead_organizer).toEqual({ id: '7', nick_name: 'jane' });
+    expect(created.organizer_name).toBeUndefined();
     expect(created.capacity).toBe(0);
     expect(created.duration_hours).toBe(0);
     expect(created.has_raffle).toBe(false);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
-    // The requestor themselves is the organizer — no user lookup needed.
-    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
   });
 
-  it('links a registered organizer by organizer_id', async () => {
+  it('records organizer_name as a display credit while the submitter still owns it', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
-    mockedUser.findOneBy.mockResolvedValue({
-      id: '2',
-      nick_name: 'john',
-    } as never);
     const res = mockResponse();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
     await createArchiveMeetup(
-      mockRequest(
-        validArchiveBody({ is_organizer: false, organizer_id: '2' })
-      ),
-      res
-    );
-
-    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '2' });
-    const created = res.body as any;
-    // The archiving requestor is still recorded separately from the credited lead.
-    expect(created.archived_by).toBe('1');
-    expect(created.lead_organizer).toEqual({ id: '2', nick_name: 'john' });
-    expect(res.statusCode).toBe(201);
-  });
-
-  it('returns 404 when organizer_id does not match a user', async () => {
-    mockedUser.findOneBy.mockResolvedValue(null);
-    const res = mockResponse();
-    res.locals.requestor = { id: '1' };
-
-    await createArchiveMeetup(
-      mockRequest(
-        validArchiveBody({ is_organizer: false, organizer_id: '999' })
-      ),
-      res
-    );
-
-    expect(res.statusCode).toBe(404);
-    expect(mockedMeetup.create).not.toHaveBeenCalled();
-  });
-
-  it('archives an unregistered organizer by name with no lead', async () => {
-    mockedMeetup.findOne.mockResolvedValue(null);
-    mockedGeocode.mockResolvedValue(geocodeResult);
-    mockedGetUtcOffset.mockResolvedValue(-5);
-    const res = mockResponse();
-    res.locals.requestor = { id: '1' };
-
-    await createArchiveMeetup(
-      mockRequest(
-        validArchiveBody({ is_organizer: false, organizer_name: 'Old Timer' })
-      ),
+      mockRequest(validArchiveBody({ organizer_name: 'Old Timer' })),
       res
     );
 
     expect(res.statusCode).toBe(201);
     const created = res.body as any;
+    // Credit is a display name; ownership still belongs to the submitter.
     expect(created.organizer_name).toBe('Old Timer');
-    // No registered user is linked; the constraint allows a null lead for archives.
-    expect(created.lead_organizer).toBeUndefined();
-    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+    expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
   });
 
   it('returns 409 when the name is taken', async () => {

@@ -18,44 +18,21 @@ export const createMeetupSchema = z.object({
 
 export type CreateMeetupPayload = z.infer<typeof createMeetupSchema>;
 
-export const createArchiveMeetupSchema = z
-  .object({
-    name: z.string().min(3),
-    date: z.string().datetime({
-      offset: false,
-      message: 'Datetime must be in the format of YYYY-MM-DDT:HH:mm:ssZ',
-    }),
-    address: z.string(),
-    image_key: z.string(),
-    is_organizer: z.boolean().optional().default(false), // Assign requestor as organizer
-    description: z.string().optional(),
-    organizer_name: z.string().optional(), // For unregistered organizer
-    organizer_id: z.string().optional(), // For registered organizer
-  })
-  .refine(
-    (data) =>
-      data.is_organizer ||
-      data.organizer_id != null ||
-      data.organizer_name != null,
-    {
-      message:
-        'An organizer is required: set is_organizer, organizer_id, or organizer_name.',
-      path: ['organizer_name'],
-    }
-  )
-  // A registered lead (the requestor via is_organizer, or another user via
-  // organizer_id) already identifies the organizer, so organizer_name is only a
-  // fallback for organizers without an account. Drop any name sent alongside a
-  // lead — it's redundant, not contradictory — so the two can never both persist.
-  .transform((data) => ({
-    ...data,
-    organizer_name:
-      data.is_organizer || data.organizer_id != null
-        ? undefined
-        : data.organizer_name,
-  }));
+export const createArchiveMeetupSchema = z.object({
+  name: z.string().min(3),
+  date: z.string().datetime({
+    offset: false,
+    message: 'Datetime must be in the format of YYYY-MM-DDT:HH:mm:ssZ',
+  }),
+  address: z.string(),
+  image_key: z.string(),
+  description: z.string().optional(),
+  // Display-only credit for who ran the meetup. The submitter is always the
+  // archive's lead organizer (and owner); omit this when they ran it themselves.
+  organizer_name: z.string().max(30).optional(),
+});
 
-export type CreateArchiveMeetupPayload = z.input<
+export type CreateArchiveMeetupPayload = z.infer<
   typeof createArchiveMeetupSchema
 >;
 
