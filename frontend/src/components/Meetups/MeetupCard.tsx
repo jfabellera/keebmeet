@@ -8,6 +8,7 @@ import {
 import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { CircleArrowOutUpRight } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
@@ -38,13 +39,23 @@ export const MeetupCard = ({
       </AspectRatio>
       <div className="p-3">
         <div className="flex flex-col items-start gap-2">
-          <div className="flex w-full items-center">
+          <div className="flex w-full items-center gap-2">
             <p className="text-muted-foreground font-semibold">
               {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                 'MMMM DD, YYYY'
               )}
             </p>
-            <div className="text-muted-foreground ml-auto flex items-center gap-2.5">
+            <div className="text-muted-foreground ml-auto flex items-center gap-2">
+              {meetup.is_archive ? (
+                <Tooltip>
+                  <TooltipTrigger className="flex" aria-label="Archived">
+                    <CircleArrowOutUpRight className="size-4.5" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    This meetup was not created with KeebMeet
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
               {attending === true ? (
                 <Tooltip>
                   <TooltipTrigger
