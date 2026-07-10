@@ -11,9 +11,16 @@ import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { fetchLinkPreview } from '../util/linkPreview';
 
-// A photo link is keyed by (meetup_id, user_id): each attendee may have at most
-// one link per meetup. A duplicate POST is rejected with 409; to change a link
-// the attendee deletes it and creates a new one.
+const isMeetupOrganizer = (meetup: Meetup, user: User): boolean =>
+  meetup.lead_organizer?.id === user.id ||
+  (meetup.organizers?.some((organizer) => organizer.id === user.id) ?? false);
+
+// Two kinds of photo link:
+//  - A self link is keyed by (meetup_id, user_id): an attendee or organizer may
+//    have at most one per meetup (enforced by a partial unique index).
+//  - A credited link (contributor_name, no user) lets an organizer attribute a
+//    link to someone without an account, e.g. a hired photographer. Many are
+//    allowed. Every link is identified by its surrogate record id.
 export const createPhotoLink = async (
   req: Request,
   res: Response
@@ -30,12 +37,37 @@ export const createPhotoLink = async (
     return res.status(400).json(result.error);
   }
 
-  // Only an organizer or an attendee (ticket holder) of the meetup may add a
-  // photo link. authChecker lets any signed-in user onto this route
-  // (Rule.ignoreMeetupOrganizer), so the attendee/organizer gate lives here.
-  const isOrganizer =
-    meetup.lead_organizer?.id === user.id ||
-    (meetup.organizers?.some((organizer) => organizer.id === user.id) ?? false);
+  const isOrganizer = isMeetupOrganizer(meetup, user);
+  const contributorName = result.data.contributor_name?.trim();
+
+  // Photos only exist once a live meetup is under way; archives are already past.
+  if (!meetup.is_archive && new Date(meetup.date) > new Date()) {
+    return res.status(400).json({ message: 'Meetup has not started yet.' });
+  }
+
+  if (contributorName != null && contributorName !== '') {
+    if (!isOrganizer) {
+      return res.status(403).json({
+        message: 'Only an organizer can credit a photo link to someone else.',
+      });
+    }
+
+    const record = PhotoLinkRecord.create({
+      meetup,
+      contributor_name: contributorName,
+      photo_link: result.data.photo_link,
+    });
+    await record.save();
+
+    socket.emit('meetup:update', { meetupId: meetup.id });
+
+    return res.status(201).json({
+      id: record.id,
+      user_id: null,
+      display_name: contributorName,
+      photo_link: record.photo_link,
+    } satisfies PhotoLinkInfo);
+  }
 
   if (!isOrganizer) {
     const ticket = await Ticket.findOne({
@@ -50,12 +82,6 @@ export const createPhotoLink = async (
         message: 'Only meetup attendees or organizers can add a photo link.',
       });
     }
-  }
-
-  // Photo links can only be added once the meetup is under way — there are no
-  // photos to share before it starts. `meetup.date` is the start time.
-  if (new Date(meetup.date) > new Date()) {
-    return res.status(400).json({ message: 'Meetup has not started yet.' });
   }
 
   const existing = await PhotoLinkRecord.findOne({
@@ -79,6 +105,7 @@ export const createPhotoLink = async (
   socket.emit('meetup:update', { meetupId: meetup.id });
 
   return res.status(201).json({
+    id: record.id,
     user_id: user.id,
     display_name: user.nick_name,
     photo_link: record.photo_link,
@@ -97,7 +124,14 @@ export const deletePhotoLink = async (
     return res.status(400).end();
   }
 
-  return removePhotoLink(res, meetup.id, user.id);
+  const record = await PhotoLinkRecord.findOne({
+    where: {
+      meetup: { id: meetup.id },
+      user: { id: user.id },
+    },
+  });
+
+  return finishRemoval(res, meetup.id, record);
 };
 
 // Moderation: a meetup organizer removes another attendee's photo link. The
@@ -114,21 +148,45 @@ export const deletePhotoLinkForUser = async (
     return res.status(400).end();
   }
 
-  return removePhotoLink(res, meetup.id, target_user_id);
-};
-
-const removePhotoLink = async (
-  res: Response,
-  meetupId: string,
-  userId: string
-): Promise<Response> => {
   const record = await PhotoLinkRecord.findOne({
     where: {
-      meetup: { id: meetupId },
-      user: { id: userId },
+      meetup: { id: meetup.id },
+      user: { id: target_user_id },
     },
   });
 
+  return finishRemoval(res, meetup.id, record);
+};
+
+// Organizer moderation by record id — the only way to remove an archive's
+// account-less contributor links (which have no user_id to target). Organizer
+// status is enforced by authChecker on the :meetup_id param.
+export const deletePhotoLinkById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const meetup = res.locals.meetup as Meetup;
+  const { photo_link_id } = req.params as Record<string, string>;
+
+  if (meetup == null) {
+    return res.status(400).end();
+  }
+
+  const record = await PhotoLinkRecord.findOne({
+    where: {
+      id: photo_link_id,
+      meetup: { id: meetup.id },
+    },
+  });
+
+  return finishRemoval(res, meetup.id, record);
+};
+
+const finishRemoval = async (
+  res: Response,
+  meetupId: string,
+  record: PhotoLinkRecord | null
+): Promise<Response> => {
   if (record == null) {
     return res.status(404).json({ message: 'Photo link not found.' });
   }
@@ -159,8 +217,9 @@ export const getMeetupPhotoLinks = async (
   const response = records.map(
     (record) =>
       ({
-        user_id: record.user.id,
-        display_name: record.user.nick_name,
+        id: record.id,
+        user_id: record.user_id,
+        display_name: record.contributor_name ?? record.user?.nick_name ?? '',
         photo_link: record.photo_link,
       }) satisfies PhotoLinkInfo
   );
@@ -192,7 +251,7 @@ export const getMeetupPhotoLinkPreviews = async (
     records.map(async (record) => {
       const preview = await fetchLinkPreview(record.photo_link);
       return {
-        user_id: record.user_id,
+        id: record.id,
         title: preview.title,
         image: preview.image,
         siteName: preview.siteName,

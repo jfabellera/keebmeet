@@ -18,6 +18,7 @@ jest.mock('../util/linkPreview', () => ({ fetchLinkPreview: jest.fn() }));
 import {
   createPhotoLink,
   deletePhotoLink,
+  deletePhotoLinkById,
   deletePhotoLinkForUser,
   getMeetupPhotoLinkPreviews,
   getMeetupPhotoLinks,
@@ -72,6 +73,7 @@ const meetupWithoutUser = (): any => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockedPhotoLinkRecord.create.mockImplementation((attrs: any) => ({
+    id: 'p1',
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
   }));
@@ -123,6 +125,7 @@ describe('createPhotoLink', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
+      id: 'p1',
       user_id: '1',
       display_name: 'jane',
       photo_link: VALID_LINK,
@@ -200,6 +203,131 @@ describe('createPhotoLink', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body).toEqual({ message: 'Photo link already exists.' });
+    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+  });
+
+  // ---- archive meetups ----
+  // The organizer curates the gallery: account-less links credited by name, no
+  // ticket gate and no one-per-person limit.
+  const archiveMeetup = (): any => ({
+    id: '10',
+    date: STARTED_DATE,
+    is_archive: true,
+    lead_organizer: { id: '1' },
+    organizers: [],
+  });
+
+  it('archives a link (201) credited to a free-text contributor name', async () => {
+    const res = mockResponse();
+    res.locals.meetup = archiveMeetup();
+    res.locals.requestor = { id: '1', nick_name: 'lead' };
+
+    await createPhotoLink(
+      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Old Timer' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual({
+      id: 'p1',
+      user_id: null,
+      display_name: 'Old Timer',
+      photo_link: VALID_LINK,
+    });
+    // No ticket check and no per-person duplicate lookup for archives.
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+    expect(mockedPhotoLinkRecord.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when a non-organizer tries to add to an archive', async () => {
+    const res = mockResponse();
+    res.locals.meetup = archiveMeetup();
+    res.locals.requestor = { id: '2', nick_name: 'rando' };
+
+    await createPhotoLink(
+      mockRequest({ photo_link: VALID_LINK, contributor_name: 'x' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+  });
+
+  // No contributor name = "I took these": tie the link to the organizer's own
+  // account, credited by their nick_name.
+  it('links the organizer\'s own account when no contributor name is given', async () => {
+    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = archiveMeetup();
+    res.locals.requestor = { id: '1', nick_name: 'lead' };
+
+    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual({
+      id: 'p1',
+      user_id: '1',
+      display_name: 'lead',
+      photo_link: VALID_LINK,
+    });
+  });
+
+  // The organizer's own account-linked archive photo is still one-per-person.
+  it('returns 409 when the organizer already has their own archive link', async () => {
+    mockedPhotoLinkRecord.findOne.mockResolvedValue({ id: 'existing' } as any);
+    const res = mockResponse();
+    res.locals.meetup = archiveMeetup();
+    res.locals.requestor = { id: '1', nick_name: 'lead' };
+
+    await createPhotoLink(mockRequest({ photo_link: VALID_LINK }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
+  });
+
+  // ---- crediting others on a live (non-archive) meetup ----
+  // Organizers can credit an account-less contributor (e.g. a photographer) on
+  // any of their meetups, not just archives.
+  it('lets an organizer credit an account-less contributor on a live meetup', async () => {
+    const res = mockResponse();
+    res.locals.meetup = {
+      id: '10',
+      date: STARTED_DATE,
+      lead_organizer: { id: '1' },
+      organizers: [],
+    };
+    res.locals.requestor = { id: '1', nick_name: 'lead' };
+
+    await createPhotoLink(
+      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Photog' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual({
+      id: 'p1',
+      user_id: null,
+      display_name: 'Photog',
+      photo_link: VALID_LINK,
+    });
+    // Credited links are account-less: no ticket gate, no per-person lookup.
+    expect(mockedTicket.findOne).not.toHaveBeenCalled();
+    expect(mockedPhotoLinkRecord.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when a non-organizer tries to credit someone else', async () => {
+    // Even a ticket-holding attendee may not post on another person's behalf.
+    mockedTicket.findOne.mockResolvedValue({ id: '5' } as any);
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createPhotoLink(
+      mockRequest({ photo_link: VALID_LINK, contributor_name: 'Photog' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
     expect(mockedPhotoLinkRecord.create).not.toHaveBeenCalled();
   });
 });
@@ -296,10 +424,14 @@ describe('getMeetupPhotoLinks', () => {
   it('maps every link for the meetup to the response shape', async () => {
     mockedPhotoLinkRecord.find.mockResolvedValue([
       {
+        id: 'p1',
+        user_id: '1',
         user: { id: '1', nick_name: 'jane' },
         photo_link: 'https://a.example.com',
       },
       {
+        id: 'p2',
+        user_id: '2',
         user: { id: '2', nick_name: 'bob' },
         photo_link: 'https://b.example.com',
       },
@@ -310,8 +442,43 @@ describe('getMeetupPhotoLinks', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
-      { user_id: '1', display_name: 'jane', photo_link: 'https://a.example.com' },
-      { user_id: '2', display_name: 'bob', photo_link: 'https://b.example.com' },
+      {
+        id: 'p1',
+        user_id: '1',
+        display_name: 'jane',
+        photo_link: 'https://a.example.com',
+      },
+      {
+        id: 'p2',
+        user_id: '2',
+        display_name: 'bob',
+        photo_link: 'https://b.example.com',
+      },
+    ]);
+  });
+
+  // Archive links have no user; the free-text contributor_name is the credit.
+  it('credits an account-less archive link by its contributor_name', async () => {
+    mockedPhotoLinkRecord.find.mockResolvedValue([
+      {
+        id: 'p9',
+        user_id: null,
+        user: null,
+        contributor_name: 'Old Timer',
+        photo_link: 'https://c.example.com',
+      },
+    ] as any);
+    const res = mockResponse();
+
+    await getMeetupPhotoLinks(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.body).toEqual([
+      {
+        id: 'p9',
+        user_id: null,
+        display_name: 'Old Timer',
+        photo_link: 'https://c.example.com',
+      },
     ]);
   });
 
@@ -340,10 +507,10 @@ describe('getMeetupPhotoLinks', () => {
 // ---- getMeetupPhotoLinkPreviews --------------------------------------------
 
 describe('getMeetupPhotoLinkPreviews', () => {
-  it('maps the util preview onto each link, keyed by user_id', async () => {
+  it('maps the util preview onto each link, keyed by record id', async () => {
     mockedPhotoLinkRecord.find.mockResolvedValue([
-      { user_id: '1', photo_link: 'https://album.example.com/1' },
-      { user_id: '2', photo_link: 'https://img.example.com/photo.jpg' },
+      { id: 'p1', photo_link: 'https://album.example.com/1' },
+      { id: 'p2', photo_link: 'https://img.example.com/photo.jpg' },
     ] as any);
     mockedFetchLinkPreview.mockImplementation(async (url: string) =>
       url === 'https://album.example.com/1'
@@ -361,13 +528,13 @@ describe('getMeetupPhotoLinkPreviews', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
       {
-        user_id: '1',
+        id: 'p1',
         title: 'Meetup album',
         image: 'https://album.example.com/cover.jpg',
         siteName: 'Example Photos',
       },
       {
-        user_id: '2',
+        id: 'p2',
         title: null,
         image: 'https://img.example.com/photo.jpg',
         siteName: null,
@@ -377,7 +544,7 @@ describe('getMeetupPhotoLinkPreviews', () => {
 
   it('returns null fields when the util yields no preview', async () => {
     mockedPhotoLinkRecord.find.mockResolvedValue([
-      { user_id: '3', photo_link: 'https://broken.example.com/1' },
+      { id: 'p3', photo_link: 'https://broken.example.com/1' },
     ] as any);
     mockedFetchLinkPreview.mockResolvedValue({
       title: null,
@@ -390,7 +557,49 @@ describe('getMeetupPhotoLinkPreviews', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([
-      { user_id: '3', title: null, image: null, siteName: null },
+      { id: 'p3', title: null, image: null, siteName: null },
     ]);
+  });
+});
+
+// ---- deletePhotoLinkById (organizer, by record id) -------------------------
+
+describe('deletePhotoLinkById', () => {
+  it('returns 400 when the meetup is missing', async () => {
+    const res = mockResponse();
+
+    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 404 when no link with that id exists for the meetup', async () => {
+    mockedPhotoLinkRecord.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  // Requirement: an organizer (authorized by authChecker on :meetup_id) removes
+  // an account-less archive link addressed by its record id, scoped to the meetup.
+  it('removes the link (204) and emits an update', async () => {
+    const record = { remove: jest.fn().mockResolvedValue(undefined) };
+    mockedPhotoLinkRecord.findOne.mockResolvedValue(record as any);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await deletePhotoLinkById(mockRequest({}, { photo_link_id: 'p1' }), res);
+
+    const whereArg = (mockedPhotoLinkRecord.findOne.mock.calls[0][0] as any)
+      .where;
+    expect(whereArg).toEqual({ id: 'p1', meetup: { id: '10' } });
+    expect(record.remove).toHaveBeenCalled();
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: '10',
+    });
+    expect(res.statusCode).toBe(204);
   });
 });

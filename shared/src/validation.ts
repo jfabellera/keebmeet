@@ -125,6 +125,7 @@ export type EditTicketPayload = z.infer<typeof editTicketSchema>;
 
 export const createPhotoLinkSchema = z.object({
   photo_link: z.url().max(1024),
+  contributor_name: z.string().max(30).optional(),
 });
 
 export type CreatePhotoLinkPayload = z.infer<typeof createPhotoLinkSchema>;

@@ -21,6 +21,7 @@ import {
 import {
   createPhotoLink,
   deletePhotoLink,
+  deletePhotoLinkById,
   deletePhotoLinkForUser,
   getMeetupPhotoLinkPreviews,
   getMeetupPhotoLinks,
@@ -153,6 +154,12 @@ router.delete(
   '/:meetup_id/photo-link/:target_user_id',
   authChecker() as RequestHandler,
   deletePhotoLinkForUser as RequestHandler
+);
+
+router.delete(
+  '/:meetup_id/photo-links/:photo_link_id',
+  authChecker() as RequestHandler,
+  deletePhotoLinkById as RequestHandler
 );
 
 router.get('/:meetup_id/photo-links', getMeetupPhotoLinks as RequestHandler);

@@ -13,6 +13,13 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import {
   type MeetupInfo,
@@ -25,6 +32,7 @@ import { toast } from 'sonner';
 import { useAppSelector } from '../../store/hooks';
 import {
   useCreatePhotoLinkMutation,
+  useDeletePhotoLinkByIdMutation,
   useDeletePhotoLinkForUserMutation,
   useDeletePhotoLinkMutation,
   useGetMeetupPhotoLinkPreviewsQuery,
@@ -56,7 +64,9 @@ const errorMessage = (error: unknown, fallback: string): string => {
 /**
  * Photos section for a meetup: contributors' photo links rendered as tiles.
  * Shown when the meetup already has links, or when a started meetup is being
- * viewed by an attendee (who can then add their own).
+ * viewed by an attendee (who can then add their own). For archived meetups the
+ * organizer instead curates the gallery — many links, each credited to a typed
+ * contributor name (attendees/tickets don't exist for archives).
  */
 export const MeetupPhotoLinks = ({
   meetup,
@@ -73,9 +83,9 @@ export const MeetupPhotoLinks = ({
       skip: meetup.id === '',
     }
   );
-  const previewByUser = new Map(
-    previews.map((preview) => [preview.user_id, preview])
-  );
+  const previewById = new Map(previews.map((preview) => [preview.id, preview]));
+
+  const isArchive = meetup.is_archive;
 
   // Organizers can add photos to their own meetup even without a ticket, matching
   // the backend's attendee-or-organizer gate.
@@ -85,9 +95,12 @@ export const MeetupPhotoLinks = ({
       (meetup.organizers?.some((organizer) => organizer.id === currentUserId) ??
         false));
 
-  // Adding is only possible once the meetup is under way (the backend rejects
-  // links before it starts) and only for attendees or organizers.
-  const canContribute = (isAttendee || isOrganizer) && hasMeetupStarted(meetup);
+  // Archives: only the organizer curates, with no per-person limit. Otherwise
+  // adding needs an attendee/organizer and a meetup that's under way (the
+  // backend rejects links before it starts).
+  const canContribute = isArchive
+    ? isOrganizer
+    : (isAttendee || isOrganizer) && hasMeetupStarted(meetup);
   const alreadyContributed =
     currentUserId != null &&
     photos.some((photo) => photo.user_id === currentUserId);
@@ -95,9 +108,10 @@ export const MeetupPhotoLinks = ({
   // Show the section if there's something to show, or the viewer can add.
   if (photos.length === 0 && !canContribute) return null;
 
-  // A user may hold at most one link per meetup, so hide the add tile once
-  // they've contributed (they'd delete and re-add to change it).
-  const showAddTile = canContribute && !alreadyContributed;
+  // A plain attendee holds at most one link per meetup, so hide the add tile
+  // once they've contributed. An organizer can add many (their own plus
+  // account-less credited links).
+  const showAddTile = canContribute && (isOrganizer || !alreadyContributed);
 
   return (
     <div className="pb-4">
@@ -105,15 +119,17 @@ export const MeetupPhotoLinks = ({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {photos.map((photo) => (
           <PhotoTile
-            key={photo.user_id}
+            key={photo.id}
             meetupId={meetup.id}
             photo={photo}
-            preview={previewByUser.get(photo.user_id)}
-            isOwn={photo.user_id === currentUserId}
+            preview={previewById.get(photo.id)}
+            isOwn={photo.user_id != null && photo.user_id === currentUserId}
             canModerate={isOrganizer}
           />
         ))}
-        {showAddTile ? <AddPhotoTile meetupId={meetup.id} /> : null}
+        {showAddTile ? (
+          <AddPhotoTile meetupId={meetup.id} isOrganizer={isOrganizer} />
+        ) : null}
       </div>
     </div>
   );
@@ -140,11 +156,13 @@ const PhotoTile = ({
     useDeletePhotoLinkMutation();
   const [deleteForUser, { isLoading: isDeletingForUser }] =
     useDeletePhotoLinkForUserMutation();
+  const [deleteById, { isLoading: isDeletingById }] =
+    useDeletePhotoLinkByIdMutation();
   const [open, setOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const canDelete = isOwn || canModerate;
-  const isLoading = isDeletingOwn || isDeletingForUser;
+  const isLoading = isDeletingOwn || isDeletingForUser || isDeletingById;
 
   const handleOpenChange = (next: boolean): void => {
     setOpen(next);
@@ -162,12 +180,18 @@ const PhotoTile = ({
 
   const handleDelete = async (): Promise<void> => {
     try {
-      // Owners use the self-service route; organizers removing someone else's
-      // link go through the target_user_id moderation route.
-      if (isOwn) {
+      // Account-less credited links (no user_id) are removed by record id.
+      // Otherwise owners use the self-service route and organizers removing
+      // someone else's link go through the target_user_id moderation route.
+      if (photo.user_id == null) {
+        await deleteById({ meetupId, photoLinkId: photo.id }).unwrap();
+      } else if (isOwn) {
         await deleteOwn(meetupId).unwrap();
       } else {
-        await deleteForUser({ meetupId, targetUserId: photo.user_id }).unwrap();
+        await deleteForUser({
+          meetupId,
+          targetUserId: photo.user_id,
+        }).unwrap();
       }
       setOpen(false);
     } catch (error) {
@@ -254,19 +278,52 @@ const PhotoTile = ({
   );
 };
 
-const AddPhotoTile = ({ meetupId }: { meetupId: string }): ReactNode => {
+const AddPhotoTile = ({
+  meetupId,
+  isOrganizer,
+}: {
+  meetupId: string;
+  isOrganizer: boolean;
+}): ReactNode => {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
+  // Organizers choose who took the photos: 'me' links the photo to their own
+  // account, 'other' credits a typed name on an account-less link.
+  const [contributorType, setContributorType] = useState<'' | 'me' | 'other'>(
+    ''
+  );
+  const [contributorName, setContributorName] = useState('');
   const [createPhotoLink, { isLoading }] = useCreatePhotoLinkMutation();
+
+  const reset = (): void => {
+    setUrl('');
+    setContributorType('');
+    setContributorName('');
+  };
+
+  // Organizers must pick who took the photos; 'other' additionally needs a name.
+  const choiceInvalid =
+    isOrganizer &&
+    (contributorType === '' ||
+      (contributorType === 'other' && contributorName.trim() === ''));
+  const submitDisabled = isLoading || url.trim() === '' || choiceInvalid;
 
   const handleSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
-    if (url.trim() === '') return;
+    if (url.trim() === '' || choiceInvalid) return;
     try {
-      await createPhotoLink({ meetupId, photoLink: url.trim() }).unwrap();
+      await createPhotoLink({
+        meetupId,
+        photoLink: url.trim(),
+        // 'me' sends no name, so the backend links it to the organizer's account.
+        contributorName:
+          isOrganizer && contributorType === 'other'
+            ? contributorName.trim()
+            : undefined,
+      }).unwrap();
       toast.success('Photo link added');
       setOpen(false);
-      setUrl('');
+      reset();
     } catch (error) {
       toast.error(errorMessage(error, 'Failed to add photo link.'));
     }
@@ -277,7 +334,7 @@ const AddPhotoTile = ({ meetupId }: { meetupId: string }): ReactNode => {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setUrl('');
+        if (!next) reset();
       }}
     >
       <DialogTrigger asChild>
@@ -298,18 +355,58 @@ const AddPhotoTile = ({ meetupId }: { meetupId: string }): ReactNode => {
         <DialogHeader>
           <DialogTitle>Add a photo link</DialogTitle>
           <DialogDescription>
-            Share a link to your photos from this meetup e.g. Imgur, Google
-            Photos, etc. Everyone viewing the meetup will be able to see it.
+            {isOrganizer
+              ? 'Add a link to photos from this meetup e.g. Imgur, Google Photos, etc., and choose who took them — you, or credit someone else like a photographer. Everyone viewing the meetup will be able to see it.'
+              : 'Share a link to your photos from this meetup e.g. Imgur, Google Photos, etc. Everyone viewing the meetup will be able to see it.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={(event) => void handleSubmit(event)}>
+          {isOrganizer ? (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="photo-link-contributor-type">
+                Who took these?
+              </FieldLabel>
+              <Select
+                value={contributorType}
+                onValueChange={(value) => {
+                  setContributorType(value as 'me' | 'other');
+                  // Drop a stale name when switching back to self-credit.
+                  if (value === 'me') setContributorName('');
+                }}
+                disabled={isLoading}
+              >
+                <SelectTrigger
+                  id="photo-link-contributor-type"
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Who took these photos?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me">I took these</SelectItem>
+                  <SelectItem value="other">
+                    Someone else took these
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {contributorType === 'other' ? (
+                <Input
+                  className="mt-2"
+                  maxLength={30}
+                  placeholder="Whose photos are these?"
+                  value={contributorName}
+                  onChange={(event) => setContributorName(event.target.value)}
+                  disabled={isLoading}
+                />
+              ) : null}
+            </Field>
+          ) : null}
           <Field>
             <FieldLabel htmlFor="photo-link-url">Photo link</FieldLabel>
             <Input
               id="photo-link-url"
               type="url"
               inputMode="url"
-              autoFocus
+              autoFocus={!isOrganizer}
               placeholder="https://photos.example.com/…"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
@@ -322,7 +419,7 @@ const AddPhotoTile = ({ meetupId }: { meetupId: string }): ReactNode => {
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isLoading || url.trim() === ''}>
+            <Button type="submit" disabled={submitDisabled}>
               Add
               {isLoading && <Spinner />}
             </Button>

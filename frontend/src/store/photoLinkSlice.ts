@@ -1,5 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type PhotoLinkInfo, type PhotoLinkPreview } from '@keebmeet/shared';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { meetupSlice } from './meetupSlice';
 import { type RootState } from './store';
@@ -7,12 +7,19 @@ import { type RootState } from './store';
 export interface CreatePhotoLinkOptions {
   meetupId: string;
   photoLink: string;
+  contributorName?: string;
 }
 
 /** Organizer-moderation delete: removes another attendee's link. */
 export interface DeletePhotoLinkForUserOptions {
   meetupId: string;
   targetUserId: string;
+}
+
+/** Organizer delete by record id — for archive links, which have no user id. */
+export interface DeletePhotoLinkByIdOptions {
+  meetupId: string;
+  photoLinkId: string;
 }
 
 export const photoLinkSlice = createApi({
@@ -50,10 +57,10 @@ export const photoLinkSlice = createApi({
       ],
     }),
     createPhotoLink: builder.mutation<PhotoLinkInfo, CreatePhotoLinkOptions>({
-      query: ({ meetupId, photoLink }) => ({
+      query: ({ meetupId, photoLink, contributorName }) => ({
         url: `meetups/${meetupId}/photo-link`,
         method: 'POST',
-        body: { photo_link: photoLink },
+        body: { photo_link: photoLink, contributor_name: contributorName },
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'PhotoLinks', id: meetupId },
@@ -90,25 +97,43 @@ export const photoLinkSlice = createApi({
         }
       },
     }),
-    deletePhotoLinkForUser: builder.mutation<void, DeletePhotoLinkForUserOptions>(
-      {
-        query: ({ meetupId, targetUserId }) => ({
-          url: `meetups/${meetupId}/photo-link/${targetUserId}`,
-          method: 'DELETE',
-        }),
-        invalidatesTags: (result, error, { meetupId }) => [
-          { type: 'PhotoLinks', id: meetupId },
-        ],
-        onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
-          try {
-            await queryFulfilled;
-            dispatch(meetupSlice.util.invalidateTags(['Meetups']));
-          } catch {
-            // Mutation failed — nothing to invalidate.
-          }
-        },
-      }
-    ),
+    deletePhotoLinkForUser: builder.mutation<
+      void,
+      DeletePhotoLinkForUserOptions
+    >({
+      query: ({ meetupId, targetUserId }) => ({
+        url: `meetups/${meetupId}/photo-link/${targetUserId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { meetupId }) => [
+        { type: 'PhotoLinks', id: meetupId },
+      ],
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+          dispatch(meetupSlice.util.invalidateTags(['Meetups']));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
+    }),
+    deletePhotoLinkById: builder.mutation<void, DeletePhotoLinkByIdOptions>({
+      query: ({ meetupId, photoLinkId }) => ({
+        url: `meetups/${meetupId}/photo-links/${photoLinkId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { meetupId }) => [
+        { type: 'PhotoLinks', id: meetupId },
+      ],
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+          dispatch(meetupSlice.util.invalidateTags(['Meetups']));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
+    }),
   }),
 });
 
@@ -118,4 +143,5 @@ export const {
   useCreatePhotoLinkMutation,
   useDeletePhotoLinkMutation,
   useDeletePhotoLinkForUserMutation,
+  useDeletePhotoLinkByIdMutation,
 } = photoLinkSlice;
