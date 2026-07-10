@@ -63,6 +63,7 @@ export const editMeetupSchema = z.object({
   image_key: z.string().optional(),
   description: z.string().optional(),
   organizer_ids: z.array(z.string()).optional(),
+  organizer_name: z.string().max(30).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
   display_idle_image_urls: z.string().array().optional(),

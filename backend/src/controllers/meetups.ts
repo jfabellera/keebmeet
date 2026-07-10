@@ -712,6 +712,13 @@ export const updateMeetup = async (
   meetup.default_raffle_entries =
     req.body.default_raffle_entries ?? meetup.default_raffle_entries;
 
+  // Archive-only credit for who ran the meetup. An empty string clears it back
+  // to the submitter (who is always the lead organizer).
+  if (meetup.is_archive && req.body.organizer_name !== undefined) {
+    meetup.organizer_name =
+      req.body.organizer_name === '' ? null : req.body.organizer_name;
+  }
+
   // TODO(jan): This is mostly copied from createMeetup. We should reduce this duplication
   if (req.body.address != null || req.body.date != null) {
     try {

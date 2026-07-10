@@ -95,5 +95,5 @@ export class Meetup extends BaseEntity {
   // Free-text credit for who ran an archived meetup (its lead_organizer is
   // always the submitter). Null when the submitter ran it themselves.
   @Column({ type: 'varchar', length: 30, nullable: true })
-  organizer_name?: string;
+  organizer_name?: string | null;
 }
