@@ -74,11 +74,17 @@ const BottomNav = ({
               }}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex flex-1 flex-col items-center justify-center gap-1 text-xs',
+                'flex flex-1 flex-col items-center justify-center gap-1 text-xs transition-transform duration-150 ease-out active:scale-90',
                 active ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <Icon size={20} />
+              <Icon
+                size={20}
+                className={cn(
+                  'transition-transform duration-200 ease-out',
+                  active && '-translate-y-0.5 scale-110'
+                )}
+              />
               <span className="max-w-full truncate px-1">{item.name}</span>
             </button>
           );
@@ -93,11 +99,17 @@ const BottomNav = ({
               }}
               aria-current={overflowActive ? 'page' : undefined}
               className={cn(
-                'flex flex-1 flex-col items-center justify-center gap-1 text-xs',
+                'flex flex-1 flex-col items-center justify-center gap-1 text-xs transition-transform duration-150 ease-out active:scale-90',
                 overflowActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <FiMoreHorizontal size={20} />
+              <FiMoreHorizontal
+                size={20}
+                className={cn(
+                  'transition-transform duration-200 ease-out',
+                  overflowActive && '-translate-y-0.5 scale-110'
+                )}
+              />
               <span>More</span>
             </button>
             <SheetContent side="bottom" className="rounded-t-xl">
@@ -118,7 +130,7 @@ const BottomNav = ({
                       }}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'flex flex-col items-center justify-center gap-2 rounded-lg border p-4 text-sm',
+                        'flex flex-col items-center justify-center gap-2 rounded-lg border p-4 text-sm transition-transform duration-150 ease-out active:scale-95',
                         active
                           ? 'border-primary text-primary'
                           : 'text-muted-foreground'
