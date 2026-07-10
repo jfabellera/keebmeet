@@ -38,6 +38,7 @@ import DiscordCallbackPage from './pages/DiscordCallbackPage';
 import DiscordLinkPage from './pages/DiscordLinkPage';
 import { ManageMeetupDisplayPage } from './pages/ManageMeetupDisplayPage';
 import MeetupDisplayPage from './pages/MeetupDisplayPage';
+import NewArchiveMeetupPage from './pages/NewArchiveMeetupPage';
 import NewMeetupFromEventbritePage from './pages/NewMeetupFromEventbritePage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import { store } from './store/store';
@@ -87,6 +88,14 @@ const App = (): ReactNode => {
               element={
                 <RequireOrganizer>
                   <NewMeetupPage />
+                </RequireOrganizer>
+              }
+            />
+            <Route
+              path="/new-meetup/archive"
+              element={
+                <RequireOrganizer>
+                  <NewArchiveMeetupPage />
                 </RequireOrganizer>
               }
             />

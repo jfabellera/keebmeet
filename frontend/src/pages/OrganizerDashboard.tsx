@@ -1,7 +1,31 @@
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
+import {
+  ArchiveIcon,
+  CalendarPlusIcon,
+  ClockIcon,
+  ListFilterIcon,
+  MailCheckIcon,
+  MoreHorizontalIcon,
+  TagIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
@@ -80,9 +104,28 @@ const OrganizerDashboard = (): ReactNode => {
       <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
         <div className="mb-4 flex items-center">
           <h1 className="text-2xl font-semibold">Your Meetups</h1>
-          <Button className="ml-auto" onClick={newMeetupOnClick}>
-            New meetup
-          </Button>
+          <ButtonGroup className="ml-auto">
+            <Button onClick={newMeetupOnClick}>New meetup</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" aria-label="More Options">
+                  <MoreHorizontalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      void navigate('/new-meetup/archive');
+                    }}
+                  >
+                    <ArchiveIcon />
+                    Add archive meetup
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </ButtonGroup>
         </div>
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center">

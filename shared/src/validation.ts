@@ -55,7 +55,7 @@ export const createArchiveMeetupSchema = z
         : data.organizer_name,
   }));
 
-export type CreateArchiveMeetupPayload = z.infer<
+export type CreateArchiveMeetupPayload = z.input<
   typeof createArchiveMeetupSchema
 >;
 
