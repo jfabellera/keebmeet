@@ -13,7 +13,6 @@ const ArchiveMeetupFormSchema = Yup.object().shape({
   date: Yup.date()
     .max(new Date(), 'Date must be in the past')
     .required('Required'),
-  startTime: Yup.string().required('Required'),
   address: Yup.string().required('Required'),
   imageKey: Yup.string(),
   organizerType: Yup.string()

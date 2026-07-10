@@ -33,7 +33,6 @@ const NewArchiveMeetupPage = (): ReactNode => {
     initialValues: {
       name: '',
       date: '',
-      startTime: '',
       address: '',
       imageUrl: '',
       imageKey: '',
@@ -47,7 +46,9 @@ const NewArchiveMeetupPage = (): ReactNode => {
     onSubmit: async (values) => {
       const result = await createArchiveMeetup({
         name: values.name,
-        date: new Date(`${values.date}T${values.startTime}Z`).toISOString(),
+        // Archives capture the day only; default to noon so the stored date
+        // can't roll to an adjacent day across the UTC offset.
+        date: new Date(`${values.date}T12:00Z`).toISOString(),
         address: values.address,
         image_key: values.imageKey,
         description: values.description,
@@ -156,22 +157,12 @@ const NewArchiveMeetupPage = (): ReactNode => {
 
                 <FormField formik={formik} name="name" label="Meetup Name" />
 
-                <div className="flex gap-2">
-                  <FormField
-                    formik={formik}
-                    name="date"
-                    label="Date"
-                    type="date"
-                    className="flex-1"
-                  />
-                  <FormField
-                    formik={formik}
-                    name="startTime"
-                    label="Start Time"
-                    type="time"
-                    className="flex-1"
-                  />
-                </div>
+                <FormField
+                  formik={formik}
+                  name="date"
+                  label="Date"
+                  type="date"
+                />
 
                 <FormField formik={formik} name="address" label="Address" />
 
