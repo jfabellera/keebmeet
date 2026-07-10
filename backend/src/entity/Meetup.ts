@@ -57,7 +57,9 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'varchar', length: 100 })
   country: string;
 
-  @Column({ type: 'int' })
+  // Float, not int: timezones can be offset by fractional hours (e.g. +5.5,
+  // +5.75), as can the Local Mean Time offsets returned for very old dates.
+  @Column({ type: 'float' })
   utc_offset: number;
 
   @Column({ type: 'varchar', length: 255 })
