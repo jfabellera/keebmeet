@@ -27,6 +27,10 @@ export interface MeetupInfo {
   eventbrite_url?: string;
   description?: string;
   has_photos?: boolean;
+  // True for archived (historical) meetups. Its submitter is the lead_organizer.
+  is_archive: boolean;
+  // Free-text credit for who ran an archive, when it wasn't the submitter.
+  organizer_name?: string;
 }
 
 export interface TicketInfo {

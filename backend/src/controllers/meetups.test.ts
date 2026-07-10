@@ -115,6 +115,7 @@ jest.mock('../util/imageProcessing', () => ({
 }));
 
 import {
+  createArchiveMeetup,
   createMeetup,
   createMeetupFromEventbrite,
   deleteMeetup,
@@ -493,6 +494,124 @@ describe('createMeetup', () => {
       mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
       res
     );
+
+    expect(res.statusCode).toBe(500);
+  });
+});
+
+// ---- createArchiveMeetup ---------------------------------------------------
+
+const validArchiveBody = (overrides = {}) => ({
+  name: 'Archived Meetup 2019',
+  date: '2019-08-01T18:00:00.000Z',
+  address: '500 Congress Ave',
+  image_key: 'http://img',
+  ...overrides,
+});
+
+describe('createArchiveMeetup', () => {
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest({ name: 'x' }), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('makes the submitter the lead so the archive is never orphaned', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '7', nick_name: 'jane' };
+
+    // No organizer_name: the submitter ran it themselves.
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.is_archive).toBe(true);
+    // The submitter always owns the archive (so they can manage/delete it).
+    expect(created.lead_organizer).toEqual({ id: '7', nick_name: 'jane' });
+    expect(created.organizer_name).toBeUndefined();
+    expect(created.capacity).toBe(0);
+    expect(created.duration_hours).toBe(0);
+    expect(created.has_raffle).toBe(false);
+    expect(created.city).toBe('Austin');
+    expect(created.save).toHaveBeenCalled();
+  });
+
+  it('records organizer_name as a display credit while the submitter still owns it', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createArchiveMeetup(
+      mockRequest(validArchiveBody({ organizer_name: 'Old Timer' })),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    // Credit is a display name; ownership still belongs to the submitter.
+    expect(created.organizer_name).toBe('Old Timer');
+    expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
+  });
+
+  it('returns 409 when the name is taken', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({ message: 'Meetup name is taken.' });
+    expect(mockedMeetup.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when geocoding fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockRejectedValue(new Error('bad address'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'bad address' });
+  });
+
+  it('promotes the uploaded image out of the temp prefix', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/abc.png');
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(
+      mockRequest(validArchiveBody({ image_key: 'tmp/meetups/abc.png' })),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/meetups/abc.png');
+    expect((res.body as any).image_key).toBe('meetups/abc.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 500 if promoting the uploaded image fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
 
     expect(res.statusCode).toBe(500);
   });

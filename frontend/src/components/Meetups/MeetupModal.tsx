@@ -237,19 +237,21 @@ export const MeetupModal = ({
                     </p>
                   </div>
 
-                  {/* Time */}
-                  <div className="flex items-start gap-2">
-                    <FiClock className="mt-1 shrink-0" />
-                    <p>
-                      {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
-                        'h:mm A'
-                      )}
-                      {' - '}
-                      {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss')
-                        .add(meetup.duration_hours ?? 0, 'hours')
-                        .format('h:mm A')}
-                    </p>
-                  </div>
+                  {/* Time — hidden for archives, whose time is unknown */}
+                  {!meetup.is_archive ? (
+                    <div className="flex items-start gap-2">
+                      <FiClock className="mt-1 shrink-0" />
+                      <p>
+                        {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
+                          'h:mm A'
+                        )}
+                        {' - '}
+                        {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss')
+                          .add(meetup.duration_hours ?? 0, 'hours')
+                          .format('h:mm A')}
+                      </p>
+                    </div>
+                  ) : null}
 
                   {/* Location */}
                   <div className="flex items-start gap-2">
@@ -268,8 +270,15 @@ export const MeetupModal = ({
                     </p>
                   </div>
 
-                  {/* Organizers */}
-                  {meetup.organizers != null ? (
+                  {/* Organizers — an archive credits its free-text
+                      organizer_name when one was given; otherwise fall back to
+                      the linked lead/co-organizers. */}
+                  {meetup.is_archive && meetup.organizer_name != null ? (
+                    <div className="flex items-start gap-2">
+                      <FiUser className="mt-1 shrink-0" />
+                      <p>Organized by {meetup.organizer_name}</p>
+                    </div>
+                  ) : meetup.organizers != null ? (
                     <div className="flex items-start gap-2">
                       <FiUser className="mt-1 shrink-0" />
                       <p>
@@ -312,7 +321,7 @@ export const MeetupModal = ({
             </div>
 
             <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
-              {meetup.tickets != null ? (
+              {meetup.tickets != null && !meetup.is_archive ? (
                 <MeetupCapacityStatus
                   available={meetup.tickets.available}
                   total={meetup.tickets.total}

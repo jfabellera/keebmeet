@@ -57,7 +57,9 @@ export class Meetup extends BaseEntity {
   @Column({ type: 'varchar', length: 100 })
   country: string;
 
-  @Column({ type: 'int' })
+  // Float, not int: timezones can be offset by fractional hours (e.g. +5.5,
+  // +5.75), as can the Local Mean Time offsets returned for very old dates.
+  @Column({ type: 'float' })
   utc_offset: number;
 
   @Column({ type: 'varchar', length: 255 })
@@ -86,4 +88,12 @@ export class Meetup extends BaseEntity {
 
   @OneToMany(() => RaffleRecord, (raffleRecord) => raffleRecord.meetup)
   raffleRecords: RaffleRecord[];
+
+  @Column({ type: 'boolean', default: false })
+  is_archive: boolean;
+
+  // Free-text credit for who ran an archived meetup (its lead_organizer is
+  // always the submitter). Null when the submitter ran it themselves.
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  organizer_name?: string | null;
 }

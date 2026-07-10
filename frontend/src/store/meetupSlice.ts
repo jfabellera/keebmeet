@@ -3,6 +3,7 @@ import type { MeetupInfo } from '@keebmeet/shared';
 import { type MeetupDisplayAssets } from '@keebmeet/shared';
 import { type MeetupDiscordMessageInfo } from '@keebmeet/shared';
 import {
+  type CreateArchiveMeetupPayload,
   type CreateMeetupFromEventbritePayload,
   type CreateMeetupPayload,
   type EditMeetupPayload,
@@ -58,6 +59,14 @@ export const meetupSlice = createApi({
     createMeetup: builder.mutation<void, CreateMeetupPayload>({
       query: (payload) => ({
         url: `meetups/`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: ['Meetups'],
+    }),
+    createArchiveMeetup: builder.mutation<void, CreateArchiveMeetupPayload>({
+      query: (payload) => ({
+        url: `meetups/archive`,
         method: 'POST',
         body: payload,
       }),
@@ -171,6 +180,7 @@ export const {
   useGetMeetupsQuery,
   useGetMeetupQuery,
   useCreateMeetupMutation,
+  useCreateArchiveMeetupMutation,
   useUploadMeetupImageMutation,
   useCreateMeetupFromEventbriteMutation,
   useEditMeetupMutation,

@@ -1,5 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useBoolean } from '@/hooks/useBoolean';
 import { useAppSelector } from '@/store/hooks';
 import { type EditMeetupPayload } from '@keebmeet/shared';
@@ -12,7 +20,6 @@ import {
   useEditMeetupMutation,
   useGetMeetupQuery,
 } from '../../store/meetupSlice';
-import { hasMeetupStarted } from '../../util/timeUtil';
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
@@ -27,9 +34,9 @@ interface Props {
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const currentUserId = useAppSelector((state) => state.user.user?.id);
-  const hasStarted = meetup != null ? hasMeetupStarted(meetup) : false;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
+  const isArchive = meetup?.is_archive === true;
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -42,6 +49,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       imageKey: '',
       description: '',
       organizerIds: [] as string[],
+      organizerType: 'me' as 'me' | 'other',
+      organizerName: '',
     },
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};
@@ -75,6 +84,14 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         JSON.stringify(values.organizerIds)
       )
         payload.organizer_ids = values.organizerIds;
+      const organizerName =
+        values.organizerType === 'other' ? values.organizerName : '';
+      const initialOrganizerName =
+        formik.initialValues.organizerType === 'other'
+          ? formik.initialValues.organizerName
+          : '';
+      if (organizerName !== initialOrganizerName)
+        payload.organizer_name = organizerName;
 
       const result = await editMeetup({ meetupId, payload });
 
@@ -107,6 +124,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         description: meetup?.description ?? '',
         organizerIds:
           meetup?.organizers?.map((organizer) => organizer.id) ?? [],
+        organizerType: meetup?.organizer_name != null ? 'other' : 'me',
+        organizerName: meetup?.organizer_name ?? '',
       },
     });
   }, [meetup]);
@@ -125,8 +144,6 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
     <EditableFormCard
       title={'Meetup Details'}
       isEditable={isEditable}
-      editDisabled={hasStarted}
-      editDisabledReason="This meetup has already started"
       onEditEnter={setIsEditable.on}
       onEditCancel={onCancel}
       onEditSubmit={onSubmit}
@@ -134,36 +151,84 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       isFormInvalid={false}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
-        <Field className="max-w-sm min-w-0 py-2">
-          <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {meetup?.lead_organizer != null ? (
-              <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
-            ) : null}
+        {isArchive ? (
+          <Field className="max-w-sm min-w-0 py-2">
+            <FieldLabel htmlFor="organizerType">Organizer</FieldLabel>
+            {isEditable ? (
+              <div className="flex flex-col gap-2">
+                <Select
+                  value={formik.values.organizerType}
+                  onValueChange={(value) => {
+                    void formik.setFieldValue('organizerType', value);
+                    // Clear a stale name when switching back to self-credit.
+                    if (value === 'me') {
+                      void formik.setFieldValue('organizerName', '');
+                    }
+                  }}
+                >
+                  <SelectTrigger id="organizerType" className="w-full">
+                    <SelectValue placeholder="Who organized this meetup?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="me">I organized this</SelectItem>
+                    <SelectItem value="other">
+                      Someone else organized this
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {formik.values.organizerType === 'other' ? (
+                  <Input
+                    id="organizerName"
+                    name="organizerName"
+                    placeholder="Organizer name"
+                    value={formik.values.organizerName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-foreground/70">
+                {meetup?.organizer_name ??
+                  meetup?.lead_organizer?.display_name ??
+                  'N/A'}
+              </p>
+            )}
+          </Field>
+        ) : (
+          <Field className="max-w-sm min-w-0 py-2">
+            <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {meetup?.lead_organizer != null ? (
+                <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
+              ) : null}
 
-            {!isEditable &&
-              meetup?.organizers?.map((organizer) => (
-                <Badge variant="secondary" key={organizer.id}>
-                  {organizer.display_name}
-                </Badge>
-              ))}
-          </div>
-          {isEditable && (
-            <OrganizerCombobox
-              id="organizers"
-              disabled={
-                !isEditable || currentUserId !== meetup?.lead_organizer?.id
-              }
-              excludeIds={
-                meetup?.lead_organizer != null ? [meetup.lead_organizer.id] : []
-              }
-              value={formik.values.organizerIds}
-              onChange={(organizerIds) =>
-                void formik.setFieldValue('organizerIds', organizerIds)
-              }
-            />
-          )}
-        </Field>
+              {!isEditable &&
+                meetup?.organizers?.map((organizer) => (
+                  <Badge variant="secondary" key={organizer.id}>
+                    {organizer.display_name}
+                  </Badge>
+                ))}
+            </div>
+            {isEditable && (
+              <OrganizerCombobox
+                id="organizers"
+                disabled={
+                  !isEditable || currentUserId !== meetup?.lead_organizer?.id
+                }
+                excludeIds={
+                  meetup?.lead_organizer != null
+                    ? [meetup.lead_organizer.id]
+                    : []
+                }
+                value={formik.values.organizerIds}
+                onChange={(organizerIds) =>
+                  void formik.setFieldValue('organizerIds', organizerIds)
+                }
+              />
+            )}
+          </Field>
+        )}
         <EditableFormField
           name={'Meetup Name'}
           value={meetup?.name}
@@ -188,19 +253,22 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.date}
         />
-        <EditableFormField
-          name={'Start Time'}
-          value={dayjs(meetup?.date, 'YYYY-MM-DDTHH:mm:ss').format('HH:mm')}
-          editable={isEditable}
-          id={'startTime'}
-          type={'time'}
-          isInvalid={
-            formik.errors.startTime != null && formik.touched.startTime
-          }
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          errorMessage={formik.errors.startTime}
-        />
+        {/* Archives capture the day only — no start time. */}
+        {!isArchive ? (
+          <EditableFormField
+            name={'Start Time'}
+            value={dayjs(meetup?.date, 'YYYY-MM-DDTHH:mm:ss').format('HH:mm')}
+            editable={isEditable}
+            id={'startTime'}
+            type={'time'}
+            isInvalid={
+              formik.errors.startTime != null && formik.touched.startTime
+            }
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            errorMessage={formik.errors.startTime}
+          />
+        ) : null}
         <EditableFormField
           name={'Address'}
           value={meetup?.location.full_address}
@@ -212,28 +280,37 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.address}
         />
-        <EditableFormField
-          name={'Duration (hours)'}
-          value={meetup?.duration_hours}
-          editable={isEditable}
-          id={'duration'}
-          type={'number'}
-          isInvalid={formik.errors.duration != null && formik.touched.duration}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          errorMessage={formik.errors.duration}
-        />
-        <EditableFormField
-          name={'Capacity'}
-          value={meetup?.tickets?.total}
-          editable={isEditable}
-          id={'capacity'}
-          type={'number'}
-          isInvalid={formik.errors.capacity != null && formik.touched.capacity}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          errorMessage={formik.errors.capacity}
-        />
+        {/* Archives have no live sign-ups or schedule. */}
+        {!isArchive ? (
+          <>
+            <EditableFormField
+              name={'Duration (hours)'}
+              value={meetup?.duration_hours}
+              editable={isEditable}
+              id={'duration'}
+              type={'number'}
+              isInvalid={
+                formik.errors.duration != null && formik.touched.duration
+              }
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              errorMessage={formik.errors.duration}
+            />
+            <EditableFormField
+              name={'Capacity'}
+              value={meetup?.tickets?.total}
+              editable={isEditable}
+              id={'capacity'}
+              type={'number'}
+              isInvalid={
+                formik.errors.capacity != null && formik.touched.capacity
+              }
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              errorMessage={formik.errors.capacity}
+            />
+          </>
+        ) : null}
         <MeetupImageField
           previewUrl={formik.values.imageUrl}
           editable={isEditable}

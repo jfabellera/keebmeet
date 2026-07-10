@@ -1,4 +1,5 @@
 import {
+  createArchiveMeetupSchema,
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
@@ -81,7 +82,13 @@ const mapMeetupInfo = async (
       country: meetup.country,
     },
     image_url: publicUrl(meetup.image_key),
+    is_archive: meetup.is_archive,
   };
+
+  // Display-only credit for an archive's organizer, surfaced on cards/detail.
+  if (meetup.organizer_name != null) {
+    meetupInfo.organizer_name = meetup.organizer_name;
+  }
 
   if (hasPhotos != null) {
     meetupInfo.has_photos = hasPhotos;
@@ -387,6 +394,87 @@ export const createMeetup = async (
   return res.status(201).json(newMeetup);
 };
 
+export const createArchiveMeetup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = createArchiveMeetupSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const requestor = res.locals.requestor as User;
+
+  // Check if meetup name is taken
+  const existingMeetup = await Meetup.findOne({
+    where: {
+      name: ILike(result.data.name),
+    },
+  });
+
+  if (existingMeetup != null) {
+    return res.status(409).json({ message: 'Meetup name is taken.' });
+  }
+
+  const newMeetup = Meetup.create({
+    name: result.data.name,
+    date: result.data.date,
+    address: result.data.address,
+    image_key: result.data.image_key,
+    description: result.data.description ?? '',
+    organizers: [],
+    // Archive meetups are historical records with no live sign-ups or raffle.
+    capacity: 0,
+    duration_hours: 0,
+    has_raffle: false,
+    is_archive: true,
+    // organizer_name is a display-only credit; who actually ran the meetup.
+    // Omitted (null) when the submitter ran it themselves.
+    organizer_name: result.data.organizer_name,
+  });
+
+  // The submitter always owns the archive so it can never be orphaned — they
+  // can manage and delete it. Who ran it is recorded separately in
+  // organizer_name for display only.
+  newMeetup.lead_organizer = requestor;
+
+  // Get UTC offset for the inputted address
+  try {
+    const geocodeResult = await geocode(result.data.address);
+
+    newMeetup.address = geocodeResult.fullAddress;
+    newMeetup.city = geocodeResult.city;
+    if (geocodeResult.state != null) newMeetup.state = geocodeResult.state;
+    newMeetup.country = geocodeResult.country;
+
+    newMeetup.utc_offset = await getUtcOffset(
+      geocodeResult.latitude,
+      geocodeResult.longitude,
+      new Date(result.data.date)
+    );
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  // Apply offset to date to be correct UTC
+  newMeetup.date = dayjs
+    .utc(newMeetup.date)
+    .subtract(newMeetup.utc_offset, 'hour')
+    .toISOString();
+
+  // Promote the uploaded image out of the temp prefix now that we're committing.
+  try {
+    newMeetup.image_key = await promoteImage(newMeetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
+
+  await newMeetup.save();
+
+  return res.status(201).json(newMeetup);
+};
+
 export const createMeetupFromEventbrite = async (
   req: Request,
   res: Response
@@ -623,6 +711,13 @@ export const updateMeetup = async (
   meetup.description = req.body.description ?? meetup.description;
   meetup.default_raffle_entries =
     req.body.default_raffle_entries ?? meetup.default_raffle_entries;
+
+  // Archive-only credit for who ran the meetup. An empty string clears it back
+  // to the submitter (who is always the lead organizer).
+  if (meetup.is_archive && req.body.organizer_name !== undefined) {
+    meetup.organizer_name =
+      req.body.organizer_name === '' ? null : req.body.organizer_name;
+  }
 
   // TODO(jan): This is mostly copied from createMeetup. We should reduce this duplication
   if (req.body.address != null || req.body.date != null) {

@@ -52,6 +52,8 @@ const BottomNav = ({
     void navigate(item.url);
   };
 
+  if (items.length < 2) return <></>;
+
   return (
     <nav
       className={cn(

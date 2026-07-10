@@ -18,6 +18,24 @@ export const createMeetupSchema = z.object({
 
 export type CreateMeetupPayload = z.infer<typeof createMeetupSchema>;
 
+export const createArchiveMeetupSchema = z.object({
+  name: z.string().min(3),
+  date: z.string().datetime({
+    offset: false,
+    message: 'Datetime must be in the format of YYYY-MM-DDT:HH:mm:ssZ',
+  }),
+  address: z.string(),
+  image_key: z.string(),
+  description: z.string().optional(),
+  // Display-only credit for who ran the meetup. The submitter is always the
+  // archive's lead organizer (and owner); omit this when they ran it themselves.
+  organizer_name: z.string().max(30).optional(),
+});
+
+export type CreateArchiveMeetupPayload = z.infer<
+  typeof createArchiveMeetupSchema
+>;
+
 export const createMeetupFromEventbriteSchema = z.object({
   eventbrite_event_id: z.string(),
   eventbrite_ticket_id: z.string(),
@@ -45,6 +63,7 @@ export const editMeetupSchema = z.object({
   image_key: z.string().optional(),
   description: z.string().optional(),
   organizer_ids: z.array(z.string()).optional(),
+  organizer_name: z.string().max(30).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
   display_idle_image_urls: z.string().array().optional(),
