@@ -52,17 +52,18 @@ export interface SimpleTicketInfo {
   meetup_id: string;
 }
 
-export interface PhotoLinkInfo {
-  user_id: string;
+export interface GalleryInfo {
+  id: string;
+  user_id: string | null;
   display_name: string;
-  photo_link: string;
+  gallery: string;
 }
 
-// OpenGraph-style preview for a stored photo link, scraped server-side (the
-// browser can't fetch cross-origin). Keyed by user_id so the client can join it
-// onto the corresponding PhotoLinkInfo. Fields are null when unavailable.
-export interface PhotoLinkPreview {
-  user_id: string;
+// OpenGraph-style preview for a stored gallery, scraped server-side (the
+// browser can't fetch cross-origin). Keyed by the record id so the client can
+// join it onto the corresponding GalleryInfo. Fields are null when unavailable.
+export interface GalleryPreview {
+  id: string;
   title: string | null;
   image: string | null;
   siteName: string | null;

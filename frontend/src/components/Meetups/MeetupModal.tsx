@@ -35,7 +35,7 @@ import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
-import { MeetupPhotoLinks } from './MeetupPhotoLinks';
+import { MeetupGallery } from './MeetupGallery';
 import { MeetupRsvpForm } from './MeetupRsvpForm';
 
 dayjs.extend(customParseFormat);
@@ -300,7 +300,7 @@ export const MeetupModal = ({
 
                 {/* Photos */}
                 {!rsvpPanelOpen ? (
-                  <MeetupPhotoLinks
+                  <MeetupGallery
                     meetup={meetup}
                     isAttendee={displayTicket != null}
                   />

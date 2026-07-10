@@ -123,11 +123,12 @@ export const editTicketSchema = z.object({
 
 export type EditTicketPayload = z.infer<typeof editTicketSchema>;
 
-export const createPhotoLinkSchema = z.object({
-  photo_link: z.url().max(1024),
+export const createGallerySchema = z.object({
+  gallery: z.url().max(1024),
+  contributor_name: z.string().max(30).optional(),
 });
 
-export type CreatePhotoLinkPayload = z.infer<typeof createPhotoLinkSchema>;
+export type CreateGalleryPayload = z.infer<typeof createGallerySchema>;
 
 export const createUserSchema = z.object({
   email: z.email(),

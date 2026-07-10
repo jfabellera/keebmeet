@@ -25,7 +25,7 @@ import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
-import { PhotoLinkRecord } from '../entity/PhotoLinkRecord';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
@@ -207,12 +207,12 @@ export const getAllMeetups = async (
     order: findOptionsOrder,
   });
 
-  // Determine which of these meetups have any photo links in a single grouped
+  // Determine which of these meetups have any galleries in a single grouped
   // query, so the list carries a "has photos" flag without an N+1 per meetup.
   const meetupIdsWithPhotos = new Set<string>();
   const meetupIds = meetupEntities.map((meetup) => meetup.id);
   if (meetupIds.length > 0) {
-    const rows = await PhotoLinkRecord.createQueryBuilder('photo')
+    const rows = await GalleryRecord.createQueryBuilder('photo')
       .select('photo.meetup_id', 'meetup_id')
       .where('photo.meetup_id IN (:...meetupIds)', { meetupIds })
       .groupBy('photo.meetup_id')
@@ -913,7 +913,7 @@ export const deleteMeetup = async (
     await manager
       .createQueryBuilder()
       .delete()
-      .from(PhotoLinkRecord)
+      .from(GalleryRecord)
       .where('meetup_id = :meetupId', { meetupId })
       .execute();
     // Removing the meetup also clears its rows in the organizers join table.
