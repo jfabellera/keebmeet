@@ -1,4 +1,5 @@
 import {
+  createArchiveMeetupSchema,
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
@@ -354,6 +355,96 @@ export const createMeetup = async (
   // Get UTC offset for the inputted address
   try {
     const geocodeResult = await geocode(req.body.address);
+
+    newMeetup.address = geocodeResult.fullAddress;
+    newMeetup.city = geocodeResult.city;
+    if (geocodeResult.state != null) newMeetup.state = geocodeResult.state;
+    newMeetup.country = geocodeResult.country;
+
+    newMeetup.utc_offset = await getUtcOffset(
+      geocodeResult.latitude,
+      geocodeResult.longitude,
+      new Date(result.data.date)
+    );
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  // Apply offset to date to be correct UTC
+  newMeetup.date = dayjs
+    .utc(newMeetup.date)
+    .subtract(newMeetup.utc_offset, 'hour')
+    .toISOString();
+
+  // Promote the uploaded image out of the temp prefix now that we're committing.
+  try {
+    newMeetup.image_key = await promoteImage(newMeetup.image_key);
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to store meetup image.' });
+  }
+
+  await newMeetup.save();
+
+  return res.status(201).json(newMeetup);
+};
+
+export const createArchiveMeetup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = createArchiveMeetupSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const requestor = res.locals.requestor as User;
+
+  // Schema guarantees exactly one organizer source. Resolve the leader
+  let leadOrganizer: User | null = null;
+  if (result.data.is_organizer) {
+    leadOrganizer = requestor;
+  } else if (result.data.organizer_id != null) {
+    leadOrganizer = await User.findOneBy({ id: result.data.organizer_id });
+    if (leadOrganizer == null) {
+      return res.status(404).json({ message: 'Invalid organizer ID.' });
+    }
+  }
+
+  // Check if meetup name is taken
+  const existingMeetup = await Meetup.findOne({
+    where: {
+      name: ILike(result.data.name),
+    },
+  });
+
+  if (existingMeetup != null) {
+    return res.status(409).json({ message: 'Meetup name is taken.' });
+  }
+
+  const newMeetup = Meetup.create({
+    name: result.data.name,
+    date: result.data.date,
+    address: result.data.address,
+    image_key: result.data.image_key,
+    description: result.data.description ?? '',
+    organizers: [],
+    // Archive meetups are historical records with no live sign-ups or raffle.
+    capacity: 0,
+    duration_hours: 0,
+    has_raffle: false,
+    is_archive: true,
+    archived_by: requestor.id,
+    organizer_name: result.data.organizer_name,
+  });
+
+  if (leadOrganizer != null) {
+    newMeetup.lead_organizer = leadOrganizer;
+  }
+
+  // Get UTC offset for the inputted address
+  try {
+    const geocodeResult = await geocode(result.data.address);
 
     newMeetup.address = geocodeResult.fullAddress;
     newMeetup.city = geocodeResult.city;

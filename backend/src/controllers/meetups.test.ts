@@ -92,6 +92,7 @@ jest.mock('../datasource', () => {
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
+    findOneBy: jest.fn(),
   },
 }));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
@@ -115,6 +116,7 @@ jest.mock('../util/imageProcessing', () => ({
 }));
 
 import {
+  createArchiveMeetup,
   createMeetup,
   createMeetupFromEventbrite,
   deleteMeetup,
@@ -493,6 +495,234 @@ describe('createMeetup', () => {
       mockRequest(validCreateBody({ image_key: 'tmp/meetups/abc.png' })),
       res
     );
+
+    expect(res.statusCode).toBe(500);
+  });
+});
+
+// ---- createArchiveMeetup ---------------------------------------------------
+
+const validArchiveBody = (overrides = {}) => ({
+  name: 'Archived Meetup 2019',
+  date: '2019-08-01T18:00:00.000Z',
+  address: '500 Congress Ave',
+  image_key: 'http://img',
+  is_organizer: true,
+  ...overrides,
+});
+
+describe('createArchiveMeetup', () => {
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest({ name: 'x' }), res);
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 400 when no organizer is identified', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    // No is_organizer, organizer_id, or organizer_name — rejected by the schema.
+    await createArchiveMeetup(
+      mockRequest(validArchiveBody({ is_organizer: false })),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedMeetup.create).not.toHaveBeenCalled();
+  });
+
+  it('drops a redundant organizer_name when the requestor is the lead', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '7', nick_name: 'jane' };
+
+    // is_organizer wins; the name is redundant and silently discarded.
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_organizer: true, organizer_name: 'Old Timer' })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.lead_organizer).toEqual({ id: '7', nick_name: 'jane' });
+    expect(created.organizer_name).toBeUndefined();
+  });
+
+  it('drops a redundant organizer_name when a registered organizer_id is given', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedUser.findOneBy.mockResolvedValue({
+      id: '2',
+      nick_name: 'john',
+    } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({
+          is_organizer: false,
+          organizer_id: '2',
+          organizer_name: 'Old Timer',
+        })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '2' });
+    const created = res.body as any;
+    expect(created.lead_organizer).toEqual({ id: '2', nick_name: 'john' });
+    expect(created.organizer_name).toBeUndefined();
+  });
+
+  it('archives with the requestor as lead when is_organizer is set', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '7', nick_name: 'jane' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.is_archive).toBe(true);
+    expect(created.archived_by).toBe('7');
+    expect(created.lead_organizer).toEqual({ id: '7', nick_name: 'jane' });
+    expect(created.capacity).toBe(0);
+    expect(created.duration_hours).toBe(0);
+    expect(created.has_raffle).toBe(false);
+    expect(created.city).toBe('Austin');
+    expect(created.save).toHaveBeenCalled();
+    // The requestor themselves is the organizer — no user lookup needed.
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+  });
+
+  it('links a registered organizer by organizer_id', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedUser.findOneBy.mockResolvedValue({
+      id: '2',
+      nick_name: 'john',
+    } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_organizer: false, organizer_id: '2' })
+      ),
+      res
+    );
+
+    expect(mockedUser.findOneBy).toHaveBeenCalledWith({ id: '2' });
+    const created = res.body as any;
+    // The archiving requestor is still recorded separately from the credited lead.
+    expect(created.archived_by).toBe('1');
+    expect(created.lead_organizer).toEqual({ id: '2', nick_name: 'john' });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 404 when organizer_id does not match a user', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_organizer: false, organizer_id: '999' })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+    expect(mockedMeetup.create).not.toHaveBeenCalled();
+  });
+
+  it('archives an unregistered organizer by name with no lead', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_organizer: false, organizer_name: 'Old Timer' })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.organizer_name).toBe('Old Timer');
+    // No registered user is linked; the constraint allows a null lead for archives.
+    expect(created.lead_organizer).toBeUndefined();
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the name is taken', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({ message: 'Meetup name is taken.' });
+    expect(mockedMeetup.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when geocoding fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockRejectedValue(new Error('bad address'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ message: 'bad address' });
+  });
+
+  it('promotes the uploaded image out of the temp prefix', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockResolvedValueOnce('meetups/abc.png');
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(
+      mockRequest(validArchiveBody({ image_key: 'tmp/meetups/abc.png' })),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('tmp/meetups/abc.png');
+    expect((res.body as any).image_key).toBe('meetups/abc.png');
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('returns 500 if promoting the uploaded image fails', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedPromoteImage.mockRejectedValueOnce(new Error('R2 down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createArchiveMeetup(mockRequest(validArchiveBody()), res);
 
     expect(res.statusCode).toBe(500);
   });

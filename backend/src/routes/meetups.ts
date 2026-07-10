@@ -6,6 +6,7 @@ import {
   updateMeetupDiscordMessage,
 } from '../controllers/meetupDiscord';
 import {
+  createArchiveMeetup,
   createMeetup,
   createMeetupFromEventbrite,
   deleteMeetup,
@@ -46,6 +47,12 @@ router.post(
   authChecker([Rule.requireOrganizer]) as RequestHandler,
   uploadImageFile,
   uploadMeetupImage as RequestHandler
+);
+
+router.post(
+  '/archive',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  createArchiveMeetup as RequestHandler
 );
 
 router.post(
