@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiGift, FiHome, FiMonitor, FiSettings, FiUsers } from 'react-icons/fi';
 import { IoTicketOutline } from 'react-icons/io5';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import Page from '../components/Page/Page';
 import { type SidebarItem } from '../components/Sidebar/Sidebar';
 import { socket } from '../socket';
@@ -18,6 +18,8 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const isArchive = meetup?.is_archive === true;
 
   /**
    * Subscribe user to updates for the selected meetup. This will invalidate the
@@ -57,7 +59,7 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
     // Stay subscribed to updates in case user comes back to page
   }, []);
 
-  const sidebarItems: SidebarItem[] = [
+  const allSidebarItems: SidebarItem[] = [
     {
       name: 'Home',
       value: 'home',
@@ -96,9 +98,18 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
     },
   ];
 
+  // Archives are historical records: the only applicable management surface is
+  // settings, so hide check-in, raffle, attendees, and display for them.
+  const sidebarItems = isArchive
+    ? allSidebarItems.filter((item) => item.value === 'settings')
+    : allSidebarItems;
+
   const getSidebarValueFromPath = (): string => {
-    return sidebarItems.filter((item) => item.url === location.pathname)[0]
-      .value;
+    return (
+      sidebarItems.find((item) => item.url === location.pathname)?.value ??
+      sidebarItems[0]?.value ??
+      ''
+    );
   };
 
   const [sidebarValue, setSidebarValue] = useState<string>(
@@ -108,6 +119,16 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
   useEffect(() => {
     setSidebarValue(getSidebarValueFromPath());
   }, [location]);
+
+  // Archives only expose settings, so send any other manage sub-route (e.g. the
+  // dashboard's link to the home page) straight to settings.
+  useEffect(() => {
+    if (!isArchive || meetupId == null) return;
+    const settingsUrl = `/meetup/${meetupId}/manage/settings`;
+    if (location.pathname !== settingsUrl) {
+      void navigate(settingsUrl, { replace: true });
+    }
+  }, [isArchive, meetupId, location.pathname, navigate]);
 
   return (
     <Page
