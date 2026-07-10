@@ -210,7 +210,7 @@ const GalleryTile = ({
             {preview?.title ?? preview?.siteName ?? linkLabel(photo.gallery)}
           </p>
           <p className="text-muted-foreground truncate">
-            Added by {photo.display_name}
+            by {photo.display_name}
           </p>
         </div>
       </a>
