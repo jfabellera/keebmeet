@@ -82,7 +82,9 @@ export const MeetupModal = ({
   useEffect(() => {
     if (currentData != null) setRetainedMeetup(currentData);
   }, [currentData]);
-  const meetup = currentData ?? retainedMeetup;
+  const meetup =
+    currentData ??
+    (!isOpen || retainedMeetup?.id === meetupId ? retainedMeetup : undefined);
   const [rsvpPanelOpen, setRsvpPanelOpen] = useState(isRsvp);
   useEffect(() => {
     if (isOpen) setRsvpPanelOpen(isRsvp);
