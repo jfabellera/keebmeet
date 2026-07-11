@@ -196,7 +196,7 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
+        className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
         showCloseButton={false}
         {...swipeHandlers}
       >
