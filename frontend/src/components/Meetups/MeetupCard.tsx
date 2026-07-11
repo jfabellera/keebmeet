@@ -8,7 +8,7 @@ import {
 import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { CircleArrowOutUpRight } from 'lucide-react';
+import { ArchiveIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
@@ -49,11 +49,9 @@ export const MeetupCard = ({
               {meetup.is_archive ? (
                 <Tooltip>
                   <TooltipTrigger className="flex" aria-label="Archived">
-                    <CircleArrowOutUpRight className="size-4.5" />
+                    <ArchiveIcon className="size-4.5" />
                   </TooltipTrigger>
-                  <TooltipContent>
-                    This meetup was not created with KeebMeet
-                  </TooltipContent>
+                  <TooltipContent>This is an archived meetup</TooltipContent>
                 </Tooltip>
               ) : null}
               {attending === true ? (
