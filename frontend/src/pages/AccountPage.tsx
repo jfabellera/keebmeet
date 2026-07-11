@@ -7,6 +7,7 @@ import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
 import Page from '../components/Page/Page';
+import BackButton from '../components/shared/BackButton';
 import ImageUploadField from '../components/shared/ImageUploadField';
 import config from '../config';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
@@ -129,7 +130,10 @@ const AccountPage = (): ReactNode => {
   return (
     <Page>
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
-        <h1 className="text-center text-2xl font-bold">Account</h1>
+        <div className="relative flex items-center justify-center">
+          <BackButton to="/" label="Back to home" className="absolute left-0" />
+          <h1 className="text-2xl font-bold">Account</h1>
+        </div>
         <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
             <div className="flex flex-col gap-4">

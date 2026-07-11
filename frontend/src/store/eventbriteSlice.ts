@@ -1,10 +1,12 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type EventbriteOrganization } from '@keebmeet/shared';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
 
 export const eventbriteSlice = createApi({
   reducerPath: 'eventbriteSlice',
+  ...apiCacheDefaults,
   tagTypes: ['Organizations', 'Events', 'Custom Questions', 'Ticket Classes'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,

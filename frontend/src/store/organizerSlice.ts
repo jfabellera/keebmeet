@@ -9,6 +9,7 @@ import {
 } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
 
 export interface GetMeetupAttendeesOptions {
@@ -40,6 +41,7 @@ export interface UpdateAttendeeOptions {
 
 export const organizerSlice = createApi({
   reducerPath: 'organizerSlice',
+  ...apiCacheDefaults,
   tagTypes: ['Attendees', 'Raffles', 'Raffle'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,

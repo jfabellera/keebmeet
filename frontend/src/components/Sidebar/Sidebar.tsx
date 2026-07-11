@@ -1,5 +1,4 @@
 import {
-  Sidebar as SidebarPrimitive,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -7,6 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  Sidebar as SidebarPrimitive,
 } from '@/components/ui/sidebar';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { type IconType } from 'react-icons';
@@ -79,7 +79,7 @@ const Sidebar = ({
                       isActive={item.value === value}
                       onClick={() => {
                         setValue(item.value);
-                        void navigate(item.url);
+                        void navigate(item.url, { replace: true });
                       }}
                       className="data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:hover:bg-primary data-[active=true]:hover:text-primary-foreground"
                     >

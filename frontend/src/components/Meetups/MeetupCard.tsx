@@ -37,10 +37,10 @@ export const MeetupCard = ({
           className="size-full object-cover"
         />
       </AspectRatio>
-      <div className="p-3">
-        <div className="flex flex-col items-start gap-2">
-          <div className="flex w-full items-center gap-2">
-            <p className="text-muted-foreground font-semibold">
+      <div className="p-2.5 sm:p-3">
+        <div className="flex flex-col items-start gap-1 sm:gap-2">
+          <div className="flex w-full items-start gap-2">
+            <p className="text-muted-foreground text-sm font-semibold sm:text-base">
               {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
                 'MMMM DD, YYYY'
               )}
@@ -75,8 +75,8 @@ export const MeetupCard = ({
               ) : null}
             </div>
           </div>
-          <h3 className="text-xl font-semibold">{meetup.name}</h3>
-          <p>{`${meetup.location.city}, ${
+          <h3 className="text-base font-semibold sm:text-xl">{meetup.name}</h3>
+          <p className="text-sm sm:text-base">{`${meetup.location.city}, ${
             meetup.location.state ?? meetup.location.country
           }`}</p>
         </div>

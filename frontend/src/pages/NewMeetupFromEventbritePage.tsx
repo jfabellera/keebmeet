@@ -22,6 +22,7 @@ import {
   type EventbriteTicket,
 } from '@keebmeet/shared';
 import Page from '../components/Page/Page';
+import BackButton from '../components/shared/BackButton';
 import {
   useGetCustomQuestionsQuery,
   useGetEventsQuery,
@@ -153,9 +154,16 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
   return (
     <Page>
       <div className="mx-2 mt-4 flex flex-col items-center gap-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">New Meetup</h1>
-          <p>From Eventbrite Event</p>
+        <div className="relative flex w-full max-w-md items-center justify-center">
+          <BackButton
+            to="/organizer"
+            label="Back to organizer dashboard"
+            className="absolute left-0"
+          />
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">New Meetup</h1>
+            <p>From Eventbrite Event</p>
+          </div>
         </div>
         <div className="bg-card text-card-foreground w-full max-w-md rounded-lg p-8 shadow-lg">
           <form onSubmit={formik.handleSubmit} noValidate>
@@ -217,7 +225,10 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
                       name="hasRaffle"
                       checked={formik.values.hasRaffle}
                       onCheckedChange={(checked) => {
-                        void formik.setFieldValue('hasRaffle', checked === true);
+                        void formik.setFieldValue(
+                          'hasRaffle',
+                          checked === true
+                        );
                       }}
                     />
                     <span>Yes</span>

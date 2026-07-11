@@ -9,6 +9,7 @@ import {
   type EditMeetupPayload,
 } from '@keebmeet/shared';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
 
 export interface GetMeetupsOptions {
@@ -23,6 +24,7 @@ interface EditMeetupOptions {
 
 export const meetupSlice = createApi({
   reducerPath: 'meetupSlice',
+  ...apiCacheDefaults,
   tagTypes: [
     'Meetups',
     'Meetup',
