@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
 import { cn } from '@/lib/utils';
 import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
@@ -18,6 +20,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
+  FiCheck,
   FiClock,
   FiEdit,
   FiExternalLink,
@@ -25,6 +28,7 @@ import {
   FiMapPin,
   FiUser,
   FiUserCheck,
+  FiX,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -98,6 +102,19 @@ export const MeetupModal = ({
   const navigate = useNavigate();
   const isWide = useIsWide();
 
+  // Swipe-down-to-dismiss, mobile only (the lg layout is two-column).
+  const swipeHandlers = useSwipeToDismiss({
+    enabled: !isWide,
+    onDismiss: onClose,
+  });
+
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
   // A meetup id in the URL that doesn't resolve to a real meetup sends the
   // visitor back to the homepage rather than leaving a dead modal open.
   useEffect(() => {
@@ -140,6 +157,7 @@ export const MeetupModal = ({
   const handleCopyLink = (): void => {
     const url = `${window.location.origin}/meetup/${meetupId}`;
     void navigator.clipboard.writeText(url);
+    setCopied(true);
     toast.success('Link copied to clipboard');
   };
 
@@ -153,6 +171,10 @@ export const MeetupModal = ({
   const isRsvpable = !hasEnded;
   const isRsvpDisabled = !isLoggedIn || meetup.tickets?.available === 0;
   const goToRsvp = (): void => void navigate('/meetup/' + meetupId + '/rsvp');
+
+  const hasImage = meetup.image_url != null && meetup.image_url !== '';
+  const showCapacity = meetup.tickets != null && !meetup.is_archive;
+  const showRsvpAction = !isRsvp && isRsvpable;
 
   const rsvpForm = (
     <div className="sm:w-lg lg:h-full lg:w-96">
@@ -174,10 +196,27 @@ export const MeetupModal = ({
     >
       <DialogOverlay className="backdrop-blur-xs" />
       <DialogContent
-        className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
+        className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
         showCloseButton={false}
+        {...swipeHandlers}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-visible">
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Close"
+            aria-label="Close"
+            className={cn(
+              'absolute top-3 right-3 z-20 size-8',
+              hasImage &&
+                !rsvpPanelOpen &&
+                'rounded-full bg-black/40 text-white hover:bg-black/60 hover:text-white'
+            )}
+          >
+            <FiX className="size-4" />
+          </Button>
+        </DialogClose>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-none lg:flex-row lg:overflow-visible">
           <div
             className={cn(
               'flex-col sm:w-lg lg:min-h-0 lg:shrink-0 lg:overflow-hidden',
@@ -185,7 +224,7 @@ export const MeetupModal = ({
             )}
           >
             <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              {meetup.image_url != null && meetup.image_url !== '' ? (
+              {hasImage ? (
                 <AspectRatio ratio={2 / 1}>
                   <ImageWithFallback
                     src={meetup.image_url}
@@ -216,16 +255,6 @@ export const MeetupModal = ({
                         </Badge>
                       ) : null}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Copy link"
-                      aria-label="Copy link"
-                      onClick={handleCopyLink}
-                      className="ml-auto"
-                    >
-                      <FiLink />
-                    </Button>
                   </DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-1 pb-4 font-semibold">
@@ -323,7 +352,7 @@ export const MeetupModal = ({
             </div>
 
             <DialogFooter className="shrink-0 flex-row flex-wrap items-center justify-between gap-3 p-4">
-              {meetup.tickets != null && !meetup.is_archive ? (
+              {showCapacity && meetup.tickets != null ? (
                 <MeetupCapacityStatus
                   available={meetup.tickets.available}
                   total={meetup.tickets.total}
@@ -333,7 +362,43 @@ export const MeetupModal = ({
                 <span />
               )}
               <div className="ml-auto flex items-center gap-3">
-                {!isRsvp && isRsvpable ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Copy link"
+                  aria-label="Copy link"
+                  onClick={handleCopyLink}
+                  className="ml-auto"
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    {copied ? (
+                      <motion.span
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 1000,
+                          damping: 50,
+                        }}
+                      >
+                        <FiCheck className="text-green-600" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="link"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <FiLink />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Button>
+                {showRsvpAction ? (
                   meetup.eventbrite_url != null ? (
                     <a
                       href={meetup.eventbrite_url}
@@ -378,9 +443,6 @@ export const MeetupModal = ({
                     </Tooltip>
                   )
                 ) : null}
-                <Button variant="secondary" onClick={onClose}>
-                  Close
-                </Button>
               </div>
             </DialogFooter>
           </div>
