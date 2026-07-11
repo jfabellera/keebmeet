@@ -1,6 +1,7 @@
 import { type GalleryInfo, type GalleryPreview } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { meetupSlice } from './meetupSlice';
 import { type RootState } from './store';
 
@@ -24,6 +25,7 @@ export interface DeleteGalleryByIdOptions {
 
 export const gallerySlice = createApi({
   reducerPath: 'gallerySlice',
+  ...apiCacheDefaults,
   tagTypes: ['Galleries'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,

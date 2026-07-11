@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { type SimpleTicketInfo } from '@keebmeet/shared';
 import { type CreateTicketPayload } from '@keebmeet/shared';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
 
 export type TicketHolder = NonNullable<CreateTicketPayload['ticket_holder']>;
@@ -28,6 +29,7 @@ export interface TicketDetails {
 
 export const ticketSlice = createApi({
   reducerPath: 'ticketSlice',
+  ...apiCacheDefaults,
   tagTypes: ['Tickets'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,

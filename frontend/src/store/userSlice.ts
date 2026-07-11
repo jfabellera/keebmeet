@@ -6,10 +6,12 @@ import {
 } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
 
 export const userSlice = createApi({
   reducerPath: 'userSlice',
+  ...apiCacheDefaults,
   tagTypes: ['User', 'Users', 'Organizers', 'OrganizerRequests'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
