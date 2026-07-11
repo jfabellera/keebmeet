@@ -20,12 +20,55 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { type User } from '@keebmeet/shared';
+import dayjs from 'dayjs';
 import { useMemo, useState, type ReactNode } from 'react';
-import { FiCheck } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { setUserAccess } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useGetAllUsersQuery } from '../store/userSlice';
+
+type SortKey = 'name' | 'email' | 'created_at';
+type SortDirection = 'asc' | 'desc';
+
+const SortableHead = ({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  center = false,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; direction: SortDirection };
+  onSort: (key: SortKey) => void;
+  center?: boolean;
+}): ReactNode => {
+  const active = sort.key === sortKey;
+  return (
+    <TableHead className={center ? 'text-center' : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        aria-label={`Sort by ${label}`}
+        className={`hover:text-foreground inline-flex items-center gap-1 transition-colors ${
+          center ? 'mx-auto' : ''
+        } ${active ? 'text-foreground' : ''}`}
+      >
+        {label}
+        {active ? (
+          sort.direction === 'asc' ? (
+            <FiChevronUp className="size-3.5" />
+          ) : (
+            <FiChevronDown className="size-3.5" />
+          )
+        ) : (
+          <FiChevronDown className="size-3.5 opacity-30" />
+        )}
+      </button>
+    </TableHead>
+  );
+};
 
 const AdminUsersPage = (): ReactNode => {
   const dispatch = useAppDispatch();
@@ -43,6 +86,18 @@ const AdminUsersPage = (): ReactNode => {
     nextValue: boolean;
   } | null>(null);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
+    key: 'name',
+    direction: 'asc',
+  });
+
+  const toggleSort = (key: SortKey): void => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -58,14 +113,32 @@ const AdminUsersPage = (): ReactNode => {
         (roleFilter === 'owners' && user.is_owner);
       return matchesSearch && matchesRole;
     });
-    // Stable alphabetical order so rows don't jump around after an update (the
-    // API returns users in no particular order).
-    return [...matched].sort((a, b) =>
-      a.display_name.localeCompare(b.display_name, undefined, {
+
+    const compare = (a: User, b: User): number => {
+      switch (sort.key) {
+        case 'email':
+          return a.email.localeCompare(b.email, undefined, {
+            sensitivity: 'base',
+          });
+        case 'created_at':
+          return dayjs(a.created_at).valueOf() - dayjs(b.created_at).valueOf();
+        case 'name':
+        default:
+          return a.display_name.localeCompare(b.display_name, undefined, {
+            sensitivity: 'base',
+          });
+      }
+    };
+
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    return [...matched].sort((a, b) => {
+      const primary = compare(a, b) * direction;
+      if (primary !== 0) return primary;
+      return a.display_name.localeCompare(b.display_name, undefined, {
         sensitivity: 'base',
-      })
-    );
-  }, [users, search, roleFilter]);
+      });
+    });
+  }, [users, search, roleFilter, sort]);
 
   const roleFilters: Array<{
     value: 'all' | 'organizers' | 'admins' | 'owners';
@@ -167,8 +240,24 @@ const AdminUsersPage = (): ReactNode => {
           <TableHeader>
             <TableRow>
               <TableHead />
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <SortableHead
+                label="Name"
+                sortKey="name"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                label="Email"
+                sortKey="email"
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <SortableHead
+                label="Joined"
+                sortKey="created_at"
+                sort={sort}
+                onSort={toggleSort}
+              />
               <TableHead className="text-center">Organizer</TableHead>
               <TableHead className="text-center">Admin</TableHead>
               <TableHead className="text-center">Owner</TableHead>
@@ -201,6 +290,9 @@ const AdminUsersPage = (): ReactNode => {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {user.email}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {dayjs(user.created_at).format('MMM D, YYYY h:mm A')}
                   </TableCell>
                   <TableCell className="text-center">
                     <Switch

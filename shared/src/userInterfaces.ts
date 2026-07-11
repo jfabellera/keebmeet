@@ -11,6 +11,7 @@ export interface User {
   is_discord_linked: boolean;
   // Resolved profile photo URL; '' when the user has no photo.
   photo_url: string;
+  created_at: string;
   // Resolved from the Discord API at request time; only populated by getUser.
   discord_username?: string | null;
   // Whether the user has a pending organizer request; only populated by getUser.

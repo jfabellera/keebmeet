@@ -67,6 +67,7 @@ const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
   is_organizer: false,
   discord_id: null,
   encrypted_eventbrite_token: null,
+  created_at: new Date('2026-01-01T00:00:00.000Z'),
   ...overrides,
 });
 
@@ -102,6 +103,7 @@ describe('getAllUsers', () => {
       is_eventbrite_linked: true,
       is_discord_linked: true,
       photo_url: '',
+      created_at: '2026-01-01T00:00:00.000Z',
     });
     expect(body[1].is_eventbrite_linked).toBe(false);
     expect(body[1].is_discord_linked).toBe(false);

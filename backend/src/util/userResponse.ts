@@ -19,5 +19,6 @@ export const toUserResponse = (user: User): UserInterface => {
     is_eventbrite_linked: user.encrypted_eventbrite_token != null,
     is_discord_linked: user.discord_id != null,
     photo_url: publicUrl(user.photo_key ?? ''),
+    created_at: user.created_at.toISOString(),
   } satisfies UserInterface;
 };

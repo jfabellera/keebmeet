@@ -147,6 +147,7 @@ const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
   is_admin: false,
   is_owner: false,
   is_organizer: false,
+  created_at: new Date('2026-01-01T00:00:00.000Z'),
   save: jest.fn().mockResolvedValue(undefined),
   remove: jest.fn().mockResolvedValue(undefined),
   ...overrides,
