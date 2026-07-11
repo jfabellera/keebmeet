@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss';
 import { cn } from '@/lib/utils';
 import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
@@ -98,6 +99,9 @@ export const MeetupModal = ({
   const navigate = useNavigate();
   const isWide = useIsWide();
 
+  // Swipe-down-to-dismiss, mobile only (the lg layout is two-column).
+  const swipeHandlers = useSwipeToDismiss({ enabled: !isWide, onDismiss: onClose });
+
   // A meetup id in the URL that doesn't resolve to a real meetup sends the
   // visitor back to the homepage rather than leaving a dead modal open.
   useEffect(() => {
@@ -176,8 +180,9 @@ export const MeetupModal = ({
       <DialogContent
         className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
         showCloseButton={false}
+        {...swipeHandlers}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-visible">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-none lg:flex-row lg:overflow-visible">
           <div
             className={cn(
               'flex-col sm:w-lg lg:min-h-0 lg:shrink-0 lg:overflow-hidden',
