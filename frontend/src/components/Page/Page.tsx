@@ -1,5 +1,6 @@
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useScrollRestoration } from '../../hooks/useScrollRestoration';
 import BottomNav from '../BottomNav/BottomNav';
 import Navbar from '../Navbar/Navbar';
 import Sidebar, {
@@ -26,6 +27,8 @@ const Page = ({
   const hasSidebar =
     sidebarItems != null && sidebarValue != null && setSidebarValue != null;
 
+  const scrollRef = useScrollRestoration<HTMLDivElement>();
+
   return (
     <div className="bg-muted flex h-svh flex-col">
       <Navbar />
@@ -39,7 +42,10 @@ const Page = ({
               setValue={setSidebarValue}
               backTo={sidebarBackTo}
             />
-            <SidebarInset className="min-h-0 overflow-auto bg-transparent">
+            <SidebarInset
+              ref={scrollRef}
+              className="min-h-0 overflow-auto bg-transparent"
+            >
               {children}
             </SidebarInset>
           </SidebarProvider>
@@ -53,7 +59,9 @@ const Page = ({
         </>
       ) : (
         <div className="h-full w-auto overflow-hidden">
-          <div className="relative h-full overflow-auto">{children}</div>
+          <div ref={scrollRef} className="relative h-full overflow-auto">
+            {children}
+          </div>
         </div>
       )}
     </div>
