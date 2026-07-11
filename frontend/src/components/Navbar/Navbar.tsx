@@ -83,7 +83,7 @@ const Nav = ({ sidebar, onOpen }: NavbarProps): ReactNode => {
       <span
         role="button"
         tabIndex={0}
-        className="text-primary cursor-pointer text-2xl font-bold tracking-tight"
+        className="text-primary cursor-pointer text-3xl font-bold tracking-tight"
         onClick={() => {
           void navigate('/');
         }}
