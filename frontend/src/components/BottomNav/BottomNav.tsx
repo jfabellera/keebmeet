@@ -49,7 +49,7 @@ const BottomNav = ({
 
   const go = (item: SidebarItem): void => {
     setValue(item.value);
-    void navigate(item.url);
+    void navigate(item.url, { replace: true });
   };
 
   if (items.length < 2) return <></>;
