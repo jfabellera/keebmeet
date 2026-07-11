@@ -47,6 +47,9 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 30, nullable: true, unique: true })
   discord_id?: string;
 
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  created_at: Date;
+
   @OneToMany(() => Ticket, (ticket) => ticket.user)
   tickets: Ticket[];
 
