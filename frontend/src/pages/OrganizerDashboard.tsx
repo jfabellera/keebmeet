@@ -5,31 +5,17 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import {
-  ArchiveIcon,
-  CalendarPlusIcon,
-  ClockIcon,
-  ListFilterIcon,
-  MailCheckIcon,
-  MoreHorizontalIcon,
-  TagIcon,
-  Trash2Icon,
-} from 'lucide-react';
+import { ArchiveIcon, MoreHorizontalIcon } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
 import Page from '../components/Page/Page';
+import BackButton from '../components/shared/BackButton';
 import { useAppSelector } from '../store/hooks';
 import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import {
@@ -102,7 +88,8 @@ const OrganizerDashboard = (): ReactNode => {
   return (
     <Page>
       <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
-        <div className="mb-4 flex items-center">
+        <div className="mb-4 flex items-center gap-2">
+          <BackButton to="/" label="Back to home" className="-ml-2 shrink-0" />
           <h1 className="text-2xl font-semibold">Your Meetups</h1>
           <ButtonGroup className="ml-auto">
             <Button onClick={newMeetupOnClick}>New meetup</Button>

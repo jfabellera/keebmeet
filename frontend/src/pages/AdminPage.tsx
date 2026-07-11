@@ -44,6 +44,7 @@ const AdminPage = ({ children }: AdminPageProps): ReactNode => {
       sidebarItems={sidebarItems}
       sidebarValue={sidebarValue}
       setSidebarValue={setSidebarValue}
+      sidebarBackTo={{ label: 'Home', url: '/' }}
     >
       <div className="h-full overflow-auto">{children}</div>
     </Page>

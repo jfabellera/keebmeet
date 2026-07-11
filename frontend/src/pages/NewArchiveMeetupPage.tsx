@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
 import Page from '../components/Page/Page';
+import BackButton from '../components/shared/BackButton';
 import { useCreateArchiveMeetupMutation } from '../store/meetupSlice';
 import ArchiveMeetupFormSchema from '../util/schemas/ArchiveMeetupFormSchema';
 
@@ -76,9 +77,16 @@ const NewArchiveMeetupPage = (): ReactNode => {
     <Page>
       <div className="mx-auto max-w-3xl p-4">
         <div className="mx-auto flex max-w-lg flex-col gap-4">
-          <h1 className="text-center text-4xl font-bold">
-            Archive a Past Meetup
-          </h1>
+          <div className="relative flex items-center justify-center">
+            <BackButton
+              to="/organizer"
+              label="Back to organizer dashboard"
+              className="absolute left-0"
+            />
+            <h1 className="text-center text-4xl font-bold">
+              Archive a Past Meetup
+            </h1>
+          </div>
           <div className="bg-card text-card-foreground rounded-lg p-8 shadow-lg">
             <form onSubmit={formik.handleSubmit} noValidate>
               <div className="flex flex-col gap-4">
