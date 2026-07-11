@@ -20,6 +20,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
+  FiCheck,
   FiClock,
   FiEdit,
   FiExternalLink,
@@ -107,6 +108,13 @@ export const MeetupModal = ({
     onDismiss: onClose,
   });
 
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+
   // A meetup id in the URL that doesn't resolve to a real meetup sends the
   // visitor back to the homepage rather than leaving a dead modal open.
   useEffect(() => {
@@ -149,6 +157,7 @@ export const MeetupModal = ({
   const handleCopyLink = (): void => {
     const url = `${window.location.origin}/meetup/${meetupId}`;
     void navigator.clipboard.writeText(url);
+    setCopied(true);
     toast.success('Link copied to clipboard');
   };
 
@@ -361,7 +370,33 @@ export const MeetupModal = ({
                   onClick={handleCopyLink}
                   className="ml-auto"
                 >
-                  <FiLink />
+                  <AnimatePresence mode="wait" initial={false}>
+                    {copied ? (
+                      <motion.span
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 1000,
+                          damping: 50,
+                        }}
+                      >
+                        <FiCheck className="text-green-600" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="link"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <FiLink />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Button>
                 {showRsvpAction ? (
                   meetup.eventbrite_url != null ? (
