@@ -83,7 +83,7 @@ const Homepage = (): ReactNode => {
     return (
       <div>
         <h2 className="mb-3 text-3xl font-bold">{title}</h2>
-        <div className="grid [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))] gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] sm:gap-4">
           {meetups?.map((meetup) => (
             <div
               key={meetup.id}
