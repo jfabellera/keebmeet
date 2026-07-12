@@ -5,6 +5,7 @@ import { useMeetupImageUpload } from './useMeetupImageUpload';
 interface Props {
   previewUrl: string;
   onUploaded: (imageKey: string, imageUrl: string) => void;
+  onUploadingChange?: (isUploading: boolean) => void;
   onRemove?: () => void;
   editable?: boolean;
   label?: string;

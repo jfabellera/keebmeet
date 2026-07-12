@@ -2,6 +2,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useBoolean } from '@/hooks/useBoolean';
+import { usePendingUploads } from '@/hooks/usePendingUploads';
 import { useEffect, useState, type ReactNode } from 'react';
 import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
 import {
@@ -23,6 +24,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: displayAssets, isLoading } =
     useGetMeetupDisplayAssetsQuery(meetupId);
   const [updateMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
+  const { isUploading, onUploadingChange } = usePendingUploads();
   const [isEditable, setIsEditable] = useBoolean(false);
   const [urls, setUrls] = useState<string[]>([]);
   const [raffleBackgroundUrl, setRaffleBackgroundUrl] = useState<string>('');
@@ -115,6 +117,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditSubmit={onSubmit}
       isSubmitLoading={isSaving}
       isFormInvalid={false}
+      isSubmitDisabled={isUploading}
     >
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
@@ -137,6 +140,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   onUploaded={(_imageKey, imageUrl) =>
                     setIdleUrl(index, imageUrl)
                   }
+                  onUploadingChange={onUploadingChange}
                   footer={
                     <>
                       <Button
@@ -205,6 +209,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   onUploaded={(_imageKey, imageUrl) =>
                     setRaffleBackgroundUrl(imageUrl)
                   }
+                  onUploadingChange={onUploadingChange}
                   onRemove={() => setRaffleBackgroundUrl('')}
                 />
               </div>
@@ -225,6 +230,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   onUploaded={(_imageKey, imageUrl) =>
                     setBatchRaffleBackgroundUrl(imageUrl)
                   }
+                  onUploadingChange={onUploadingChange}
                   onRemove={() => setBatchRaffleBackgroundUrl('')}
                 />
               </div>

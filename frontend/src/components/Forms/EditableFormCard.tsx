@@ -15,6 +15,7 @@ interface MeetupDisplaySettingsProps extends React.ComponentProps<'div'> {
   isEditable: boolean;
   isSubmitLoading?: boolean;
   isFormInvalid?: boolean;
+  isSubmitDisabled?: boolean;
   editDisabled?: boolean;
   editDisabledReason?: string;
   onEditEnter: () => void;
@@ -27,6 +28,7 @@ const EditableFormCard = ({
   isEditable,
   isSubmitLoading,
   isFormInvalid,
+  isSubmitDisabled,
   editDisabled,
   editDisabledReason,
   onEditEnter,
@@ -65,7 +67,11 @@ const EditableFormCard = ({
         <div className="flex justify-end">
           <Button
             onClick={onEditSubmit}
-            disabled={(isFormInvalid ?? false) || (isSubmitLoading ?? false)}
+            disabled={
+              (isFormInvalid ?? false) ||
+              (isSubmitLoading ?? false) ||
+              (isSubmitDisabled ?? false)
+            }
           >
             Save
             {isSubmitLoading === true ? (
