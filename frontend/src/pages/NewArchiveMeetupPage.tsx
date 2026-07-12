@@ -18,11 +18,13 @@ import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
+import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useCreateArchiveMeetupMutation } from '../store/meetupSlice';
 import ArchiveMeetupFormSchema from '../util/schemas/ArchiveMeetupFormSchema';
 
 const NewArchiveMeetupPage = (): ReactNode => {
   const [createArchiveMeetup, { isLoading }] = useCreateArchiveMeetupMutation();
+  const { isUploading, onUploadingChange } = usePendingUploads();
   const navigate = useNavigate();
   const formik = useFormik({
     initialValues: {
@@ -139,6 +141,7 @@ const NewArchiveMeetupPage = (): ReactNode => {
                     void formik.setFieldValue('imageKey', imageKey);
                     void formik.setFieldValue('imageUrl', imageUrl);
                   }}
+                  onUploadingChange={onUploadingChange}
                 />
 
                 <Field>
@@ -164,7 +167,7 @@ const NewArchiveMeetupPage = (): ReactNode => {
 
                 <Button
                   type="submit"
-                  disabled={!formik.isValid || isLoading}
+                  disabled={!formik.isValid || isLoading || isUploading}
                   size="lg"
                 >
                   Archive

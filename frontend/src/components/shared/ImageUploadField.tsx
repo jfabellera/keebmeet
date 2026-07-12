@@ -21,6 +21,12 @@ interface Props {
   /** Called with the R2 object key (and its public URL) after a successful upload. */
   onUploaded: (imageKey: string, imageUrl: string) => void;
   /**
+   * Called with true when an upload starts and false when it settles (or the
+   * field unmounts mid-upload). Wire to usePendingUploads so the parent form
+   * can block submission while an upload is in flight.
+   */
+  onUploadingChange?: (isUploading: boolean) => void;
+  /**
    * Called when the user clears the current image. When provided, a "Remove"
    * button is shown while editing and an image is present.
    */
@@ -53,6 +59,7 @@ interface Props {
 const ImageUploadField = ({
   previewUrl,
   onUploaded,
+  onUploadingChange,
   onRemove,
   editable = true,
   label,
@@ -64,6 +71,12 @@ const ImageUploadField = ({
   previewWidth,
 }: Props): ReactNode => {
   const { upload, isUploading } = useUpload();
+  useEffect(() => {
+    if (!isUploading) return;
+    onUploadingChange?.(true);
+    // The cleanup also reports settled if the field unmounts mid-upload.
+    return () => onUploadingChange?.(false);
+  }, [isUploading, onUploadingChange]);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isTouch, setIsTouch] = useState(false);

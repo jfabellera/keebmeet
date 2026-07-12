@@ -15,11 +15,13 @@ import MeetupImageField from '../components/Meetups/MeetupImageField';
 import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
+import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useCreateMeetupMutation } from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
   const [createMeetup, { isLoading }] = useCreateMeetupMutation();
+  const { isUploading, onUploadingChange } = usePendingUploads();
   const currentUserId = useAppSelector((state) => state.user.user?.id);
   const navigate = useNavigate();
   const formik = useFormik({
@@ -161,6 +163,7 @@ const NewMeetupPage = (): ReactNode => {
                     void formik.setFieldValue('imageKey', imageKey);
                     void formik.setFieldValue('imageUrl', imageUrl);
                   }}
+                  onUploadingChange={onUploadingChange}
                 />
 
                 <Field>
@@ -210,7 +213,7 @@ const NewMeetupPage = (): ReactNode => {
 
                 <Button
                   type="submit"
-                  disabled={!formik.isValid || isLoading}
+                  disabled={!formik.isValid || isLoading || isUploading}
                   size="lg"
                 >
                   Create

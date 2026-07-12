@@ -10,6 +10,7 @@ import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import ImageUploadField from '../components/shared/ImageUploadField';
 import config from '../config';
+import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { updateProfile } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -47,6 +48,7 @@ const AccountPage = (): ReactNode => {
   });
   const [requestOrganizer, { isLoading: isRequestingOrganizer }] =
     useRequestOrganizerMutation();
+  const { isUploading, onUploadingChange } = usePendingUploads();
 
   const onRequestOrganizer = (): void => {
     void (async () => {
@@ -149,6 +151,7 @@ const AccountPage = (): ReactNode => {
                     void formik.setFieldValue('photoKey', imageKey);
                     void formik.setFieldValue('photoUrl', imageUrl);
                   }}
+                  onUploadingChange={onUploadingChange}
                   onRemove={() => {
                     void formik.setFieldValue('photoKey', '');
                     void formik.setFieldValue('photoUrl', '');
@@ -199,7 +202,9 @@ const AccountPage = (): ReactNode => {
               </div>
               <Button
                 type="submit"
-                disabled={loading || !formik.isValid || !formik.dirty}
+                disabled={
+                  loading || !formik.isValid || !formik.dirty || isUploading
+                }
                 size="lg"
               >
                 Save changes

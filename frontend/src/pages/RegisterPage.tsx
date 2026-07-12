@@ -12,6 +12,7 @@ import * as Yup from 'yup';
 import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
 import ImageUploadField from '../components/shared/ImageUploadField';
+import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -44,6 +45,7 @@ const RegisterPage = (): ReactNode => {
   const { loading, error } = useAppSelector((state) => state.user);
   const navigate = useNavigate();
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const { isUploading, onUploadingChange } = usePendingUploads();
   const formik = useFormik({
     initialValues: {
       email: '',
@@ -106,6 +108,7 @@ const RegisterPage = (): ReactNode => {
                       void formik.setFieldValue('profilePhotoKey', imageKey);
                       void formik.setFieldValue('profilePhotoUrl', imageUrl);
                     }}
+                    onUploadingChange={onUploadingChange}
                     onRemove={() => {
                       void formik.setFieldValue('profilePhotoKey', '');
                       void formik.setFieldValue('profilePhotoUrl', '');
@@ -187,7 +190,7 @@ const RegisterPage = (): ReactNode => {
                 <div className="flex flex-col gap-10 pt-2">
                   <Button
                     type="submit"
-                    disabled={loading || !formik.isValid}
+                    disabled={loading || !formik.isValid || isUploading}
                     size="lg"
                   >
                     Sign up

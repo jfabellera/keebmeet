@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useBoolean } from '@/hooks/useBoolean';
+import { usePendingUploads } from '@/hooks/usePendingUploads';
 import { useAppSelector } from '@/store/hooks';
 import { type EditMeetupPayload } from '@keebmeet/shared';
 import dayjs from 'dayjs';
@@ -36,6 +37,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const currentUserId = useAppSelector((state) => state.user.user?.id);
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
+  const { isUploading, onUploadingChange } = usePendingUploads();
   const isArchive = meetup?.is_archive === true;
   const formik = useFormik({
     initialValues: {
@@ -149,6 +151,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditSubmit={onSubmit}
       isSubmitLoading={isSaving}
       isFormInvalid={false}
+      isSubmitDisabled={isUploading}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
         {isArchive ? (
@@ -314,6 +317,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         <MeetupImageField
           previewUrl={formik.values.imageUrl}
           editable={isEditable}
+          onUploadingChange={onUploadingChange}
           onUploaded={(imageKey, imageUrl) => {
             void formik.setFieldValue('imageKey', imageKey);
             void formik.setFieldValue('imageUrl', imageUrl);
