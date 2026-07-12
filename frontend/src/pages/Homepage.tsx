@@ -9,12 +9,42 @@ import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
-import { useMeetupHoverPrefetch } from '../store/useMeetupPrefetch';
+import {
+  useMeetupInViewPrefetch,
+  useMeetupPrefetch,
+} from '../store/useMeetupPrefetch';
 import {
   hasMeetupEnded,
   hasMeetupStarted,
   isMeetupHappeningNow,
 } from '../util/timeUtil';
+
+interface PrefetchingMeetupCardProps {
+  meetup: MeetupInfo;
+  attending: boolean;
+  onClick: () => void;
+}
+
+const PrefetchingMeetupCard = ({
+  meetup,
+  attending,
+  onClick,
+}: PrefetchingMeetupCardProps): ReactNode => {
+  const prefetchMeetup = useMeetupPrefetch();
+  const inViewRef = useMeetupInViewPrefetch(meetup);
+
+  return (
+    <div
+      ref={inViewRef}
+      onClick={onClick}
+      onMouseEnter={() => {
+        prefetchMeetup(meetup);
+      }}
+    >
+      <MeetupCard meetup={meetup} attending={attending} />
+    </div>
+  );
+};
 
 const Homepage = (): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
@@ -27,9 +57,6 @@ const Homepage = (): ReactNode => {
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
-  // Warm the modal (details, hero image, photos) on hover so it usually opens
-  // instantly on click. Everything prefetched is a no-op when already cached.
-  const prefetchMeetup = useMeetupHoverPrefetch();
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
   const isOpen = meetupId !== '';
@@ -85,20 +112,14 @@ const Homepage = (): ReactNode => {
         <h2 className="mb-3 text-2xl font-bold">{title}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] sm:gap-4">
           {meetups?.map((meetup) => (
-            <div
+            <PrefetchingMeetupCard
               key={meetup.id}
+              meetup={meetup}
+              attending={getTicketForMeetup(meetup.id) != null}
               onClick={() => {
                 meetupCardOnClick(meetup.id);
               }}
-              onMouseEnter={() => {
-                prefetchMeetup(meetup);
-              }}
-            >
-              <MeetupCard
-                meetup={meetup}
-                attending={getTicketForMeetup(meetup.id) != null}
-              />
-            </div>
+            />
           ))}
         </div>
       </div>
