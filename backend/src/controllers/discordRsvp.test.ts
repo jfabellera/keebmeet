@@ -139,6 +139,7 @@ describe('handleDiscordRsvp', () => {
       guild_id: 'g',
       channel_id: 'c',
       message_id: 'm',
+      allow_rsvp: true,
     } as any);
     const res = mockResponse();
 
@@ -256,6 +257,27 @@ describe('handleDiscordRsvp', () => {
     expect(res.body).toEqual({ status: 'ended' });
     expect(ticket.remove).not.toHaveBeenCalled();
     expect(mockedRefresh).not.toHaveBeenCalled();
+  });
+
+  it('returns status "disabled" when the announcement opted out of Discord RSVPs', async () => {
+    mockedMeetup.findOneBy.mockResolvedValue(fakeMeetup());
+    mockedUser.findOneBy.mockResolvedValue(null);
+    mockedTicket.findOne.mockResolvedValue(null);
+    mockedDiscordMsg.findOneBy.mockResolvedValue({
+      guild_id: 'g',
+      channel_id: 'c',
+      message_id: 'm',
+      allow_rsvp: false,
+    } as any);
+    const res = mockResponse();
+
+    await handleDiscordRsvp(mockRequest(validBody), res);
+
+    expect(res.body).toEqual({
+      status: 'disabled',
+      message_url: 'https://discord.com/channels/g/c/m',
+    });
+    expect(mockedTicket.create).not.toHaveBeenCalled();
   });
 
   it('returns status "full" at capacity without creating a ticket', async () => {

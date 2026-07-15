@@ -29,7 +29,7 @@ jest.mock('../util/discord', () => ({
 
 jest.mock('../util/meetupDiscordMessage', () => ({
   buildMeetupEmbed: jest.fn(() => ({ embed: true })),
-  buildRsvpComponents: jest.fn(() => [{ row: true }]),
+  buildMeetupComponents: jest.fn(() => [{ row: true }]),
   getMeetupAttendeeDisplayNames: jest.fn(async () => []),
 }));
 
@@ -100,10 +100,12 @@ const fakeMessage = (): any => ({
   guild_id: 'g1',
   channel_id: 'c1',
   message_id: 'm1',
+  allow_rsvp: true,
+  save: jest.fn().mockResolvedValue(undefined),
   remove: jest.fn().mockResolvedValue(undefined),
 });
 
-const validBody = { server_id: 'g1', channel_id: 'c1' };
+const validBody = { server_id: 'g1', channel_id: 'c1', allow_rsvp: true };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -231,6 +233,7 @@ describe('createMeetupDiscordMessage', () => {
       guild_id: 'g1',
       channel_id: 'c1',
       message_id: 'msg-1',
+      allow_rsvp: true,
       save: jest.fn().mockResolvedValue(undefined),
     };
     mockedMessage.create.mockReturnValue(saved as any);
@@ -252,6 +255,7 @@ describe('createMeetupDiscordMessage', () => {
       guild_id: 'g1',
       channel_id: 'c1',
       message_id: 'msg-1',
+      allow_rsvp: true,
     });
   });
 });
@@ -298,7 +302,42 @@ describe('updateMeetupDiscordMessage', () => {
       guild_id: 'g1',
       channel_id: 'c1',
       message_id: 'm1',
+      allow_rsvp: true,
     });
+  });
+
+  it('toggles allow_rsvp and persists it when provided', async () => {
+    const message = fakeMessage();
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetup({ discordMessage: message })
+    );
+    mockedEditEmbed.mockResolvedValue(undefined);
+    const res = mockResponse();
+
+    await updateMeetupDiscordMessage(
+      mockRequest({ meetup_id: '1' }, { allow_rsvp: false }),
+      res
+    );
+
+    expect(message.allow_rsvp).toBe(false);
+    expect(message.save).toHaveBeenCalled();
+    expect(res.body).toEqual(
+      expect.objectContaining({ allow_rsvp: false })
+    );
+  });
+
+  it('does not persist when allow_rsvp is omitted', async () => {
+    const message = fakeMessage();
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetup({ discordMessage: message })
+    );
+    mockedEditEmbed.mockResolvedValue(undefined);
+    const res = mockResponse();
+
+    await updateMeetupDiscordMessage(mockRequest({ meetup_id: '1' }), res);
+
+    expect(message.save).not.toHaveBeenCalled();
+    expect(res.body).toEqual(expect.objectContaining({ allow_rsvp: true }));
   });
 });
 

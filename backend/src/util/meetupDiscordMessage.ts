@@ -12,21 +12,36 @@ import {
 const ACTION_ROW = 1;
 const BUTTON = 2;
 const BUTTON_STYLE_PRIMARY = 1;
+const BUTTON_STYLE_LINK = 5;
 
 /**
- * Builds the action row holding the RSVP button for a meetup. The custom_id
- * encodes the meetup id so the bot can route the click without an extra lookup.
+ * Builds the action row holding the meetup announcement's button.
+ *
+ * When `allowRsvp` is true the button is an interactive RSVP button whose
+ * custom_id encodes the meetup id, so the bot can route the click without an
+ * extra lookup. When false it is a link button that sends people to the
+ * meetup's web page to sign up online.
  */
-export const buildRsvpComponents = (meetupId: string): DiscordComponent[] => [
+export const buildMeetupComponents = (
+  meetup: Meetup,
+  allowRsvp: boolean
+): DiscordComponent[] => [
   {
     type: ACTION_ROW,
     components: [
-      {
-        type: BUTTON,
-        style: BUTTON_STYLE_PRIMARY,
-        label: 'RSVP',
-        custom_id: `rsvp:${meetupId}`,
-      },
+      allowRsvp
+        ? {
+            type: BUTTON,
+            style: BUTTON_STYLE_PRIMARY,
+            label: 'RSVP',
+            custom_id: `rsvp:${meetup.id}`,
+          }
+        : {
+            type: BUTTON,
+            style: BUTTON_STYLE_LINK,
+            label: 'RSVP on KeebMeet',
+            url: `${config.webUrl}/meetup/${meetup.id}`,
+          },
     ],
   },
 ];
@@ -137,7 +152,7 @@ export const refreshMeetupDiscordMessage = async (
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
       buildMeetupEmbed(meetup, attendeeNames),
-      buildRsvpComponents(meetupId)
+      buildMeetupComponents(meetup, meetup.discordMessage.allow_rsvp)
     );
   } catch (error: any) {
     console.error(

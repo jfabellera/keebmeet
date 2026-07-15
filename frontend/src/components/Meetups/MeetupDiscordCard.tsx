@@ -1,3 +1,4 @@
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogClose,
@@ -8,7 +9,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Field, FieldLabel } from '@/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from '@/components/ui/field';
 import {
   Select,
   SelectContent,
@@ -33,9 +39,11 @@ import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { hasMeetupEnded } from '../../util/timeUtil';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Spinner } from '../ui/spinner';
+import { Switch } from '../ui/switch';
 
 interface Props {
   meetupId: string;
@@ -75,6 +83,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
 
   const [selectedServer, setSelectedServer] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
+  const [allowRsvp, setAllowRsvp] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const { data: channels } = useGetUserDiscordServerChannelsQuery(
@@ -94,17 +103,25 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
       meetupId,
       server_id: selectedServer,
       channel_id: selectedChannel,
+      allow_rsvp: allowRsvp,
     });
     if (handleMutationError(result, 'Failed to create Discord message')) return;
     toast.success('Discord message created.');
     setSelectedServer('');
     setSelectedChannel('');
+    setAllowRsvp(false);
   };
 
   const onUpdate = async (): Promise<void> => {
-    const result = await updateMessage(meetupId);
+    const result = await updateMessage({ meetupId });
     if (handleMutationError(result, 'Failed to update Discord message')) return;
     toast.success('Discord message updated.');
+  };
+
+  const onToggleRsvp = async (allow: boolean): Promise<void> => {
+    const result = await updateMessage({ meetupId, allow_rsvp: allow });
+    if (handleMutationError(result, 'Failed to update Discord message')) return;
+    toast.success(allow ? 'Discord RSVPs enabled.' : 'Discord RSVPs disabled.');
   };
 
   const onDelete = async (): Promise<void> => {
@@ -131,15 +148,36 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
           <Spinner className="size-6" />
         </div>
       ) : message != null ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
+          <Badge variant={message.allow_rsvp ? 'default' : 'secondary'}>
+            {message.allow_rsvp
+              ? 'Discord RSVPs enabled'
+              : 'Discord RSVPs disabled'}
+          </Badge>
           <p>
             An announcement is posted in{' '}
             <span className="font-bold">
               {servers?.find((server) => server.id === message.guild_id)
                 ?.name ?? 'a server'}
             </span>
-            .
+            .{' '}
+            {message.allow_rsvp
+              ? 'Members can RSVP directly from Discord.'
+              : 'Its button links to the meetup page for online sign-up.'}
           </p>
+          <Field orientation="horizontal">
+            <Switch
+              id="discord-allow-rsvp-toggle"
+              checked={message.allow_rsvp}
+              disabled={isUpdating}
+              onCheckedChange={(checked) => {
+                void onToggleRsvp(checked);
+              }}
+            />
+            <FieldLabel htmlFor="discord-allow-rsvp-toggle">
+              Allow RSVPs via Discord
+            </FieldLabel>
+          </Field>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="secondary">
               <a
@@ -241,6 +279,24 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+          <Field orientation="horizontal">
+            <Checkbox
+              id="discord-allow-rsvp"
+              checked={allowRsvp}
+              onCheckedChange={(checked) => {
+                setAllowRsvp(checked === true);
+              }}
+            />
+            <FieldContent>
+              <FieldLabel htmlFor="discord-allow-rsvp">
+                Allow RSVPs via Discord
+              </FieldLabel>
+              <FieldDescription>
+                Members RSVP with a button on the announcement. When off, the
+                button links to the meetup page to sign up online.
+              </FieldDescription>
+            </FieldContent>
           </Field>
           <Button
             className="self-start"

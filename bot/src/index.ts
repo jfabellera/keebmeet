@@ -38,6 +38,7 @@ const RSVP_MESSAGES: Record<string, string> = {
   not_found: "You don't have an RSVP to cancel.",
   full: 'Sorry, this meetup is full.',
   ended: 'This meetup has already happened.',
+  disabled: 'RSVPs for this meetup are handled on the KeebMeet website.',
 };
 
 interface RsvpResponse {

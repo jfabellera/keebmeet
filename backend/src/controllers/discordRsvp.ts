@@ -16,7 +16,8 @@ import { discordRsvpSchema } from '@keebmeet/shared';
  * separate action so the bot can confirm with the user first.
  *
  * Responds with a `status` the bot maps to an ephemeral reply:
- * 'created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended'.
+ * 'created' | 'already' | 'cancelled' | 'not_found' | 'full' | 'ended' |
+ * 'disabled'.
  */
 export const handleDiscordRsvp = async (
   req: Request,
@@ -78,6 +79,13 @@ export const handleDiscordRsvp = async (
   }
 
   // action === 'rsvp'
+  // Defensive: this meetup's announcement opted out of Discord RSVPs, so it
+  // should only carry a link button. Reject in case a stale RSVP button is
+  // clicked rather than silently creating a ticket.
+  if (discordMsg != null && !discordMsg.allow_rsvp) {
+    return res.json({ status: 'disabled', message_url: messageUrl });
+  }
+
   if (existingTicket != null) {
     // Re-send the existing ticket's QR code so the bot can re-deliver it (e.g.
     // if the original confirmation DM couldn't reach a user with DMs disabled).

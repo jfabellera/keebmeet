@@ -1,3 +1,7 @@
+import {
+  createMeetupDiscordMessageSchema,
+  updateMeetupDiscordMessageSchema,
+} from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
@@ -9,11 +13,10 @@ import {
   isGuildMember,
 } from '../util/discord';
 import {
+  buildMeetupComponents,
   buildMeetupEmbed,
-  buildRsvpComponents,
   getMeetupAttendeeDisplayNames,
 } from '../util/meetupDiscordMessage';
-import { createMeetupDiscordMessageSchema } from '@keebmeet/shared';
 
 const findMeetupWithMessage = async (
   meetupId: string
@@ -85,7 +88,7 @@ export const createMeetupDiscordMessage = async (
     messageId = await createEmbedMessage(
       result.data.channel_id,
       buildMeetupEmbed(meetup, attendeeNames),
-      buildRsvpComponents(meetup.id)
+      buildMeetupComponents(meetup, result.data.allow_rsvp)
     );
   } catch (error: any) {
     console.error(
@@ -101,6 +104,7 @@ export const createMeetupDiscordMessage = async (
     guild_id: result.data.server_id,
     channel_id: result.data.channel_id,
     message_id: messageId,
+    allow_rsvp: result.data.allow_rsvp,
   });
   await discordMessage.save();
 
@@ -108,6 +112,7 @@ export const createMeetupDiscordMessage = async (
     guild_id: discordMessage.guild_id,
     channel_id: discordMessage.channel_id,
     message_id: discordMessage.message_id,
+    allow_rsvp: discordMessage.allow_rsvp,
   });
 };
 
@@ -116,6 +121,12 @@ export const updateMeetupDiscordMessage = async (
   res: Response
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
+
+  const result = updateMeetupDiscordMessageSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
 
   const meetup = await findMeetupWithMessage(meetup_id);
 
@@ -129,6 +140,11 @@ export const updateMeetupDiscordMessage = async (
       .json({ message: 'This meetup has no Discord message.' });
   }
 
+  if (result.data.allow_rsvp !== undefined) {
+    meetup.discordMessage.allow_rsvp = result.data.allow_rsvp;
+    await meetup.discordMessage.save();
+  }
+
   const attendeeNames = await getMeetupAttendeeDisplayNames(meetup.id);
 
   try {
@@ -136,7 +152,7 @@ export const updateMeetupDiscordMessage = async (
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
       buildMeetupEmbed(meetup, attendeeNames),
-      buildRsvpComponents(meetup.id)
+      buildMeetupComponents(meetup, meetup.discordMessage.allow_rsvp)
     );
   } catch (error: any) {
     console.error(
@@ -151,6 +167,7 @@ export const updateMeetupDiscordMessage = async (
     guild_id: meetup.discordMessage.guild_id,
     channel_id: meetup.discordMessage.channel_id,
     message_id: meetup.discordMessage.message_id,
+    allow_rsvp: meetup.discordMessage.allow_rsvp,
   });
 };
 
