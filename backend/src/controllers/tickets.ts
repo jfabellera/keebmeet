@@ -87,7 +87,9 @@ export const createTicket = async (
   const newTicket = Ticket.create({
     meetup,
     user,
-    discord_id: user.discord_id ?? null,
+    // Don't add discord_id for tickets created via Keebmeet, only for Discord RSVPs
+    discord_id: null,
+    rsvp_method: 'keebmeet',
     raffle_entries: meetup.default_raffle_entries,
     ticket_holder_display_name:
       result.data.ticket_holder?.display_name ?? user.nick_name,
@@ -270,6 +272,7 @@ export const syncEventbriteAttendee = async (
     const newTicket = Ticket.create({
       meetup,
       eventbrite_attendee_id: attendee.id,
+      rsvp_method: 'eventbrite',
       created_at: attendee.createdAt,
       raffle_entries: meetup.default_raffle_entries,
       ticket_holder_display_name: attendee.displayName,

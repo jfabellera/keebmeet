@@ -112,6 +112,7 @@ export const handleDiscordRsvp = async (
     meetup,
     user: user ?? null,
     discord_id,
+    rsvp_method: 'discord',
     raffle_entries: meetup.default_raffle_entries,
     ticket_holder_display_name: user?.nick_name ?? display_name,
     ticket_holder_first_name: user?.first_name ?? '',

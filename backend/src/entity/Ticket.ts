@@ -27,6 +27,9 @@ export class Ticket extends BaseEntity {
   @Column({ type: 'varchar', length: 32, nullable: true })
   discord_id?: string | null;
 
+  @Column({ type: 'varchar', length: 16, default: 'keebmeet' })
+  rsvp_method: 'keebmeet' | 'discord' | 'eventbrite';
+
   @Column({ type: 'boolean', default: false })
   is_checked_in: boolean;
 

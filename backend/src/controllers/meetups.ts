@@ -23,9 +23,9 @@ import { socket } from '../Server';
 import config from '../config';
 import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
-import { GalleryRecord } from '../entity/GalleryRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
@@ -954,6 +954,7 @@ export const getMeetupAttendees = async (
         raffle_entries: true,
         raffle_wins: true,
         eventbrite_attendee_id: true,
+        rsvp_method: true,
       },
     },
     relations: { tickets: { user: true }, eventbriteRecord: true },
@@ -980,6 +981,7 @@ export const getMeetupAttendees = async (
       raffle_entries: ticket.raffle_entries,
       raffle_wins: ticket.raffle_wins,
       qr_code_value: qrCodeValue,
+      rsvp_method: ticket.rsvp_method,
     };
 
     if (ticket.is_checked_in) {

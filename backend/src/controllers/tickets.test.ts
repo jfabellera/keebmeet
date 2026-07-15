@@ -242,7 +242,7 @@ describe('createTicket', () => {
     expect(mockedTicket.create).not.toHaveBeenCalled();
   });
 
-  it("stamps the requestor's linked discord_id on the ticket", async () => {
+  it("marks web RSVPs as 'keebmeet' without stamping the requestor's discord_id", async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
     res.locals.meetup = fakeMeetup({ capacity: 100 });
@@ -250,8 +250,11 @@ describe('createTicket', () => {
 
     await createTicket(mockRequest(), res);
 
+    // Even when the requestor has a linked Discord account, a web RSVP is not a
+    // Discord RSVP: rsvp_method is the source of truth, and discord_id stays
+    // null so it can't be misread as a Discord-button ticket.
     expect(mockedTicket.create).toHaveBeenCalledWith(
-      expect.objectContaining({ discord_id: 'd-99' })
+      expect.objectContaining({ discord_id: null, rsvp_method: 'keebmeet' })
     );
     expect(res.statusCode).toBe(201);
   });
