@@ -539,54 +539,65 @@ export const createMeetupFromEventbrite = async (
       .json({ message: 'There was an error verifying the address.' });
   }
 
+  const ebToken = decrypt(user.encrypted_eventbrite_token);
+  const organizationId = ebEvent.organizationId;
+
   try {
-    // Create meetup
-    const newMeetup = Meetup.create({
-      name: ebEvent.name,
-      date: ebEvent.startTime,
-      address: geocodeResult.fullAddress,
-      city: geocodeResult.city,
-      state: geocodeResult.state,
-      country: geocodeResult.country,
-      capacity: ebTicketClass.total,
-      duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
-      // Eventbrite provides an external absolute URL; stored as-is and passed
-      // through publicUrl() unchanged on read.
-      image_key: ebEvent.imageUrl,
-      description: ebEvent.description,
-      organizers: [],
-      has_raffle: result.data.has_raffle,
-      default_raffle_entries: result.data.default_raffle_entries,
+    await AppDataSource.transaction(async (manager) => {
+      // Create meetup
+      const newMeetup = Meetup.create({
+        name: ebEvent.name,
+        date: ebEvent.startTime,
+        address: geocodeResult.fullAddress,
+        city: geocodeResult.city,
+        state: geocodeResult.state,
+        country: geocodeResult.country,
+        capacity: ebTicketClass.total,
+        duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
+        // Eventbrite provides an external absolute URL; stored as-is and passed
+        // through publicUrl() unchanged on read.
+        image_key: ebEvent.imageUrl,
+        description: ebEvent.description,
+        organizers: [],
+        has_raffle: result.data.has_raffle,
+        default_raffle_entries: result.data.default_raffle_entries,
+      });
+
+      // The creator owns the meetup as its lead organizer; `organizers` holds
+      // only additional co-organizers (none for an Eventbrite import).
+      newMeetup.lead_organizer = user;
+      newMeetup.utc_offset = utcOffset;
+
+      await manager.save(newMeetup);
+
+      const ebWebhook = await createEventbriteWebhook(
+        ebToken,
+        organizationId,
+        ebEvent.id,
+        `${config.apiUrl}/meetups/${newMeetup.id}/attendee-webhook?token=${ebToken}`,
+        ['attendee.updated']
+      );
+
+      // No webhook, no meetup: throwing here rolls back the meetup save above.
+      // (createEventbriteWebhook logs the underlying Eventbrite error.)
+      if (ebWebhook == null) {
+        throw new Error('Failed to create Eventbrite webhook.');
+      }
+
+      // Create Eventbrite record
+      const newEventbriteRecord = EventbriteRecord.create({
+        event_id: result.data.eventbrite_event_id,
+        ticket_class_id: result.data.eventbrite_ticket_id,
+        display_name_question_id: result.data.eventbrite_question_id,
+        url: ebEvent.url,
+        webhook_id: ebWebhook.id,
+        meetup: newMeetup,
+      });
+
+      await manager.save(newEventbriteRecord);
     });
-
-    // The creator owns the meetup as its lead organizer; `organizers` holds only
-    // additional co-organizers (none for an Eventbrite import).
-    newMeetup.lead_organizer = user;
-    newMeetup.utc_offset = utcOffset;
-
-    await newMeetup.save();
-
-    // Create Eventbrite record
-    const newEventbriteRecord = EventbriteRecord.create({
-      event_id: result.data.eventbrite_event_id,
-      ticket_class_id: result.data.eventbrite_ticket_id,
-      display_name_question_id: result.data.eventbrite_question_id,
-      url: ebEvent?.url,
-      meetup: newMeetup,
-    });
-
-    const ebWebhook = await createEventbriteWebhook(
-      decrypt(user.encrypted_eventbrite_token),
-      ebEvent.organizationId,
-      ebEvent.id,
-      `${config.apiUrl}/meetups/${newMeetup.id}/attendee-webhook?token=${decrypt(user.encrypted_eventbrite_token)}`,
-      ['attendee.updated']
-    );
-
-    if (ebWebhook != null) newEventbriteRecord.webhook_id = ebWebhook.id;
-
-    await newEventbriteRecord.save();
   } catch (error: any) {
+    console.error('Failed to create meetup from Eventbrite:', error);
     return res
       .status(500)
       .json({ message: 'There was an error creating meetup.' });
