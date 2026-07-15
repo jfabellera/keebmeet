@@ -954,7 +954,7 @@ export const getMeetupAttendees = async (
         raffle_entries: true,
         raffle_wins: true,
         eventbrite_attendee_id: true,
-        discord_id: true,
+        rsvp_method: true,
       },
     },
     relations: { tickets: { user: true }, eventbriteRecord: true },
@@ -981,7 +981,7 @@ export const getMeetupAttendees = async (
       raffle_entries: ticket.raffle_entries,
       raffle_wins: ticket.raffle_wins,
       qr_code_value: qrCodeValue,
-      rsvp_method: ticket.discord_id != null ? 'discord' : 'keebmeet',
+      rsvp_method: ticket.rsvp_method,
     };
 
     if (ticket.is_checked_in) {

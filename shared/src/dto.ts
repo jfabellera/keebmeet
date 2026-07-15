@@ -45,7 +45,7 @@ export interface TicketInfo {
   raffle_entries: number;
   raffle_wins: number;
   qr_code_value: string;
-  rsvp_method: 'keebmeet' | 'discord';
+  rsvp_method: 'keebmeet' | 'discord' | 'eventbrite';
 }
 
 export interface SimpleTicketInfo {
