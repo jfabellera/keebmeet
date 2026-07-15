@@ -87,7 +87,8 @@ export const createTicket = async (
   const newTicket = Ticket.create({
     meetup,
     user,
-    discord_id: user.discord_id ?? null,
+    // Don't add discord_id for tickets created via Keebmeet, only for Discord RSVPs
+    discord_id: null,
     raffle_entries: meetup.default_raffle_entries,
     ticket_holder_display_name:
       result.data.ticket_holder?.display_name ?? user.nick_name,

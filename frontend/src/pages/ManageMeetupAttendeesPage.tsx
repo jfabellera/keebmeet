@@ -131,6 +131,7 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
               Raffle Wins
             </TableHead>
             <TableHead>Signed Up</TableHead>
+            <TableHead>RSVP Method</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -159,6 +160,7 @@ const ManageMeetupAttendeesPage = (): ReactNode => {
                   <TableCell>
                     {dayjs(attendee.created_at).format('M/D/YY hh:mm A')}
                   </TableCell>
+                  <TableCell>{attendee.rsvp_method}</TableCell>
                 </TableRow>
               ))
             : null}
