@@ -4,7 +4,6 @@ import {
   createMeetupSchema,
   editMeetupSchema,
   type EditMeetupPayload,
-  type EventbriteAttendee,
   type MeetupDisplayAssets,
   type MeetupInfo,
   type TicketInfo,
@@ -542,6 +541,7 @@ export const createMeetupFromEventbrite = async (
   const ebToken = decrypt(user.encrypted_eventbrite_token);
   const organizationId = ebEvent.organizationId;
 
+  let createdMeetup: Meetup | undefined;
   try {
     await AppDataSource.transaction(async (manager) => {
       // Create meetup
@@ -595,12 +595,23 @@ export const createMeetupFromEventbrite = async (
       });
 
       await manager.save(newEventbriteRecord);
+
+      newMeetup.eventbriteRecord = newEventbriteRecord;
+      createdMeetup = newMeetup;
     });
   } catch (error: any) {
     console.error('Failed to create meetup from Eventbrite:', error);
     return res
       .status(500)
       .json({ message: 'There was an error creating meetup.' });
+  }
+
+  if (createdMeetup != null) {
+    try {
+      await syncMeetupEventbriteAttendees(createdMeetup, ebToken);
+    } catch (error: any) {
+      console.error('Failed initial Eventbrite attendee sync:', error);
+    }
   }
 
   return res.status(201).end();
@@ -1005,6 +1016,29 @@ export const getMeetupAttendees = async (
   return res.json(response);
 };
 
+export const syncMeetupEventbriteAttendees = async (
+  meetup: Meetup,
+  ebToken: string
+): Promise<void> => {
+  if (meetup.eventbriteRecord == null) return;
+
+  const ebAttendees = await getEventbriteAttendees(
+    ebToken,
+    meetup.eventbriteRecord.event_id,
+    meetup.eventbriteRecord.ticket_class_id,
+    meetup.eventbriteRecord.display_name_question_id
+  );
+
+  await Promise.all(
+    ebAttendees.map(async (attendee) => {
+      await syncEventbriteAttendee(attendee, meetup);
+    })
+  );
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
+};
+
 export const syncEventbriteAttendees = async (
   req: Request,
   res: Response
@@ -1021,27 +1055,15 @@ export const syncEventbriteAttendees = async (
       .json({ message: 'Unable to retrieve Eventbrite data.' });
   }
 
-  let ebAttendees: EventbriteAttendee[];
   try {
-    const ebToken = decrypt(user.encrypted_eventbrite_token);
-    ebAttendees = await getEventbriteAttendees(
-      ebToken,
-      meetup.eventbriteRecord.event_id,
-      meetup.eventbriteRecord.ticket_class_id,
-      meetup.eventbriteRecord.display_name_question_id
+    await syncMeetupEventbriteAttendees(
+      meetup,
+      decrypt(user.encrypted_eventbrite_token)
     );
   } catch (error: any) {
     return res.status(500).json('Unable to get Eventbrite details.');
   }
 
-  await Promise.all(
-    ebAttendees.map(async (attendee) => {
-      await syncEventbriteAttendee(attendee, meetup);
-    })
-  );
-
-  socket.emit('meetup:update', { meetupId: meetup.id });
-  await refreshMeetupDiscordMessage(meetup.id);
   return res.status(200).end();
 };
 

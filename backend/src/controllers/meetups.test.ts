@@ -145,6 +145,7 @@ import {
   getEventbriteVenue,
 } from '../util/eventbriteApi';
 import { geocode, getUtcOffset } from '../util/externalApis';
+import { syncEventbriteAttendee } from './tickets';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { deleteObject, promoteImage, upload } from '../util/objectStorage';
 import { normalizeImage } from '../util/imageProcessing';
@@ -180,6 +181,7 @@ const mockedGetEvent = jest.mocked(getEventbriteEvent);
 const mockedGetVenue = jest.mocked(getEventbriteVenue);
 const mockedGetTicket = jest.mocked(getEventbriteTicket);
 const mockedGetAttendees = jest.mocked(getEventbriteAttendees);
+const mockedSyncAttendee = jest.mocked(syncEventbriteAttendee);
 const mockedCreateWebhook = jest.mocked(createEventbriteWebhook);
 
 // ---- Helpers ---------------------------------------------------------------
@@ -624,10 +626,7 @@ describe('updateMeetup', () => {
   it('returns 400 for an invalid body', async () => {
     const res = mockResponse();
 
-    await updateMeetup(
-      mockRequest({ capacity: -1 }, { meetup_id: '10' }),
-      res
-    );
+    await updateMeetup(mockRequest({ capacity: -1 }, { meetup_id: '10' }), res);
 
     expect(res.statusCode).toBe(400);
   });
@@ -645,7 +644,9 @@ describe('updateMeetup', () => {
   });
 
   it('updates simple fields and emits an update', async () => {
-    const meetup = fakeMeetupRow({ save: jest.fn().mockResolvedValue(undefined) });
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
     mockedMeetup.findOne
       .mockResolvedValueOnce(meetup) // target lookup
       .mockResolvedValueOnce(null); // name-collision lookup
@@ -827,7 +828,10 @@ describe('updateMeetup', () => {
     const res = mockResponse();
 
     await updateMeetup(
-      mockRequest({ name: 'Tex Mechs', duration_hours: 6 }, { meetup_id: '10' }),
+      mockRequest(
+        { name: 'Tex Mechs', duration_hours: 6 },
+        { meetup_id: '10' }
+      ),
       res
     );
 
@@ -922,7 +926,10 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce(null);
     const res = mockResponse();
 
-    await updateMeetup(mockRequest({ image_key: '' }, { meetup_id: '10' }), res);
+    await updateMeetup(
+      mockRequest({ image_key: '' }, { meetup_id: '10' }),
+      res
+    );
 
     expect(meetup.image_key).toBe('');
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/old.png');
@@ -1093,7 +1100,9 @@ describe('deleteMeetup', () => {
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/idle1.png');
     expect(mockedDeleteObject).toHaveBeenCalledWith('meetups/bg.png');
     // External URLs are not ours to delete.
-    expect(mockedDeleteObject).not.toHaveBeenCalledWith('https://external/x.png');
+    expect(mockedDeleteObject).not.toHaveBeenCalledWith(
+      'https://external/x.png'
+    );
     expect(res.statusCode).toBe(204);
   });
 
@@ -1132,9 +1141,9 @@ describe('deleteMeetup', () => {
       delete: jest.fn().mockResolvedValue(undefined),
       createQueryBuilder: jest.fn(() => builder),
     };
-    mockedDataSource.transaction.mockImplementationOnce(
-      (async (cb: (m: unknown) => Promise<unknown>) => cb(manager)) as any
-    );
+    mockedDataSource.transaction.mockImplementationOnce((async (
+      cb: (m: unknown) => Promise<unknown>
+    ) => cb(manager)) as any);
     const meetup = {
       id: '10',
       tickets: [],
@@ -1246,7 +1255,10 @@ describe('getMeetupDisplayAssets', () => {
   });
 
   it('returns nulls when there is no display record', async () => {
-    mockedMeetup.findOne.mockResolvedValue({ id: '10', displayRecord: null } as any);
+    mockedMeetup.findOne.mockResolvedValue({
+      id: '10',
+      displayRecord: null,
+    } as any);
     const res = mockResponse();
 
     await getMeetupDisplayAssets(mockRequest({}, { meetup_id: '10' }), res);
@@ -1399,6 +1411,7 @@ describe('createMeetupFromEventbrite', () => {
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
     mockedCreateWebhook.mockResolvedValue({ id: '555' } as any);
+    mockedGetAttendees.mockResolvedValue([]);
     const res = mockResponse();
     res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
 
@@ -1415,6 +1428,67 @@ describe('createMeetupFromEventbrite', () => {
         webhook_id: '555',
       })
     );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('runs an initial attendee sync so pre-existing RSVPs are imported', async () => {
+    mockedGetEvent.mockResolvedValue({
+      id: '1',
+      venueId: '7',
+      startTime: '2026-09-01T18:00:00.000Z',
+      endTime: '2026-09-01T21:00:00.000Z',
+      organizationId: '99',
+      name: 'EB Meetup',
+      url: 'http://eb',
+      imageUrl: 'http://img',
+      description: 'desc',
+    } as any);
+    mockedGetVenue.mockResolvedValue({ address: '1 Venue Way' } as any);
+    mockedGetTicket.mockResolvedValue({ total: 80 } as any);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedCreateWebhook.mockResolvedValue({ id: '555' } as any);
+    mockedGetAttendees.mockResolvedValue([{ id: 'a1' }, { id: 'a2' }] as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
+    // The freshly created Eventbrite record's ids drive the attendee fetch.
+    expect(mockedGetAttendees).toHaveBeenCalledWith(
+      'decrypted(enc)',
+      '1',
+      '2',
+      '3'
+    );
+    expect(mockedSyncAttendee).toHaveBeenCalledTimes(2);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('still returns 201 when the initial attendee sync fails', async () => {
+    mockedGetEvent.mockResolvedValue({
+      id: '1',
+      venueId: '7',
+      startTime: '2026-09-01T18:00:00.000Z',
+      endTime: '2026-09-01T21:00:00.000Z',
+      organizationId: '99',
+      name: 'EB Meetup',
+      url: 'http://eb',
+      imageUrl: 'http://img',
+      description: 'desc',
+    } as any);
+    mockedGetVenue.mockResolvedValue({ address: '1 Venue Way' } as any);
+    mockedGetTicket.mockResolvedValue({ total: 80 } as any);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedCreateWebhook.mockResolvedValue({ id: '555' } as any);
+    // The meetup is already committed; a sync failure must not fail the import.
+    mockedGetAttendees.mockRejectedValue(new Error('eb down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
     expect(res.statusCode).toBe(201);
   });
 
