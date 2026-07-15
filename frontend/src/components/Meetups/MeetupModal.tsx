@@ -17,12 +17,12 @@ import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Settings } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiCheck,
   FiClock,
-  FiEdit,
   FiExternalLink,
   FiLink,
   FiMapPin,
@@ -33,7 +33,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { socket } from '../../socket';
-import { useAppDispatch } from '../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
@@ -99,6 +99,7 @@ export const MeetupModal = ({
   }, [isOpen, ticket]);
   const displayTicket = isOpen ? ticket : retainedTicket;
   const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.user.user);
   const navigate = useNavigate();
   const isWide = useIsWide();
 
@@ -171,6 +172,12 @@ export const MeetupModal = ({
   const isRsvpable = !hasEnded;
   const isRsvpDisabled = !isLoggedIn || meetup.tickets?.available === 0;
   const goToRsvp = (): void => void navigate('/meetup/' + meetupId + '/rsvp');
+  const goToEditMeetup = (): void =>
+    void navigate('/meetup/' + meetupId + '/manage');
+
+  const isUserOrganizer =
+    meetup.lead_organizer?.id === user?.id ||
+    meetup.organizers?.some((organizer) => organizer.id === user?.id);
 
   const hasImage = meetup.image_url != null && meetup.image_url !== '';
   const showCapacity = meetup.tickets != null && !meetup.is_archive;
@@ -361,7 +368,7 @@ export const MeetupModal = ({
               ) : (
                 <span />
               )}
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex flex-wrap items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -398,6 +405,17 @@ export const MeetupModal = ({
                     )}
                   </AnimatePresence>
                 </Button>
+                {isUserOrganizer && (
+                  <Button
+                    variant="outline"
+                    title="Manage meetup"
+                    aria-label="Manage meetup"
+                    onClick={goToEditMeetup}
+                  >
+                    <Settings />
+                    Manage
+                  </Button>
+                )}
                 {showRsvpAction ? (
                   meetup.eventbrite_url != null ? (
                     <a
@@ -416,7 +434,7 @@ export const MeetupModal = ({
                       disabled={!isLoggedIn}
                       onClick={goToRsvp}
                     >
-                      <FiEdit />
+                      <FiUserCheck />
                       Manage RSVP
                     </Button>
                   ) : (
