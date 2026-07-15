@@ -143,12 +143,17 @@ export const meetupSlice = createApi({
     }),
     createMeetupDiscordMessage: builder.mutation<
       MeetupDiscordMessageInfo,
-      { meetupId: string; server_id: string; channel_id: string }
+      {
+        meetupId: string;
+        server_id: string;
+        channel_id: string;
+        allow_rsvp: boolean;
+      }
     >({
-      query: ({ meetupId, server_id, channel_id }) => ({
+      query: ({ meetupId, server_id, channel_id, allow_rsvp }) => ({
         url: `meetups/${meetupId}/discord/message`,
         method: 'POST',
-        body: { server_id, channel_id },
+        body: { server_id, channel_id, allow_rsvp },
       }),
       invalidatesTags: (result, error, arg) => [
         { type: 'DiscordMessage', id: arg.meetupId },

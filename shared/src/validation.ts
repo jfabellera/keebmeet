@@ -82,6 +82,7 @@ export type EditMeetupPayload = z.infer<typeof editMeetupSchema>;
 export const createMeetupDiscordMessageSchema = z.object({
   server_id: z.string(),
   channel_id: z.string(),
+  allow_rsvp: z.boolean().default(false),
 });
 
 export type CreateMeetupDiscordMessagePayload = z.infer<

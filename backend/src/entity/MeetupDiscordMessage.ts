@@ -26,4 +26,7 @@ export class MeetupDiscordMessage extends BaseEntity {
 
   @Column({ type: 'varchar', length: 32 })
   message_id: string;
+
+  @Column({ type: 'boolean', default: true })
+  allow_rsvp: boolean;
 }

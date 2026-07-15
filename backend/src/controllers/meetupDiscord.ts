@@ -10,7 +10,7 @@ import {
 } from '../util/discord';
 import {
   buildMeetupEmbed,
-  buildRsvpComponents,
+  buildMeetupComponents,
   getMeetupAttendeeDisplayNames,
 } from '../util/meetupDiscordMessage';
 import { createMeetupDiscordMessageSchema } from '@keebmeet/shared';
@@ -85,7 +85,7 @@ export const createMeetupDiscordMessage = async (
     messageId = await createEmbedMessage(
       result.data.channel_id,
       buildMeetupEmbed(meetup, attendeeNames),
-      buildRsvpComponents(meetup.id)
+      buildMeetupComponents(meetup, result.data.allow_rsvp)
     );
   } catch (error: any) {
     console.error(
@@ -101,6 +101,7 @@ export const createMeetupDiscordMessage = async (
     guild_id: result.data.server_id,
     channel_id: result.data.channel_id,
     message_id: messageId,
+    allow_rsvp: result.data.allow_rsvp,
   });
   await discordMessage.save();
 
@@ -108,6 +109,7 @@ export const createMeetupDiscordMessage = async (
     guild_id: discordMessage.guild_id,
     channel_id: discordMessage.channel_id,
     message_id: discordMessage.message_id,
+    allow_rsvp: discordMessage.allow_rsvp,
   });
 };
 
@@ -136,7 +138,7 @@ export const updateMeetupDiscordMessage = async (
       meetup.discordMessage.channel_id,
       meetup.discordMessage.message_id,
       buildMeetupEmbed(meetup, attendeeNames),
-      buildRsvpComponents(meetup.id)
+      buildMeetupComponents(meetup, meetup.discordMessage.allow_rsvp)
     );
   } catch (error: any) {
     console.error(
@@ -151,6 +153,7 @@ export const updateMeetupDiscordMessage = async (
     guild_id: meetup.discordMessage.guild_id,
     channel_id: meetup.discordMessage.channel_id,
     message_id: meetup.discordMessage.message_id,
+    allow_rsvp: meetup.discordMessage.allow_rsvp,
   });
 };
 

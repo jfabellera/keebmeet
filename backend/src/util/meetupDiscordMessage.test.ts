@@ -20,6 +20,7 @@ jest.mock('./discord', () => ({
 }));
 
 import {
+  buildMeetupComponents,
   buildMeetupEmbed,
   getMeetupAttendeeDisplayNames,
   refreshMeetupDiscordMessage,
@@ -107,6 +108,30 @@ describe('buildMeetupEmbed', () => {
     // The first name is listed; a later one is dropped into the overflow.
     expect(field.value).toContain(names[0]);
     expect(field.value).not.toContain(names[199]);
+  });
+});
+
+// ---- buildMeetupComponents -------------------------------------------------
+
+describe('buildMeetupComponents', () => {
+  const button = (components: any): any => components[0].components[0];
+
+  it('uses an interactive RSVP button when RSVPs are allowed', () => {
+    const components = buildMeetupComponents(fakeMeetup({ id: '42' }), true);
+
+    expect(button(components)).toEqual(
+      expect.objectContaining({ label: 'RSVP', custom_id: 'rsvp:42' })
+    );
+    expect(button(components)).not.toHaveProperty('url');
+  });
+
+  it('uses a link to the meetup page when RSVPs are not allowed', () => {
+    const components = buildMeetupComponents(fakeMeetup({ id: '42' }), false);
+
+    expect(button(components)).toEqual(
+      expect.objectContaining({ url: 'http://web/meetup/42' })
+    );
+    expect(button(components)).not.toHaveProperty('custom_id');
   });
 });
 
