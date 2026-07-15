@@ -1,5 +1,6 @@
 import { DeleteMeetupCard } from '@/components/Meetups/DeleteMeetupCard';
 import { MeetupDiscordCard } from '@/components/Meetups/MeetupDiscordCard';
+import { MeetupEventbriteCard } from '@/components/Meetups/MeetupEventbriteCard';
 import { Spinner } from '@/components/ui/spinner';
 import { useAppSelector } from '@/store/hooks';
 import { useGetMeetupQuery } from '@/store/meetupSlice';
@@ -23,6 +24,7 @@ const ManageMeetupSettingsPage = (): ReactNode => {
   return (
     <div className="flex flex-col gap-4 p-4">
       <MeetupDetailsSettingsCard meetupId={meetupId ?? ''} />
+      <MeetupEventbriteCard meetupId={meetupId ?? ''} />
       <MeetupDiscordCard meetupId={meetupId ?? ''} />
       {meetup?.lead_organizer?.id === currentUserId && (
         <DeleteMeetupCard meetupId={meetupId ?? ''} />
