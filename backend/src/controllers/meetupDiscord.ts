@@ -1,3 +1,7 @@
+import {
+  createMeetupDiscordMessageSchema,
+  updateMeetupDiscordMessageSchema,
+} from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDiscordMessage } from '../entity/MeetupDiscordMessage';
@@ -9,11 +13,10 @@ import {
   isGuildMember,
 } from '../util/discord';
 import {
-  buildMeetupEmbed,
   buildMeetupComponents,
+  buildMeetupEmbed,
   getMeetupAttendeeDisplayNames,
 } from '../util/meetupDiscordMessage';
-import { createMeetupDiscordMessageSchema } from '@keebmeet/shared';
 
 const findMeetupWithMessage = async (
   meetupId: string
@@ -119,6 +122,12 @@ export const updateMeetupDiscordMessage = async (
 ): Promise<Response> => {
   const { meetup_id } = req.params as Record<string, string>;
 
+  const result = updateMeetupDiscordMessageSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
   const meetup = await findMeetupWithMessage(meetup_id);
 
   if (meetup == null) {
@@ -129,6 +138,11 @@ export const updateMeetupDiscordMessage = async (
     return res
       .status(404)
       .json({ message: 'This meetup has no Discord message.' });
+  }
+
+  if (result.data.allow_rsvp !== undefined) {
+    meetup.discordMessage.allow_rsvp = result.data.allow_rsvp;
+    await meetup.discordMessage.save();
   }
 
   const attendeeNames = await getMeetupAttendeeDisplayNames(meetup.id);

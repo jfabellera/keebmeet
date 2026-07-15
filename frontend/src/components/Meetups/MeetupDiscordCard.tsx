@@ -43,6 +43,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Spinner } from '../ui/spinner';
+import { Switch } from '../ui/switch';
 
 interface Props {
   meetupId: string;
@@ -112,9 +113,17 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
   };
 
   const onUpdate = async (): Promise<void> => {
-    const result = await updateMessage(meetupId);
+    const result = await updateMessage({ meetupId });
     if (handleMutationError(result, 'Failed to update Discord message')) return;
     toast.success('Discord message updated.');
+  };
+
+  const onToggleRsvp = async (allow: boolean): Promise<void> => {
+    const result = await updateMessage({ meetupId, allow_rsvp: allow });
+    if (handleMutationError(result, 'Failed to update Discord message')) return;
+    toast.success(
+      allow ? 'Discord RSVPs enabled.' : 'Discord RSVPs disabled.'
+    );
   };
 
   const onDelete = async (): Promise<void> => {
@@ -158,6 +167,19 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
               ? 'Members can RSVP directly from Discord.'
               : 'Its button links to the meetup page for online sign-up.'}
           </p>
+          <Field orientation="horizontal">
+            <Switch
+              id="discord-allow-rsvp-toggle"
+              checked={message.allow_rsvp}
+              disabled={isUpdating}
+              onCheckedChange={(checked) => {
+                void onToggleRsvp(checked);
+              }}
+            />
+            <FieldLabel htmlFor="discord-allow-rsvp-toggle">
+              Allow RSVPs via Discord
+            </FieldLabel>
+          </Field>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="secondary">
               <a

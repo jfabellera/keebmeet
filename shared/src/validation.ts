@@ -89,6 +89,14 @@ export type CreateMeetupDiscordMessagePayload = z.infer<
   typeof createMeetupDiscordMessageSchema
 >;
 
+export const updateMeetupDiscordMessageSchema = z.object({
+  allow_rsvp: z.boolean().optional(),
+});
+
+export type UpdateMeetupDiscordMessagePayload = z.infer<
+  typeof updateMeetupDiscordMessageSchema
+>;
+
 export const discordRsvpSchema = z.object({
   meetup_id: z.string(),
   discord_id: z.string(),

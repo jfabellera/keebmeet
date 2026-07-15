@@ -161,14 +161,15 @@ export const meetupSlice = createApi({
     }),
     updateMeetupDiscordMessage: builder.mutation<
       MeetupDiscordMessageInfo,
-      string
+      { meetupId: string; allow_rsvp?: boolean }
     >({
-      query: (meetupId) => ({
+      query: ({ meetupId, allow_rsvp }) => ({
         url: `meetups/${meetupId}/discord/message`,
         method: 'PUT',
+        body: { allow_rsvp },
       }),
       invalidatesTags: (result, error, arg) => [
-        { type: 'DiscordMessage', id: arg },
+        { type: 'DiscordMessage', id: arg.meetupId },
       ],
     }),
     deleteMeetupDiscordMessage: builder.mutation<void, string>({
