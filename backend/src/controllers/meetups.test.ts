@@ -1366,6 +1366,13 @@ describe('createMeetupFromEventbrite', () => {
     eventbrite_question_id: '3',
   };
 
+  beforeEach(() => {
+    // Default: no meetup exists with the event's name. (jest.clearAllMocks
+    // resets call history but not implementations, so a truthy findOne set by
+    // an earlier test would otherwise leak into the name-taken check.)
+    mockedMeetup.findOne.mockResolvedValue(null);
+  });
+
   it('returns 400 for an invalid body', async () => {
     const res = mockResponse();
     res.locals.requestor = { encrypted_eventbrite_token: 'enc' };
@@ -1392,6 +1399,34 @@ describe('createMeetupFromEventbrite', () => {
     await createMeetupFromEventbrite(mockRequest(validBody), res);
 
     expect(res.statusCode).toBe(500);
+  });
+
+  it('returns 409 when a meetup with the event name already exists', async () => {
+    mockedGetEvent.mockResolvedValue({
+      id: '1',
+      venueId: '7',
+      startTime: '2026-09-01T18:00:00.000Z',
+      endTime: '2026-09-01T21:00:00.000Z',
+      organizationId: '99',
+      name: 'EB Meetup',
+      url: 'http://eb',
+      imageUrl: 'http://img',
+      description: 'desc',
+    } as any);
+    mockedGetVenue.mockResolvedValue({ address: '1 Venue Way' } as any);
+    mockedGetTicket.mockResolvedValue({ total: 80 } as any);
+    // A meetup already uses this name.
+    mockedMeetup.findOne.mockResolvedValueOnce({ id: '99' } as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({ message: 'Meetup name is taken.' });
+    // Bail before any geocoding or persistence.
+    expect(mockedGeocode).not.toHaveBeenCalled();
+    expect(mockedMeetup.create).not.toHaveBeenCalled();
   });
 
   it('creates the meetup and Eventbrite record on success', async () => {

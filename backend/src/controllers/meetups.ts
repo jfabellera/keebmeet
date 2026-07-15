@@ -522,6 +522,18 @@ export const createMeetupFromEventbrite = async (
       .status(500)
       .json({ message: 'Unable to get Eventbrite details.' });
 
+  // Check if meetup name is taken (the Eventbrite event name becomes the
+  // meetup name, so reject before doing any further work).
+  const existingMeetup = await Meetup.findOne({
+    where: {
+      name: ILike(ebEvent.name),
+    },
+  });
+
+  if (existingMeetup != null) {
+    return res.status(409).json({ message: 'Meetup name is taken.' });
+  }
+
   let geocodeResult: GeocodeResults;
   let utcOffset: number;
   try {
