@@ -39,6 +39,7 @@ import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { hasMeetupEnded } from '../../util/timeUtil';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Spinner } from '../ui/spinner';
@@ -141,6 +142,11 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
         </div>
       ) : message != null ? (
         <div className="flex flex-col gap-2">
+          <Badge variant={message.allow_rsvp ? 'default' : 'secondary'}>
+            {message.allow_rsvp
+              ? 'Discord RSVPs enabled'
+              : 'Discord RSVPs disabled'}
+          </Badge>
           <p>
             An announcement is posted in{' '}
             <span className="font-bold">
