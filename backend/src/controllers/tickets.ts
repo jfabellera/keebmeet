@@ -278,6 +278,10 @@ export const syncEventbriteAttendee = async (
       ticket_holder_display_name: attendee.displayName,
       ticket_holder_first_name: attendee.firstName,
       ticket_holder_last_name: attendee.lastName,
+      is_checked_in: attendee.isCheckedIn,
+      checked_in_at: attendee.isCheckedIn
+        ? attendee.checkInStatusUpdatedAt
+        : undefined,
     });
 
     await newTicket.save();
