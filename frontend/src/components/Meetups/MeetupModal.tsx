@@ -408,8 +408,8 @@ export const MeetupModal = ({
                 {isUserOrganizer && (
                   <Button
                     variant="outline"
-                    title="Edit meetup"
-                    aria-label="Edit meetup"
+                    title="Manage meetup"
+                    aria-label="Manage meetup"
                     onClick={goToEditMeetup}
                   >
                     <Settings />
