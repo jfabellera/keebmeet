@@ -80,6 +80,13 @@ export const organizerSlice = createApi({
       }),
       invalidatesTags: ['Attendees'],
     }),
+    syncEventbriteAttendees: builder.mutation<void, string>({
+      query: (meetupId) => ({
+        url: `meetups/${meetupId}/sync-eventbrite`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, arg) => [{ type: 'Attendees', id: arg }],
+    }),
     rollRaffleWinner: builder.mutation<
       RollRaffleWinnerResponse,
       RollRaffleWinnerOptions
@@ -140,6 +147,7 @@ export const {
   useGetMeetupAttendeesQuery,
   useCheckInAttendeeMutation,
   useEditAttendeeMutation,
+  useSyncEventbriteAttendeesMutation,
   useRollRaffleWinnerMutation,
   useClaimRaffleWinnerMutation,
   useUnClaimRaffleWinnerMutation,

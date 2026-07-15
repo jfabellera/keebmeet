@@ -1,4 +1,3 @@
-import axios from 'axios';
 import {
   type EventbriteAttendee,
   type EventbriteEvent,
@@ -8,6 +7,7 @@ import {
   type EventbriteVenue,
   type EventbriteWebhook,
 } from '@keebmeet/shared';
+import axios from 'axios';
 
 export const getEventbriteOrganizations = async (
   accessToken: string
@@ -344,6 +344,34 @@ export const createEventbriteWebhook = async (
       id: webhook.id,
     } satisfies EventbriteWebhook;
   } catch (error: any) {
+    console.error(
+      'Failed to create Eventbrite webhook:',
+      error.response?.status,
+      error.response?.data ?? error.message
+    );
     return undefined;
+  }
+};
+
+export const deleteEventbriteWebhook = async (
+  accessToken: string,
+  webhookId: string
+): Promise<boolean> => {
+  try {
+    await axios.delete(
+      `https://www.eventbriteapi.com/v3/webhooks/${webhookId}/`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    return true;
+  } catch (error: any) {
+    console.error(
+      'Failed to delete Eventbrite webhook:',
+      error.response?.status,
+      error.response?.data ?? error.message
+    );
+    return false;
   }
 };

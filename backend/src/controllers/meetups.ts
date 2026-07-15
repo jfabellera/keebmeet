@@ -4,7 +4,6 @@ import {
   createMeetupSchema,
   editMeetupSchema,
   type EditMeetupPayload,
-  type EventbriteAttendee,
   type MeetupDisplayAssets,
   type MeetupInfo,
   type TicketInfo,
@@ -33,6 +32,7 @@ import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
   createEventbriteWebhook,
+  deleteEventbriteWebhook,
   getEventbriteAttendees,
   getEventbriteEvent,
   getEventbriteTicket,
@@ -130,6 +130,8 @@ const mapMeetupInfo = async (
 
   return meetupInfo;
 };
+
+const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
 
 const createMeetupsFilter = (
   query: ParsedQs
@@ -523,6 +525,18 @@ export const createMeetupFromEventbrite = async (
       .status(500)
       .json({ message: 'Unable to get Eventbrite details.' });
 
+  // Check if meetup name is taken (the Eventbrite event name becomes the
+  // meetup name, so reject before doing any further work).
+  const existingMeetup = await Meetup.findOne({
+    where: {
+      name: ILike(ebEvent.name),
+    },
+  });
+
+  if (existingMeetup != null) {
+    return res.status(409).json({ message: 'Meetup name is taken.' });
+  }
+
   let geocodeResult: GeocodeResults;
   let utcOffset: number;
   try {
@@ -539,57 +553,86 @@ export const createMeetupFromEventbrite = async (
       .json({ message: 'There was an error verifying the address.' });
   }
 
+  const ebToken = decrypt(user.encrypted_eventbrite_token);
+  const organizationId = ebEvent.organizationId;
+
+  let createdMeetup: Meetup | undefined;
   try {
-    // Create meetup
-    const newMeetup = Meetup.create({
-      name: ebEvent.name,
-      date: ebEvent.startTime,
-      address: geocodeResult.fullAddress,
-      city: geocodeResult.city,
-      state: geocodeResult.state,
-      country: geocodeResult.country,
-      capacity: ebTicketClass.total,
-      duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
-      // Eventbrite provides an external absolute URL; stored as-is and passed
-      // through publicUrl() unchanged on read.
-      image_key: ebEvent.imageUrl,
-      description: ebEvent.description,
-      organizers: [],
-      has_raffle: result.data.has_raffle,
-      default_raffle_entries: result.data.default_raffle_entries,
+    await AppDataSource.transaction(async (manager) => {
+      // Create meetup
+      const newMeetup = Meetup.create({
+        name: ebEvent.name,
+        date: ebEvent.startTime,
+        address: geocodeResult.fullAddress,
+        city: geocodeResult.city,
+        state: geocodeResult.state,
+        country: geocodeResult.country,
+        capacity: ebTicketClass.total,
+        duration_hours: dayjs(ebEvent.endTime).diff(ebEvent.startTime, 'hours'),
+        // Eventbrite provides an external absolute URL; stored as-is and passed
+        // through publicUrl() unchanged on read.
+        image_key: ebEvent.imageUrl,
+        description: ebEvent.description,
+        organizers: [],
+        has_raffle: result.data.has_raffle,
+        default_raffle_entries: result.data.default_raffle_entries,
+      });
+
+      // The creator owns the meetup as its lead organizer; `organizers` holds
+      // only additional co-organizers (none for an Eventbrite import).
+      newMeetup.lead_organizer = user;
+      newMeetup.utc_offset = utcOffset;
+
+      await manager.save(newMeetup);
+
+      const ebWebhook = await createEventbriteWebhook(
+        ebToken,
+        organizationId,
+        ebEvent.id,
+        `${config.apiUrl}/meetups/${newMeetup.id}/attendee-webhook?token=${ebToken}`,
+        ['attendee.updated']
+      );
+
+      // No webhook, no meetup: throwing here rolls back the meetup save above.
+      // (createEventbriteWebhook logs the underlying Eventbrite error.)
+      if (ebWebhook == null) {
+        throw new Error(WEBHOOK_CREATION_ERROR);
+      }
+
+      // Create Eventbrite record
+      const newEventbriteRecord = EventbriteRecord.create({
+        event_id: result.data.eventbrite_event_id,
+        ticket_class_id: result.data.eventbrite_ticket_id,
+        display_name_question_id: result.data.eventbrite_question_id,
+        url: ebEvent.url,
+        webhook_id: ebWebhook.id,
+        meetup: newMeetup,
+      });
+
+      await manager.save(newEventbriteRecord);
+
+      newMeetup.eventbriteRecord = newEventbriteRecord;
+      createdMeetup = newMeetup;
     });
-
-    // The creator owns the meetup as its lead organizer; `organizers` holds only
-    // additional co-organizers (none for an Eventbrite import).
-    newMeetup.lead_organizer = user;
-    newMeetup.utc_offset = utcOffset;
-
-    await newMeetup.save();
-
-    // Create Eventbrite record
-    const newEventbriteRecord = EventbriteRecord.create({
-      event_id: result.data.eventbrite_event_id,
-      ticket_class_id: result.data.eventbrite_ticket_id,
-      display_name_question_id: result.data.eventbrite_question_id,
-      url: ebEvent?.url,
-      meetup: newMeetup,
-    });
-
-    const ebWebhook = await createEventbriteWebhook(
-      decrypt(user.encrypted_eventbrite_token),
-      ebEvent.organizationId,
-      ebEvent.id,
-      `${config.apiUrl}/meetups/${newMeetup.id}/attendee-webhook?token=${decrypt(user.encrypted_eventbrite_token)}`,
-      ['attendee.updated']
-    );
-
-    if (ebWebhook != null) newEventbriteRecord.webhook_id = ebWebhook.id;
-
-    await newEventbriteRecord.save();
   } catch (error: any) {
+    console.error('Failed to create meetup from Eventbrite:', error);
+    if (error?.message === WEBHOOK_CREATION_ERROR) {
+      return res.status(502).json({
+        message:
+          'Could not register the Eventbrite webhook. Make sure your Eventbrite account is connected and try again.',
+      });
+    }
     return res
       .status(500)
       .json({ message: 'There was an error creating meetup.' });
+  }
+
+  if (createdMeetup != null) {
+    try {
+      await syncMeetupEventbriteAttendees(createdMeetup, ebToken);
+    } catch (error: any) {
+      console.error('Failed initial Eventbrite attendee sync:', error);
+    }
   }
 
   return res.status(201).end();
@@ -872,6 +915,16 @@ export const deleteMeetup = async (
     }
   }
 
+  if (
+    meetup.eventbriteRecord != null &&
+    requestor.encrypted_eventbrite_token != null
+  ) {
+    await deleteEventbriteWebhook(
+      decrypt(requestor.encrypted_eventbrite_token),
+      meetup.eventbriteRecord.webhook_id
+    );
+  }
+
   const ticketIds = meetup.tickets.map((ticket) => ticket.id);
   const raffleRecordIds = meetup.raffleRecords.map((record) => record.id);
 
@@ -994,6 +1047,29 @@ export const getMeetupAttendees = async (
   return res.json(response);
 };
 
+export const syncMeetupEventbriteAttendees = async (
+  meetup: Meetup,
+  ebToken: string
+): Promise<void> => {
+  if (meetup.eventbriteRecord == null) return;
+
+  const ebAttendees = await getEventbriteAttendees(
+    ebToken,
+    meetup.eventbriteRecord.event_id,
+    meetup.eventbriteRecord.ticket_class_id,
+    meetup.eventbriteRecord.display_name_question_id
+  );
+
+  await Promise.all(
+    ebAttendees.map(async (attendee) => {
+      await syncEventbriteAttendee(attendee, meetup);
+    })
+  );
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
+};
+
 export const syncEventbriteAttendees = async (
   req: Request,
   res: Response
@@ -1010,27 +1086,15 @@ export const syncEventbriteAttendees = async (
       .json({ message: 'Unable to retrieve Eventbrite data.' });
   }
 
-  let ebAttendees: EventbriteAttendee[];
   try {
-    const ebToken = decrypt(user.encrypted_eventbrite_token);
-    ebAttendees = await getEventbriteAttendees(
-      ebToken,
-      meetup.eventbriteRecord.event_id,
-      meetup.eventbriteRecord.ticket_class_id,
-      meetup.eventbriteRecord.display_name_question_id
+    await syncMeetupEventbriteAttendees(
+      meetup,
+      decrypt(user.encrypted_eventbrite_token)
     );
   } catch (error: any) {
     return res.status(500).json('Unable to get Eventbrite details.');
   }
 
-  await Promise.all(
-    ebAttendees.map(async (attendee) => {
-      await syncEventbriteAttendee(attendee, meetup);
-    })
-  );
-
-  socket.emit('meetup:update', { meetupId: meetup.id });
-  await refreshMeetupDiscordMessage(meetup.id);
   return res.status(200).end();
 };
 

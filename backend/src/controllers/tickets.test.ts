@@ -286,7 +286,10 @@ describe('createTicket', () => {
   it('sends the RSVP confirmation email with the saved ticket id (used for the QR code)', async () => {
     mockedTicket.findOne.mockResolvedValue(null);
     const res = mockResponse();
-    res.locals.meetup = fakeMeetup({ name: 'Keeb Night', address: '123 Main St' });
+    res.locals.meetup = fakeMeetup({
+      name: 'Keeb Night',
+      address: '123 Main St',
+    });
     res.locals.requestor = fakeRequestor();
 
     await createTicket(mockRequest(), res);

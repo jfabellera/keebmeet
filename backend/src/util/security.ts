@@ -11,7 +11,7 @@ const IV_LENGTH = 16;
  * @returns Encrypted data with initialization vector prepended to cipher text
  */
 export const encrypt = (plainText: string): string => {
-  const key = config.aesKey;
+  const key = Buffer.from(config.aesKey, 'base64');
   const ivHex = crypto.randomBytes(IV_LENGTH);
 
   const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, key, ivHex);
@@ -35,7 +35,7 @@ export const decrypt = (encryptedData: string): string => {
 
   const decipher = crypto.createDecipheriv(
     ENCRYPTION_ALGORITHM,
-    config.aesKey,
+    Buffer.from(config.aesKey, 'base64'),
     Buffer.from(iv, 'hex')
   );
   const decryptedData =
