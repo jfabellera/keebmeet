@@ -352,3 +352,26 @@ export const createEventbriteWebhook = async (
     return undefined;
   }
 };
+
+export const deleteEventbriteWebhook = async (
+  accessToken: string,
+  webhookId: string
+): Promise<boolean> => {
+  try {
+    await axios.delete(
+      `https://www.eventbriteapi.com/v3/webhooks/${webhookId}/`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    return true;
+  } catch (error: any) {
+    console.error(
+      'Failed to delete Eventbrite webhook:',
+      error.response?.status,
+      error.response?.data ?? error.message
+    );
+    return false;
+  }
+};

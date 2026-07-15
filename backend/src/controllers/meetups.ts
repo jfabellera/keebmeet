@@ -32,6 +32,7 @@ import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
 import {
   createEventbriteWebhook,
+  deleteEventbriteWebhook,
   getEventbriteAttendees,
   getEventbriteEvent,
   getEventbriteTicket,
@@ -912,6 +913,16 @@ export const deleteMeetup = async (
         error.response?.data ?? error.message
       );
     }
+  }
+
+  if (
+    meetup.eventbriteRecord != null &&
+    requestor.encrypted_eventbrite_token != null
+  ) {
+    await deleteEventbriteWebhook(
+      decrypt(requestor.encrypted_eventbrite_token),
+      meetup.eventbriteRecord.webhook_id
+    );
   }
 
   const ticketIds = meetup.tickets.map((ticket) => ticket.id);

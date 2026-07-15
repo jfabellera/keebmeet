@@ -38,6 +38,7 @@ jest.mock('../entity/GalleryRecord', () => ({
 
 jest.mock('../util/eventbriteApi', () => ({
   createEventbriteWebhook: jest.fn(),
+  deleteEventbriteWebhook: jest.fn(),
   getEventbriteAttendees: jest.fn(),
   getEventbriteEvent: jest.fn(),
   getEventbriteTicket: jest.fn(),
@@ -139,6 +140,7 @@ import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import {
   createEventbriteWebhook,
+  deleteEventbriteWebhook,
   getEventbriteAttendees,
   getEventbriteEvent,
   getEventbriteTicket,
@@ -183,6 +185,7 @@ const mockedGetTicket = jest.mocked(getEventbriteTicket);
 const mockedGetAttendees = jest.mocked(getEventbriteAttendees);
 const mockedSyncAttendee = jest.mocked(syncEventbriteAttendee);
 const mockedCreateWebhook = jest.mocked(createEventbriteWebhook);
+const mockedDeleteWebhook = jest.mocked(deleteEventbriteWebhook);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -1124,6 +1127,72 @@ describe('deleteMeetup', () => {
 
     await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
 
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('deletes the Eventbrite webhook when deleting an Eventbrite-backed meetup', async () => {
+    const meetup = {
+      id: '10',
+      image_key: 'meetups/main.png',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: { webhook_id: '555' },
+      displayRecord: null,
+      lead_organizer: { id: '1' },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    // The lead organizer's decrypted token drives the webhook removal.
+    expect(mockedDeleteWebhook).toHaveBeenCalledWith('decrypted(enc)', '555');
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('skips webhook removal when the lead organizer has no Eventbrite token', async () => {
+    const meetup = {
+      id: '10',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: { webhook_id: '555' },
+      displayRecord: null,
+      lead_organizer: { id: '1' },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: null };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    // No token, no call — but the meetup is still deleted.
+    expect(mockedDeleteWebhook).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('does not attempt webhook removal for a non-Eventbrite meetup', async () => {
+    const meetup = {
+      id: '10',
+      tickets: [],
+      raffleRecords: [],
+      discordMessage: null,
+      eventbriteRecord: null,
+      displayRecord: null,
+      lead_organizer: { id: '1' },
+      remove: jest.fn().mockResolvedValue(undefined),
+    };
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup as any);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await deleteMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(mockedDeleteWebhook).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
   });
 
