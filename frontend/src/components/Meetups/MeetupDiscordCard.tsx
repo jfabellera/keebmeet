@@ -1,3 +1,4 @@
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogClose,
@@ -8,7 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
   FieldContent,
@@ -121,9 +121,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
   const onToggleRsvp = async (allow: boolean): Promise<void> => {
     const result = await updateMessage({ meetupId, allow_rsvp: allow });
     if (handleMutationError(result, 'Failed to update Discord message')) return;
-    toast.success(
-      allow ? 'Discord RSVPs enabled.' : 'Discord RSVPs disabled.'
-    );
+    toast.success(allow ? 'Discord RSVPs enabled.' : 'Discord RSVPs disabled.');
   };
 
   const onDelete = async (): Promise<void> => {
@@ -150,7 +148,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
           <Spinner className="size-6" />
         </div>
       ) : message != null ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           <Badge variant={message.allow_rsvp ? 'default' : 'secondary'}>
             {message.allow_rsvp
               ? 'Discord RSVPs enabled'
