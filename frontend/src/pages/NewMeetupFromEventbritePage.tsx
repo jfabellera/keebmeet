@@ -71,7 +71,13 @@ const NewMeetupFromEventbritePage = (): ReactNode => {
       });
 
       if ('error' in response) {
-        toast.error('Error', { description: 'Unable to create meetup' });
+        const data =
+          response.error != null && 'data' in response.error
+            ? (response.error.data as { message?: string } | undefined)
+            : undefined;
+        toast.error('Error', {
+          description: data?.message ?? 'Unable to create meetup',
+        });
       } else {
         toast.success('Success', {
           description: 'Meetup created successfully',

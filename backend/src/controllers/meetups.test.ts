@@ -1527,7 +1527,7 @@ describe('createMeetupFromEventbrite', () => {
     expect(res.statusCode).toBe(201);
   });
 
-  it('returns 500 and does not persist the Eventbrite record when the webhook cannot be created', async () => {
+  it('returns a specific 502 and does not persist the Eventbrite record when the webhook cannot be created', async () => {
     mockedGetEvent.mockResolvedValue({
       id: '1',
       venueId: '7',
@@ -1553,7 +1553,40 @@ describe('createMeetupFromEventbrite', () => {
     // The transaction rolls back: the meetup save is thrown away and the
     // Eventbrite record is never created, so no orphaned meetup is left behind.
     expect(mockedEventbriteRecord.create).not.toHaveBeenCalled();
+    // The webhook failure surfaces its own message rather than the generic one.
+    expect(res.statusCode).toBe(502);
+    expect((res.body as { message: string }).message).toMatch(
+      /Eventbrite webhook/i
+    );
+  });
+
+  it('returns a generic 500 when persistence fails for an unexpected reason', async () => {
+    mockedGetEvent.mockResolvedValue({
+      id: '1',
+      venueId: '7',
+      startTime: '2026-09-01T18:00:00.000Z',
+      endTime: '2026-09-01T21:00:00.000Z',
+      organizationId: '99',
+      name: 'EB Meetup',
+      url: 'http://eb',
+      imageUrl: 'http://img',
+      description: 'desc',
+    } as any);
+    mockedGetVenue.mockResolvedValue({ address: '1 Venue Way' } as any);
+    mockedGetTicket.mockResolvedValue({ total: 80 } as any);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    // An unexpected DB failure inside the transaction.
+    mockedDataSource.transaction.mockRejectedValueOnce(new Error('db down'));
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', encrypted_eventbrite_token: 'enc' };
+
+    await createMeetupFromEventbrite(mockRequest(validBody), res);
+
     expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({
+      message: 'There was an error creating meetup.',
+    });
   });
 });
 

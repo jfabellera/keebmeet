@@ -130,6 +130,8 @@ const mapMeetupInfo = async (
   return meetupInfo;
 };
 
+const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
+
 const createMeetupsFilter = (
   query: ParsedQs
 ): FindOptionsWhere<Meetup> | FindOptionsWhere<Meetup>[] => {
@@ -593,7 +595,7 @@ export const createMeetupFromEventbrite = async (
       // No webhook, no meetup: throwing here rolls back the meetup save above.
       // (createEventbriteWebhook logs the underlying Eventbrite error.)
       if (ebWebhook == null) {
-        throw new Error('Failed to create Eventbrite webhook.');
+        throw new Error(WEBHOOK_CREATION_ERROR);
       }
 
       // Create Eventbrite record
@@ -613,6 +615,12 @@ export const createMeetupFromEventbrite = async (
     });
   } catch (error: any) {
     console.error('Failed to create meetup from Eventbrite:', error);
+    if (error?.message === WEBHOOK_CREATION_ERROR) {
+      return res.status(502).json({
+        message:
+          'Could not register the Eventbrite webhook. Make sure your Eventbrite account is connected and try again.',
+      });
+    }
     return res
       .status(500)
       .json({ message: 'There was an error creating meetup.' });
