@@ -117,25 +117,26 @@ const OrganizerMeetupsPage = (): ReactNode => {
           {sectionMeetups.map((meetup) => (
             <div
               key={meetup.id}
-              className="relative"
               onClick={() => {
                 setSelectedMeetupId(meetup.id);
               }}
             >
-              {meetup.organizers?.some(
-                (organizer) => organizer.id === organizerId
-              ) ? (
-                <Badge
-                  variant="secondary"
-                  className="bg-background/90 text-foreground absolute top-2 left-2 z-10 gap-1 border shadow-sm backdrop-blur-sm"
-                >
-                  <FiUsers />
-                  Co-host
-                </Badge>
-              ) : null}
               <MeetupCard
                 meetup={meetup}
                 attending={getTicketForMeetup(meetup.id) != null}
+                imageOverlay={
+                  meetup.organizers?.some(
+                    (organizer) => organizer.id === organizerId
+                  ) ? (
+                    <Badge
+                      variant="secondary"
+                      className="bg-background/90 text-foreground gap-1 border shadow-sm backdrop-blur-sm"
+                    >
+                      <FiUsers />
+                      Co-host
+                    </Badge>
+                  ) : null
+                }
               />
             </div>
           ))}

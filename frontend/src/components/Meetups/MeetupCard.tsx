@@ -18,18 +18,23 @@ dayjs.extend(customParseFormat);
 export interface MeetupCardProps {
   meetup: MeetupInfo;
   attending?: boolean;
+  imageOverlay?: ReactNode;
 }
 
 export const MeetupCard = ({
   meetup,
   attending,
+  imageOverlay,
 }: MeetupCardProps): ReactNode => {
   const attendedLabel = hasMeetupEnded(meetup)
     ? "You've attended!"
     : "You're attending!";
 
   return (
-    <div className="bg-card text-card-foreground h-full cursor-pointer overflow-hidden rounded-md border shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.97] active:shadow-md active:duration-100">
+    <div className="bg-card text-card-foreground relative h-full cursor-pointer overflow-hidden rounded-md border shadow-sm transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:scale-[0.97] active:shadow-md active:duration-100">
+      {imageOverlay != null ? (
+        <div className="absolute top-2 left-2 z-10">{imageOverlay}</div>
+      ) : null}
       <AspectRatio ratio={2 / 1}>
         <ImageWithFallback
           src={meetup.image_url}
