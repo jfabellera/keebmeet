@@ -3,6 +3,7 @@ import {
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
+  transferMeetupSchema,
   type EditMeetupPayload,
   type MeetupDisplayAssets,
   type MeetupInfo,
@@ -30,6 +31,7 @@ import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
+import { sendMeetupTransferredEmail } from '../util/email';
 import {
   createEventbriteWebhook,
   deleteEventbriteWebhook,
@@ -863,6 +865,99 @@ export const updateMeetup = async (
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
   return res.status(201).json(meetup);
+};
+
+export const transferMeetup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { meetup_id } = req.params as Record<string, string>;
+
+  const result = transferMeetupSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const meetup = await Meetup.findOne({
+    relations: {
+      lead_organizer: true,
+    },
+    where: { id: meetup_id },
+  });
+
+  if (meetup == null) {
+    return res.status(404).json({ message: 'Invalid meetup ID.' });
+  }
+
+  // Verify requestor is lead organizer (authChecker only checks organizer)
+  const requestor = res.locals.requestor as User;
+  if (meetup.lead_organizer?.id !== requestor.id) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can transfer this meetup.',
+    });
+  }
+
+  const newLeadId = result.data.new_lead_organizer_id;
+
+  if (newLeadId === requestor.id) {
+    return res
+      .status(400)
+      .json({ message: 'You are already the lead organizer.' });
+  }
+
+  const newLead = await User.findOneBy({ id: newLeadId });
+  if (newLead == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  // The new lead must be an organizer, same as any meetup owner.
+  if (!newLead.is_organizer) {
+    return res
+      .status(400)
+      .json({ message: 'The new lead organizer must be an organizer.' });
+  }
+
+  const previousLead = meetup.lead_organizer;
+
+  meetup.lead_organizer = newLead;
+
+  // Assume that a transferred archive meetup was organized by the new lead so
+  // clear the display credit
+  if (meetup.is_archive) {
+    meetup.organizer_name = null;
+  }
+
+  await meetup.save();
+
+  // Remove new lead from organizer list if previously added as a co-organizer
+  // and demote previous lead to co-organizer (only if not an archive meetup -
+  // previous lead loses all access)
+  const demotedLeadIds =
+    !meetup.is_archive && previousLead != null ? [previousLead.id] : [];
+  await AppDataSource.createQueryBuilder()
+    .relation(Meetup, 'organizers')
+    .of(meetup.id)
+    .addAndRemove(demotedLeadIds, [newLeadId]);
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
+
+  // Notify the new lead organizer by email (verified users only). Best-effort:
+  // a mail failure must not fail the transfer, which is already committed.
+  if (newLead.is_verified) {
+    try {
+      await sendMeetupTransferredEmail(
+        newLead.email,
+        meetup.name,
+        requestor.nick_name,
+        `${config.webUrl}/meetup/${meetup.id}/manage`
+      );
+    } catch (error) {
+      console.error('Failed to send meetup transferred email:', error);
+    }
+  }
+
+  return res.status(200).json(meetup);
 };
 
 export const deleteMeetup = async (

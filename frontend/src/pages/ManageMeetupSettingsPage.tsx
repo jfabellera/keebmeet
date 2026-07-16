@@ -1,4 +1,4 @@
-import { DeleteMeetupCard } from '@/components/Meetups/DeleteMeetupCard';
+import { DangerZoneCard } from '@/components/Meetups/DangerZoneCard';
 import { MeetupDiscordCard } from '@/components/Meetups/MeetupDiscordCard';
 import { MeetupEventbriteCard } from '@/components/Meetups/MeetupEventbriteCard';
 import { Spinner } from '@/components/ui/spinner';
@@ -27,7 +27,7 @@ const ManageMeetupSettingsPage = (): ReactNode => {
       <MeetupEventbriteCard meetupId={meetupId ?? ''} />
       <MeetupDiscordCard meetupId={meetupId ?? ''} />
       {meetup?.lead_organizer?.id === currentUserId && (
-        <DeleteMeetupCard meetupId={meetupId ?? ''} />
+        <DangerZoneCard meetupId={meetupId ?? ''} />
       )}
     </div>
   );

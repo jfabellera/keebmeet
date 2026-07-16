@@ -1,13 +1,14 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { MeetupInfo } from '@keebmeet/shared';
-import { type MeetupDisplayAssets } from '@keebmeet/shared';
-import { type MeetupDiscordMessageInfo } from '@keebmeet/shared';
 import {
   type CreateArchiveMeetupPayload,
   type CreateMeetupFromEventbritePayload,
   type CreateMeetupPayload,
   type EditMeetupPayload,
+  type MeetupDiscordMessageInfo,
+  type MeetupDisplayAssets,
+  type TransferMeetupPayload,
 } from '@keebmeet/shared';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { apiCacheDefaults } from './apiCacheDefaults';
 import { type RootState } from './store';
@@ -20,6 +21,11 @@ export interface GetMeetupsOptions {
 interface EditMeetupOptions {
   meetupId: string;
   payload: EditMeetupPayload;
+}
+
+interface TransferMeetupOptions {
+  meetupId: string;
+  payload: TransferMeetupPayload;
 }
 
 export const meetupSlice = createApi({
@@ -122,6 +128,17 @@ export const meetupSlice = createApi({
         { type: 'Meetup', id: arg },
       ],
     }),
+    transferMeetup: builder.mutation<void, TransferMeetupOptions>({
+      query: ({ meetupId, payload }) => ({
+        url: `meetups/${meetupId}/transfer`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        'Meetups',
+        { type: 'Meetup', id: arg.meetupId },
+      ],
+    }),
     getMeetupDisplayAssets: builder.query<MeetupDisplayAssets, string>({
       query: (meetupId) => ({
         url: `meetups/${meetupId}/display-assets`,
@@ -193,6 +210,7 @@ export const {
   useCreateMeetupFromEventbriteMutation,
   useEditMeetupMutation,
   useDeleteMeetupMutation,
+  useTransferMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
   useGetMeetupDiscordMessageQuery,
   useCreateMeetupDiscordMessageMutation,

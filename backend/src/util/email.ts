@@ -1,4 +1,5 @@
 import {
+  MeetupTransferredEmail,
   OrganizerAddedEmail,
   OrganizerApprovedEmail,
   OrganizerDeniedEmail,
@@ -96,6 +97,24 @@ export const sendOrganizerAddedEmail = async (
     to: [email],
     subject: `You've been added as an organizer for ${meetupName}`,
     react: OrganizerAddedEmail({ meetupName, leadOrganizerName, manageLink }),
+  });
+
+  if (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
+export const sendMeetupTransferredEmail = async (
+  email: string,
+  meetupName: string,
+  previousLeadName: string,
+  manageLink: string
+) => {
+  const { error } = await getResendClient().emails.send({
+    from: 'KeebMeet <noreply@keebmeet.com>',
+    to: [email],
+    subject: `You're now the lead organizer for ${meetupName}`,
+    react: MeetupTransferredEmail({ meetupName, previousLeadName, manageLink }),
   });
 
   if (error) {

@@ -79,6 +79,12 @@ export const editMeetupSchema = z.object({
 
 export type EditMeetupPayload = z.infer<typeof editMeetupSchema>;
 
+export const transferMeetupSchema = z.object({
+  new_lead_organizer_id: z.string(),
+});
+
+export type TransferMeetupPayload = z.infer<typeof transferMeetupSchema>;
+
 export const createMeetupDiscordMessageSchema = z.object({
   server_id: z.string(),
   channel_id: z.string(),

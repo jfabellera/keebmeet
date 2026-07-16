@@ -57,6 +57,9 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+jest.mock('../util/email', () => ({
+  sendMeetupTransferredEmail: jest.fn(),
+}));
 // The added-organizer email side effect is covered separately in
 // organizerAddedNotification.test.ts; here we only stub it out.
 jest.mock('../util/organizerAddedNotification', () => ({
@@ -69,6 +72,7 @@ jest.mock('../datasource', () => {
     relation: jest.fn().mockReturnThis(),
     of: jest.fn().mockReturnThis(),
     addAndRemove: jest.fn().mockResolvedValue(undefined),
+    remove: jest.fn().mockResolvedValue(undefined),
   };
   return {
     AppDataSource: {
@@ -94,6 +98,7 @@ jest.mock('../datasource', () => {
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
+    findOneBy: jest.fn(),
   },
 }));
 // Keep the real pure helpers (isManagedKey/publicUrl); stub the calls that hit R2.
@@ -126,6 +131,7 @@ import {
   getMeetupAttendees,
   getMeetupDisplayAssets,
   syncEventbriteAttendees,
+  transferMeetup,
   updateMeetup,
   uploadMeetupImage,
 } from './meetups';
@@ -149,6 +155,7 @@ import {
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { syncEventbriteAttendee } from './tickets';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteObject, promoteImage, upload } from '../util/objectStorage';
 import { normalizeImage } from '../util/imageProcessing';
 
@@ -158,8 +165,10 @@ const mockedDataSource = jest.mocked(AppDataSource);
 // The shared relation builder returned by createQueryBuilder (see the mock).
 const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
   addAndRemove: jest.Mock;
+  remove: jest.Mock;
 };
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
+const mockedSendTransferEmail = jest.mocked(sendMeetupTransferredEmail);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
 const mockedUpload = jest.mocked(upload);
@@ -1257,6 +1266,228 @@ describe('deleteMeetup', () => {
     expect(res.statusCode).toBe(403);
     // Nothing is destroyed for a forbidden request.
     expect(meetup.remove).not.toHaveBeenCalled();
+  });
+});
+
+// ---- transferMeetup --------------------------------------------------------
+
+describe('transferMeetup', () => {
+  it('returns 400 for an invalid body', async () => {
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await transferMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedMeetup.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the meetup does not exist', async () => {
+    mockedMeetup.findOne.mockResolvedValueOnce(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '99' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('rejects a non-lead organizer with 403', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    const res = mockResponse();
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '3' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
+    // Nothing is mutated for a forbidden request.
+    expect(meetup.save).not.toHaveBeenCalled();
+    expect(mockedUser.findOneBy).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when transferring to yourself', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '1' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(meetup.save).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the target user does not exist', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(null as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+    expect(meetup.save).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the target user is not an organizer', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce({
+      id: '2',
+      nick_name: 'john',
+      is_organizer: false,
+    } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(meetup.save).not.toHaveBeenCalled();
+  });
+
+  it('demotes the previous lead to co-organizer and drops the new lead (live meetup)', async () => {
+    const newLead = { id: '2', nick_name: 'john', is_organizer: true };
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    // The lead is replaced entirely by the new organizer.
+    expect(meetup.lead_organizer).toBe(newLead);
+    expect(meetup.save).toHaveBeenCalled();
+    // The previous lead (1) is demoted to a co-organizer so they keep access;
+    // the new lead (2) is dropped (the lead is tracked separately).
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['1'], ['2']);
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: '10',
+    });
+    expect(mockedRefresh).toHaveBeenCalledWith('10');
+    // The new lead is unverified, so no notification email is sent.
+    expect(mockedSendTransferEmail).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('does not demote the previous lead for an archive (clean handoff)', async () => {
+    const newLead = { id: '2', nick_name: 'john', is_organizer: true };
+    const meetup = fakeMeetupRow({
+      is_archive: true,
+      // A free-text credit for whoever ran the archived meetup.
+      organizer_name: 'John Doe',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.lead_organizer).toBe(newLead);
+    // The free-text credit is cleared so it falls back to the new lead's name.
+    expect(meetup.organizer_name).toBeNull();
+    // Archives have no co-organizer concept: the previous lead is NOT demoted,
+    // only the new lead is (defensively) removed from the join table.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], ['2']);
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('emails the new lead organizer when they are verified', async () => {
+    const newLead = {
+      id: '2',
+      nick_name: 'john',
+      email: 'john@example.com',
+      is_organizer: true,
+      is_verified: true,
+    };
+    const meetup = fakeMeetupRow({
+      name: 'Tex Mechs',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    // New lead's email, meetup name, previous lead's name, and a manage link.
+    expect(mockedSendTransferEmail).toHaveBeenCalledWith(
+      'john@example.com',
+      'Tex Mechs',
+      'jane',
+      expect.stringContaining('/meetup/10/manage')
+    );
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('still succeeds if the notification email fails', async () => {
+    const newLead = {
+      id: '2',
+      nick_name: 'john',
+      email: 'john@example.com',
+      is_organizer: true,
+      is_verified: true,
+    };
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    mockedSendTransferEmail.mockRejectedValueOnce(new Error('resend down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    // The transfer is already committed, so a mail failure must not fail it.
+    expect(meetup.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    errorSpy.mockRestore();
   });
 });
 

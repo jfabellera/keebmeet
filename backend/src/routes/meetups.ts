@@ -15,6 +15,7 @@ import {
   getMeetupAttendees,
   getMeetupDisplayAssets,
   syncEventbriteAttendees,
+  transferMeetup,
   updateMeetup,
   uploadMeetupImage,
 } from '../controllers/meetups';
@@ -72,6 +73,12 @@ router.delete(
   '/:meetup_id',
   authChecker([Rule.requireOrganizer]) as RequestHandler,
   deleteMeetup as RequestHandler
+);
+
+router.post(
+  '/:meetup_id/transfer',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  transferMeetup as RequestHandler
 );
 
 router.post(
