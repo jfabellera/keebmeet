@@ -1,32 +1,37 @@
 'use client';
 
-import type * as React from 'react';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
+import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
 /**
- * Swallow the one click that a dismissing tap produces. A modal menu already
- * blocks outside pointer events on desktop, but touch devices still fire a
- * follow-up `click` on whatever is underneath (the mobile "ghost click") once
- * the menu closes. Run this as the menu dismisses so an outside tap only closes
- * the menu instead of also activating the control behind it.
+ * Swallow the one activation that a dismissing tap/click produces, so an
+ * outside tap only closes the menu instead of also triggering whatever is
+ * underneath. A modal menu blocks outside pointer events on desktop, but the
+ * follow-up event still fires once the menu closes.
  */
-const suppressNextClick = (): void => {
+const suppressNextInteraction = (): void => {
+  const types = ['touchend', 'click'] as const;
   const remove = (): void => {
-    document.removeEventListener('click', handler, true);
+    for (const type of types) {
+      document.removeEventListener(type, handler, true);
+    }
     window.clearTimeout(timer);
   };
-  const handler = (event: MouseEvent): void => {
+  const handler = (event: Event): void => {
     event.stopPropagation();
     event.preventDefault();
     remove();
   };
   // Capture phase so we intercept before the target's own handler; the timeout
-  // cleans up if no click follows (e.g. a mouse, already blocked by modal mode).
-  const timer = window.setTimeout(remove, 300);
-  document.addEventListener('click', handler, true);
+  // cleans up if nothing follows (e.g. a mouse already blocked by modal mode).
+  const timer = window.setTimeout(remove, 500);
+  for (const type of types) {
+    // Non-passive so preventDefault is honored on touchend.
+    document.addEventListener(type, handler, { capture: true, passive: false });
+  }
 };
 
 function DropdownMenu({
@@ -73,7 +78,7 @@ function DropdownMenuContent({
           onPointerDownOutside?.(event);
           // An outside tap should only dismiss the menu, never fall through to
           // whatever it landed on.
-          suppressNextClick();
+          suppressNextInteraction();
         }}
         {...props}
       />
@@ -270,18 +275,18 @@ function DropdownMenuSubContent({
 
 export {
   DropdownMenu,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
   DropdownMenuItem,
-  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,
-  DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 };
