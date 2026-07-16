@@ -1,10 +1,38 @@
 'use client';
 
-import type * as React from 'react';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
+import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
+
+/**
+ * Swallow the one activation that a dismissing tap/click produces, so an
+ * outside tap only closes the menu instead of also triggering whatever is
+ * underneath. A modal menu blocks outside pointer events on desktop, but the
+ * follow-up event still fires once the menu closes.
+ */
+const suppressNextInteraction = (): void => {
+  const types = ['touchend', 'click'] as const;
+  const remove = (): void => {
+    for (const type of types) {
+      document.removeEventListener(type, handler, true);
+    }
+    window.clearTimeout(timer);
+  };
+  const handler = (event: Event): void => {
+    event.stopPropagation();
+    event.preventDefault();
+    remove();
+  };
+  // Capture phase so we intercept before the target's own handler; the timeout
+  // cleans up if nothing follows (e.g. a mouse already blocked by modal mode).
+  const timer = window.setTimeout(remove, 500);
+  for (const type of types) {
+    // Non-passive so preventDefault is honored on touchend.
+    document.addEventListener(type, handler, { capture: true, passive: false });
+  }
+};
 
 function DropdownMenu({
   ...props
@@ -34,6 +62,7 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -45,6 +74,12 @@ function DropdownMenuContent({
           'bg-popover text-popover-foreground data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md',
           className
         )}
+        onPointerDownOutside={(event) => {
+          onPointerDownOutside?.(event);
+          // An outside tap should only dismiss the menu, never fall through to
+          // whatever it landed on.
+          suppressNextInteraction();
+        }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
@@ -240,18 +275,18 @@ function DropdownMenuSubContent({
 
 export {
   DropdownMenu,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
   DropdownMenuItem,
-  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,
-  DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 };

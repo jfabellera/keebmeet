@@ -72,6 +72,12 @@ export const useSwipeToDismiss = ({
   if (!enabled) return undefined;
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>): void => {
+    // Swipe-to-dismiss is a touch gesture; a mouse (or pen) has no equivalent,
+    // so ignore those pointers rather than have the dialog follow the cursor.
+    if (event.pointerType !== 'touch') {
+      state.current = { ...state.current, active: false };
+      return;
+    }
     state.current = {
       card: event.currentTarget,
       overlays: [],

@@ -10,6 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Input } from '@/components/ui/input';
@@ -27,7 +33,13 @@ import {
   type MeetupInfo,
 } from '@keebmeet/shared';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { FiAlertTriangle, FiPlus, FiTrash2 } from 'react-icons/fi';
+import {
+  FiAlertTriangle,
+  FiCopy,
+  FiMoreVertical,
+  FiPlus,
+  FiTrash2,
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 import {
   useCreateGalleryMutation,
@@ -174,6 +186,11 @@ const GalleryTile = ({
     return () => clearTimeout(timer);
   }, [open, cooldown]);
 
+  const handleCopyUrl = (): void => {
+    void navigator.clipboard.writeText(photo.gallery);
+    toast.success('Gallery URL copied to clipboard');
+  };
+
   const handleDelete = async (): Promise<void> => {
     try {
       // Account-less credited links (no user_id) are removed by record id.
@@ -196,7 +213,7 @@ const GalleryTile = ({
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-md border">
+    <div className="overflow-hidden rounded-md border">
       <a href={photo.gallery} target="_blank" rel="noopener noreferrer">
         <AspectRatio ratio={1}>
           <ImageWithFallback
@@ -205,69 +222,101 @@ const GalleryTile = ({
             className="size-full object-cover"
           />
         </AspectRatio>
-        <div className="p-2 text-xs">
+      </a>
+      <div className="flex items-start gap-1 p-2 text-xs">
+        <a
+          href={photo.gallery}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-w-0 flex-1"
+        >
           <p className="truncate font-medium">
             {preview?.title ?? preview?.siteName ?? linkLabel(photo.gallery)}
           </p>
           <p className="text-muted-foreground truncate">
             by {photo.display_name}
           </p>
-        </div>
-      </a>
-      {canDelete ? (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild>
+        </a>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
-              variant="secondary"
+              variant="ghost"
               size="icon"
-              title={isOwn ? 'Remove your gallery' : 'Remove gallery'}
-              aria-label={isOwn ? 'Remove your gallery' : 'Remove gallery'}
-              className="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+              aria-label="Gallery options"
+              className="-mt-0.5 -mr-1 size-7 shrink-0"
             >
-              <FiTrash2 />
+              <FiMoreVertical />
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {isOwn
-                  ? 'Remove your gallery?'
-                  : `Remove ${photo.display_name}'s gallery?`}
-              </DialogTitle>
-              <DialogDescription>
-                {isOwn
-                  ? 'This removes your gallery from this meetup. You can add a new one afterwards.'
-                  : "This removes a contributor's gallery from this meetup. This can't be undone."}
-              </DialogDescription>
-              {!isOwn ? (
-                <div className="border-destructive/50 bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-md border p-3 text-sm">
-                  <FiAlertTriangle className="mt-0.5 shrink-0" />
-                  <p>
-                    This is{' '}
-                    <span className="font-semibold">not your gallery</span> —
-                    you're removing{' '}
-                    <span className="font-semibold">{photo.display_name}</span>
-                    's contribution as an organizer.
-                  </p>
-                </div>
-              ) : null}
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="secondary">Cancel</Button>
-              </DialogClose>
-              <Button
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => handleCopyUrl()}>
+              <FiCopy />
+              Copy URL
+            </DropdownMenuItem>
+            {canDelete ? (
+              <DropdownMenuItem
                 variant="destructive"
-                disabled={cooldown > 0 || isLoading}
-                onClick={() => void handleDelete()}
+                onSelect={(event) => {
+                  // Keep the menu's own close from stealing focus, then open
+                  // the confirmation dialog ourselves.
+                  event.preventDefault();
+                  handleOpenChange(true);
+                }}
               >
-                {cooldown > 0 ? `Remove (${cooldown})` : 'Remove'}
-                {isLoading && <Spinner />}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+                <FiTrash2 />
+                Delete
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Kept a sibling of the menu, not nested inside it, so the two Radix
+            layers don't fight over pointer capture / dismissal. */}
+        {canDelete ? (
+          <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {isOwn
+                    ? 'Remove your gallery?'
+                    : `Remove ${photo.display_name}'s gallery?`}
+                </DialogTitle>
+                <DialogDescription>
+                  {isOwn
+                    ? 'This removes your gallery from this meetup. You can add a new one afterwards.'
+                    : "This removes a contributor's gallery from this meetup. This can't be undone."}
+                </DialogDescription>
+                {!isOwn ? (
+                  <div className="border-destructive/50 bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-md border p-3 text-sm">
+                    <FiAlertTriangle className="mt-0.5 shrink-0" />
+                    <p>
+                      This is{' '}
+                      <span className="font-semibold">not your gallery</span> —
+                      you're removing{' '}
+                      <span className="font-semibold">
+                        {photo.display_name}
+                      </span>
+                      's contribution as an organizer.
+                    </p>
+                  </div>
+                ) : null}
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button
+                  variant="destructive"
+                  disabled={cooldown > 0 || isLoading}
+                  onClick={() => void handleDelete()}
+                >
+                  {cooldown > 0 ? `Remove (${cooldown})` : 'Remove'}
+                  {isLoading && <Spinner />}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+      </div>
     </div>
   );
 };
