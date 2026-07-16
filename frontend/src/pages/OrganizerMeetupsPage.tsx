@@ -1,14 +1,14 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
+import { ArrowLeftIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiAward, FiCalendar, FiUser, FiUsers } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { ArrowLeftIcon } from 'lucide-react';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
@@ -26,6 +26,14 @@ const OrganizerMeetupsPage = (): ReactNode => {
   // The open meetup is local state, not the URL: on a profile page the modal
   // expands in place rather than routing back to the homepage.
   const [selectedMeetupId, setSelectedMeetupId] = useState('');
+
+  // Navigating to another organizer (e.g. via an organizer link inside the
+  // modal) reuses this component, so close any open meetup on that switch.
+  const [renderedOrganizerId, setRenderedOrganizerId] = useState(organizerId);
+  if (organizerId !== renderedOrganizerId) {
+    setRenderedOrganizerId(organizerId);
+    setSelectedMeetupId('');
+  }
 
   const { data: organizer } = useGetPublicUserQuery(organizerId ?? '', {
     skip: organizerId == null,
