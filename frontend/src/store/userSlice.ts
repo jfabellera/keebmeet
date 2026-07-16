@@ -2,6 +2,7 @@ import {
   type DiscordChannel,
   type DiscordServer,
   type OrganizerRequestInfo,
+  type PublicUser,
   type User,
 } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
@@ -31,6 +32,12 @@ export const userSlice = createApi({
         url: `/users/${userId}`,
       }),
       providesTags: ['User'],
+    }),
+    getPublicUser: builder.query<PublicUser, string>({
+      query: (userId) => ({
+        url: `/users/${userId}/public`,
+      }),
+      providesTags: (result, error, arg) => [{ type: 'User', id: arg }],
     }),
     // Uploads a profile photo to R2, returning its temp key + preview URL. Used
     // during registration (no token) and on the account page.
@@ -114,6 +121,7 @@ export const userSlice = createApi({
 
 export const {
   useGetUserQuery,
+  useGetPublicUserQuery,
   useUploadUserImageMutation,
   useGetAllUsersQuery,
   useGetOrganizersQuery,

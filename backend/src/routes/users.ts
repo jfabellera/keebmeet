@@ -7,6 +7,7 @@ import {
 import {
   getAllUsers,
   getOrganizers,
+  getPublicUser,
   getUser,
   uploadUserImage,
 } from '../controllers/users';
@@ -35,6 +36,7 @@ router.get(
   authChecker() as RequestHandler,
   getOrganizers as RequestHandler
 );
+router.get('/:user_id/public', getPublicUser as RequestHandler);
 router.get(
   '/:user_id',
   authChecker([Rule.overrideAdmin]) as RequestHandler,
