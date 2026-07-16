@@ -139,6 +139,25 @@ export const DangerZoneCard = ({ meetupId }: Props): ReactNode => {
               gains full control of the meetup and this action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          {meetup?.is_archive ? (
+            <p className="text-muted-foreground text-sm">
+              Since this is an archived meetup, the new lead organizer will be
+              credited as its organizer
+              {meetup.organizer_name != null ? (
+                <>
+                  , replacing{' '}
+                  <span className="font-bold">{meetup.organizer_name}</span>
+                </>
+              ) : null}
+              , and <span className="font-bold">you will lose all access</span>{' '}
+              to it.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              You&apos;ll remain an organizer with access to manage this meetup
+              — you just won&apos;t be the lead organizer.
+            </p>
+          )}
           <Field>
             <FieldLabel htmlFor="transfer-organizer">
               New lead organizer

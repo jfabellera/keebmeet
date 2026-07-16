@@ -1312,7 +1312,7 @@ describe('transferMeetup', () => {
     // Nothing is mutated for a forbidden request.
     expect(meetup.save).not.toHaveBeenCalled();
     expect(mockedUser.findOneBy).not.toHaveBeenCalled();
-    expect(organizerRelation.remove).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
   });
 
   it('returns 400 when transferring to yourself', async () => {
@@ -1372,7 +1372,7 @@ describe('transferMeetup', () => {
     expect(meetup.save).not.toHaveBeenCalled();
   });
 
-  it('replaces the lead organizer and drops the new lead from co-organizers', async () => {
+  it('demotes the previous lead to co-organizer and drops the new lead (live meetup)', async () => {
     const newLead = { id: '2', nick_name: 'john', is_organizer: true };
     const meetup = fakeMeetupRow({
       save: jest.fn().mockResolvedValue(undefined),
@@ -1390,14 +1390,42 @@ describe('transferMeetup', () => {
     // The lead is replaced entirely by the new organizer.
     expect(meetup.lead_organizer).toBe(newLead);
     expect(meetup.save).toHaveBeenCalled();
-    // The new lead must never also appear in the co-organizer join table.
-    expect(organizerRelation.remove).toHaveBeenCalledWith('2');
+    // The previous lead (1) is demoted to a co-organizer so they keep access;
+    // the new lead (2) is dropped (the lead is tracked separately).
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['1'], ['2']);
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: '10',
     });
     expect(mockedRefresh).toHaveBeenCalledWith('10');
     // The new lead is unverified, so no notification email is sent.
     expect(mockedSendTransferEmail).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('does not demote the previous lead for an archive (clean handoff)', async () => {
+    const newLead = { id: '2', nick_name: 'john', is_organizer: true };
+    const meetup = fakeMeetupRow({
+      is_archive: true,
+      // A free-text credit for whoever ran the archived meetup.
+      organizer_name: 'John Doe',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.lead_organizer).toBe(newLead);
+    // The free-text credit is cleared so it falls back to the new lead's name.
+    expect(meetup.organizer_name).toBeNull();
+    // Archives have no co-organizer concept: the previous lead is NOT demoted,
+    // only the new lead is (defensively) removed from the join table.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith([], ['2']);
     expect(res.statusCode).toBe(200);
   });
 

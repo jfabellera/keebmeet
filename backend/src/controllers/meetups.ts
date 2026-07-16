@@ -31,6 +31,7 @@ import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
+import { sendMeetupTransferredEmail } from '../util/email';
 import {
   createEventbriteWebhook,
   deleteEventbriteWebhook,
@@ -44,7 +45,6 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
-import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteManagedObjects } from '../util/imageCleanup';
 import { normalizeImage } from '../util/imageProcessing';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
@@ -917,14 +917,27 @@ export const transferMeetup = async (
       .json({ message: 'The new lead organizer must be an organizer.' });
   }
 
+  const previousLead = meetup.lead_organizer;
+
   meetup.lead_organizer = newLead;
+
+  // Assume that a transferred archive meetup was organized by the new lead so
+  // clear the display credit
+  if (meetup.is_archive) {
+    meetup.organizer_name = null;
+  }
+
   await meetup.save();
 
   // Remove new lead from organizer list if previously added as a co-organizer
+  // and demote previous lead to co-organizer (only if not an archive meetup -
+  // previous lead loses all access)
+  const demotedLeadIds =
+    !meetup.is_archive && previousLead != null ? [previousLead.id] : [];
   await AppDataSource.createQueryBuilder()
     .relation(Meetup, 'organizers')
     .of(meetup.id)
-    .remove(newLeadId);
+    .addAndRemove(demotedLeadIds, [newLeadId]);
 
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
