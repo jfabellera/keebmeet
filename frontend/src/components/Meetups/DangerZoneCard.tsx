@@ -25,7 +25,7 @@ interface Props {
   meetupId: string;
 }
 
-export const DeleteMeetupCard = ({ meetupId }: Props): ReactNode => {
+export const DangerZoneCard = ({ meetupId }: Props): ReactNode => {
   const navigate = useNavigate();
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const [deleteMeetup, { isLoading: isDeleting }] = useDeleteMeetupMutation();
@@ -117,4 +117,4 @@ export const DeleteMeetupCard = ({ meetupId }: Props): ReactNode => {
   );
 };
 
-export default DeleteMeetupCard;
+export default DangerZoneCard;
