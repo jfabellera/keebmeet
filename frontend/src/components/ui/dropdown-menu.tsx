@@ -6,6 +6,29 @@ import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Swallow the one click that a dismissing tap produces. A modal menu already
+ * blocks outside pointer events on desktop, but touch devices still fire a
+ * follow-up `click` on whatever is underneath (the mobile "ghost click") once
+ * the menu closes. Run this as the menu dismisses so an outside tap only closes
+ * the menu instead of also activating the control behind it.
+ */
+const suppressNextClick = (): void => {
+  const remove = (): void => {
+    document.removeEventListener('click', handler, true);
+    window.clearTimeout(timer);
+  };
+  const handler = (event: MouseEvent): void => {
+    event.stopPropagation();
+    event.preventDefault();
+    remove();
+  };
+  // Capture phase so we intercept before the target's own handler; the timeout
+  // cleans up if no click follows (e.g. a mouse, already blocked by modal mode).
+  const timer = window.setTimeout(remove, 300);
+  document.addEventListener('click', handler, true);
+};
+
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -34,6 +57,7 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -45,6 +69,12 @@ function DropdownMenuContent({
           'bg-popover text-popover-foreground data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md',
           className
         )}
+        onPointerDownOutside={(event) => {
+          onPointerDownOutside?.(event);
+          // An outside tap should only dismiss the menu, never fall through to
+          // whatever it landed on.
+          suppressNextClick();
+        }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
