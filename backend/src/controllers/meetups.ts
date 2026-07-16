@@ -44,6 +44,7 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
+import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteManagedObjects } from '../util/imageCleanup';
 import { normalizeImage } from '../util/imageProcessing';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
@@ -927,6 +928,21 @@ export const transferMeetup = async (
 
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
+
+  // Notify the new lead organizer by email (verified users only). Best-effort:
+  // a mail failure must not fail the transfer, which is already committed.
+  if (newLead.is_verified) {
+    try {
+      await sendMeetupTransferredEmail(
+        newLead.email,
+        meetup.name,
+        requestor.nick_name,
+        `${config.webUrl}/meetup/${meetup.id}/manage`
+      );
+    } catch (error) {
+      console.error('Failed to send meetup transferred email:', error);
+    }
+  }
 
   return res.status(200).json(meetup);
 };

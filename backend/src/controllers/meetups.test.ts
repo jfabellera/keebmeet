@@ -57,6 +57,9 @@ jest.mock('./tickets', () => ({
 jest.mock('../util/meetupDiscordMessage', () => ({
   refreshMeetupDiscordMessage: jest.fn(),
 }));
+jest.mock('../util/email', () => ({
+  sendMeetupTransferredEmail: jest.fn(),
+}));
 // The added-organizer email side effect is covered separately in
 // organizerAddedNotification.test.ts; here we only stub it out.
 jest.mock('../util/organizerAddedNotification', () => ({
@@ -152,6 +155,7 @@ import {
 import { geocode, getUtcOffset } from '../util/externalApis';
 import { syncEventbriteAttendee } from './tickets';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteObject, promoteImage, upload } from '../util/objectStorage';
 import { normalizeImage } from '../util/imageProcessing';
 
@@ -164,6 +168,7 @@ const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
   remove: jest.Mock;
 };
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
+const mockedSendTransferEmail = jest.mocked(sendMeetupTransferredEmail);
 const mockedDeleteObject = jest.mocked(deleteObject);
 const mockedPromoteImage = jest.mocked(promoteImage);
 const mockedUpload = jest.mocked(upload);
@@ -1391,7 +1396,70 @@ describe('transferMeetup', () => {
       meetupId: '10',
     });
     expect(mockedRefresh).toHaveBeenCalledWith('10');
+    // The new lead is unverified, so no notification email is sent.
+    expect(mockedSendTransferEmail).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(200);
+  });
+
+  it('emails the new lead organizer when they are verified', async () => {
+    const newLead = {
+      id: '2',
+      nick_name: 'john',
+      email: 'john@example.com',
+      is_organizer: true,
+      is_verified: true,
+    };
+    const meetup = fakeMeetupRow({
+      name: 'Tex Mechs',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    // New lead's email, meetup name, previous lead's name, and a manage link.
+    expect(mockedSendTransferEmail).toHaveBeenCalledWith(
+      'john@example.com',
+      'Tex Mechs',
+      'jane',
+      expect.stringContaining('/meetup/10/manage')
+    );
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('still succeeds if the notification email fails', async () => {
+    const newLead = {
+      id: '2',
+      nick_name: 'john',
+      email: 'john@example.com',
+      is_organizer: true,
+      is_verified: true,
+    };
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup);
+    mockedUser.findOneBy.mockResolvedValueOnce(newLead as never);
+    mockedSendTransferEmail.mockRejectedValueOnce(new Error('resend down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' }; // the lead
+
+    await transferMeetup(
+      mockRequest({ new_lead_organizer_id: '2' }, { meetup_id: '10' }),
+      res
+    );
+
+    // The transfer is already committed, so a mail failure must not fail it.
+    expect(meetup.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    errorSpy.mockRestore();
   });
 });
 

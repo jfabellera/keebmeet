@@ -12,5 +12,8 @@ export { OrganizerDeniedEmail } from './emails/organizer-denied-email';
 export { OrganizerAddedEmail } from './emails/organizer-added-email';
 export type { OrganizerAddedEmailProps } from './emails/organizer-added-email';
 
+export { MeetupTransferredEmail } from './emails/meetup-transferred-email';
+export type { MeetupTransferredEmailProps } from './emails/meetup-transferred-email';
+
 export { RsvpConfirmationEmail } from './emails/rsvp-confirmation-email';
 export type { RsvpConfirmationEmailProps } from './emails/rsvp-confirmation-email';
