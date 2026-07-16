@@ -165,16 +165,16 @@ const OrganizerMeetupsPage = (): ReactNode => {
             <ArrowLeftIcon className="size-4" />
             Back to home
           </Button>
-          <div className="bg-card flex flex-col items-center gap-5 rounded-xl border px-6 py-7 text-center shadow-sm sm:flex-row sm:gap-6 sm:text-left">
-            <Avatar className="size-24 shrink-0 sm:size-28">
+          <div className="bg-card flex flex-row items-center gap-4 rounded-xl border p-4 shadow-sm sm:gap-5 sm:px-6 sm:py-6">
+            <Avatar className="size-16 shrink-0 sm:size-24">
               <AvatarImage src={organizer?.photo_url ?? ''} resizeWidth={256} />
               <AvatarFallback>
-                <FiUser className="size-10" />
+                <FiUser className="size-8 sm:size-9" />
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-1 flex-col items-center gap-2.5 sm:items-start">
-              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 sm:justify-start">
-                <h1 className="text-2xl font-bold sm:text-3xl">
+            <div className="flex flex-1 flex-col items-start gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <h1 className="text-xl font-bold sm:text-2xl">
                   {organizer?.display_name ?? 'Organizer'}
                 </h1>
                 <Badge variant="secondary" className="gap-1">
@@ -182,7 +182,7 @@ const OrganizerMeetupsPage = (): ReactNode => {
                   Organizer
                 </Badge>
               </div>
-              <div className="flex flex-col items-center gap-0.5 sm:items-start">
+              <div className="flex flex-col items-start gap-0.5">
                 <p className="flex items-baseline gap-1.5">
                   <span className="text-xl font-semibold tabular-nums">
                     {total}
