@@ -1,5 +1,6 @@
 import {
   type Organizer as OrganizerInterface,
+  type PublicUser as PublicUserInterface,
   type User as UserInterface,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
@@ -82,6 +83,29 @@ export const getOrganizers = async (
         photo_url: publicUrl(user.photo_key ?? ''),
       }) satisfies OrganizerInterface
   );
+
+  return res.json(response);
+};
+
+export const getPublicUser = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { user_id } = req.params as Record<string, string>;
+
+  const user = await User.findOneBy({
+    id: user_id,
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  const response: PublicUserInterface = {
+    id: user.id,
+    display_name: user.nick_name,
+    photo_url: publicUrl(user.photo_key ?? ''),
+  };
 
   return res.json(response);
 };

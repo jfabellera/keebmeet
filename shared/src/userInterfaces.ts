@@ -24,6 +24,13 @@ export interface Organizer {
   photo_url: string;
 }
 
+// Minimal, non-sensitive user profile safe to expose without authentication.
+export interface PublicUser {
+  id: string;
+  display_name: string;
+  photo_url: string;
+}
+
 export interface OrganizerRequestInfo {
   id: string;
   created_at: string;

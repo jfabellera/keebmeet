@@ -30,7 +30,7 @@ import {
   FiUserCheck,
   FiX,
 } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { socket } from '../../socket';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -183,6 +183,32 @@ export const MeetupModal = ({
   const showCapacity = meetup.tickets != null && !meetup.is_archive;
   const showRsvpAction = !isRsvp && isRsvpable;
 
+  const linkedOrganizers =
+    meetup.organizers != null
+      ? [meetup.lead_organizer, ...meetup.organizers].filter(
+          (organizer): organizer is NonNullable<typeof organizer> =>
+            organizer != null
+        )
+      : [];
+  let organizerLinkIndex = 0;
+  const organizerNodes = new Intl.ListFormat()
+    .formatToParts(linkedOrganizers.map((organizer) => organizer.display_name))
+    .map((part, i) => {
+      if (part.type !== 'element') {
+        return <span key={i}>{part.value}</span>;
+      }
+      const organizer = linkedOrganizers[organizerLinkIndex++];
+      return (
+        <Link
+          key={i}
+          to={`/organizers/${organizer.id}`}
+          className="text-primary hover:underline"
+        >
+          {part.value}
+        </Link>
+      );
+    });
+
   const rsvpForm = (
     <div className="sm:w-lg lg:h-full lg:w-96">
       <MeetupRsvpForm
@@ -325,19 +351,7 @@ export const MeetupModal = ({
                   ) : meetup.organizers != null ? (
                     <div className="flex items-start gap-2">
                       <FiUser className="mt-1 shrink-0" />
-                      <p>
-                        Organized by{' '}
-                        {new Intl.ListFormat().format(
-                          [meetup.lead_organizer, ...meetup.organizers]
-                            .filter(
-                              (
-                                organizer
-                              ): organizer is NonNullable<typeof organizer> =>
-                                organizer != null
-                            )
-                            .map((organizer) => organizer.display_name)
-                        )}
-                      </p>
+                      <p>Organized by {organizerNodes}</p>
                     </div>
                   ) : null}
                 </div>

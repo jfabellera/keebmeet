@@ -16,6 +16,7 @@ import ManageMeetupPage from './pages/ManageMeetupPage';
 import ManageMeetupSettingsPage from './pages/ManageMeetupSettingsPage';
 import NewMeetupPage from './pages/NewMeetupPage';
 import OrganizerDashboard from './pages/OrganizerDashboard';
+import OrganizerMeetupsPage from './pages/OrganizerMeetupsPage';
 import RafflePage from './pages/RafflePage';
 import RegisterPage from './pages/RegisterPage';
 
@@ -82,6 +83,10 @@ const App = (): ReactNode => {
                   <OrganizerDashboard />
                 </RequireOrganizer>
               }
+            />
+            <Route
+              path="/organizers/:organizerId"
+              element={<OrganizerMeetupsPage />}
             />
             <Route
               path="/new-meetup"
