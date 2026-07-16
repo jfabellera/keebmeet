@@ -202,7 +202,7 @@ export const MeetupModal = ({
         <Link
           key={i}
           to={`/organizers/${organizer.id}`}
-          className="underline-offset-2 hover:underline"
+          className="text-primary hover:underline"
         >
           {part.value}
         </Link>
