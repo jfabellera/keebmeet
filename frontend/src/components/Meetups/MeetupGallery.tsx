@@ -263,45 +263,45 @@ const GalleryTile = ({
                 Radix layers don't fight over pointer capture / dismissal. */}
             <Dialog open={open} onOpenChange={handleOpenChange}>
               <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {isOwn
-                    ? 'Remove your gallery?'
-                    : `Remove ${photo.display_name}'s gallery?`}
-                </DialogTitle>
-                <DialogDescription>
-                  {isOwn
-                    ? 'This removes your gallery from this meetup. You can add a new one afterwards.'
-                    : "This removes a contributor's gallery from this meetup. This can't be undone."}
-                </DialogDescription>
-                {!isOwn ? (
-                  <div className="border-destructive/50 bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-md border p-3 text-sm">
-                    <FiAlertTriangle className="mt-0.5 shrink-0" />
-                    <p>
-                      This is{' '}
-                      <span className="font-semibold">not your gallery</span> —
-                      you're removing{' '}
-                      <span className="font-semibold">
-                        {photo.display_name}
-                      </span>
-                      's contribution as an organizer.
-                    </p>
-                  </div>
-                ) : null}
-              </DialogHeader>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="secondary">Cancel</Button>
-                </DialogClose>
-                <Button
-                  variant="destructive"
-                  disabled={cooldown > 0 || isLoading}
-                  onClick={() => void handleDelete()}
-                >
-                  {cooldown > 0 ? `Remove (${cooldown})` : 'Remove'}
-                  {isLoading && <Spinner />}
-                </Button>
-              </DialogFooter>
+                <DialogHeader>
+                  <DialogTitle>
+                    {isOwn
+                      ? 'Remove your gallery?'
+                      : `Remove ${photo.display_name}'s gallery?`}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {isOwn
+                      ? 'This removes your gallery from this meetup. You can add a new one afterwards.'
+                      : "This removes a contributor's gallery from this meetup. This can't be undone."}
+                  </DialogDescription>
+                  {!isOwn ? (
+                    <div className="border-destructive/50 bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-md border p-3 text-sm">
+                      <FiAlertTriangle className="mt-0.5 shrink-0" />
+                      <p>
+                        This is{' '}
+                        <span className="font-semibold">not your gallery</span>{' '}
+                        — you're removing{' '}
+                        <span className="font-semibold">
+                          {photo.display_name}
+                        </span>
+                        's contribution as an organizer.
+                      </p>
+                    </div>
+                  ) : null}
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button
+                    variant="destructive"
+                    disabled={cooldown > 0 || isLoading}
+                    onClick={() => void handleDelete()}
+                  >
+                    {cooldown > 0 ? `Remove (${cooldown})` : 'Remove'}
+                    {isLoading && <Spinner />}
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </>
