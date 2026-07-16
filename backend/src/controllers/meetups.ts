@@ -3,6 +3,7 @@ import {
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
+  transferMeetupSchema,
   type EditMeetupPayload,
   type MeetupDisplayAssets,
   type MeetupInfo,
@@ -863,6 +864,71 @@ export const updateMeetup = async (
   socket.emit('meetup:update', { meetupId: meetup.id });
   await refreshMeetupDiscordMessage(meetup.id);
   return res.status(201).json(meetup);
+};
+
+export const transferMeetup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { meetup_id } = req.params as Record<string, string>;
+
+  const result = transferMeetupSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const meetup = await Meetup.findOne({
+    relations: {
+      lead_organizer: true,
+    },
+    where: { id: meetup_id },
+  });
+
+  if (meetup == null) {
+    return res.status(404).json({ message: 'Invalid meetup ID.' });
+  }
+
+  // Verify requestor is lead organizer (authChecker only checks organizer)
+  const requestor = res.locals.requestor as User;
+  if (meetup.lead_organizer?.id !== requestor.id) {
+    return res.status(403).json({
+      message: 'Only the lead organizer can transfer this meetup.',
+    });
+  }
+
+  const newLeadId = result.data.new_lead_organizer_id;
+
+  if (newLeadId === requestor.id) {
+    return res
+      .status(400)
+      .json({ message: 'You are already the lead organizer.' });
+  }
+
+  const newLead = await User.findOneBy({ id: newLeadId });
+  if (newLead == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  // The new lead must be an organizer, same as any meetup owner.
+  if (!newLead.is_organizer) {
+    return res
+      .status(400)
+      .json({ message: 'The new lead organizer must be an organizer.' });
+  }
+
+  meetup.lead_organizer = newLead;
+  await meetup.save();
+
+  // Remove new lead from organizer list if previously added as a co-organizer
+  await AppDataSource.createQueryBuilder()
+    .relation(Meetup, 'organizers')
+    .of(meetup.id)
+    .remove(newLeadId);
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+  await refreshMeetupDiscordMessage(meetup.id);
+
+  return res.status(200).json(meetup);
 };
 
 export const deleteMeetup = async (
