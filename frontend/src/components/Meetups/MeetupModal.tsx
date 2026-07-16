@@ -205,6 +205,12 @@ export const MeetupModal = ({
       <DialogContent
         className="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:w-auto lg:max-w-[calc(100vw-2rem)]"
         showCloseButton={false}
+        onInteractOutside={(event) => {
+          // HACK: don't close the modal when clicking on a dropdown menu
+          if (document.querySelector('[data-radix-popper-content-wrapper]')) {
+            event.preventDefault();
+          }
+        }}
         {...swipeHandlers}
       >
         <DialogClose asChild>
