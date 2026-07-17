@@ -32,6 +32,7 @@ export interface PublicUser {
   username: string;
   display_name: string;
   photo_url: string;
+  is_organizer: boolean;
 }
 
 export interface OrganizerRequestInfo {

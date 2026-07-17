@@ -107,6 +107,7 @@ export const getPublicUser = async (
     username: user.username,
     display_name: user.nick_name,
     photo_url: publicUrl(user.photo_key ?? ''),
+    is_organizer: user.is_organizer,
   };
 
   return res.json(response);
