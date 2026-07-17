@@ -74,9 +74,11 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
     skip: localUser == null || !isLinked,
   });
   const { data: meetup } = useGetMeetupQuery(meetupId);
+  // Discord endpoints are keyed by the numeric id, resolved from the loaded meetup.
+  const meetupNumericId = meetup?.id ?? '';
   const { data: message, isLoading: isLoadingMessage } =
-    useGetMeetupDiscordMessageQuery(meetupId, {
-      skip: localUser == null || !isLinked,
+    useGetMeetupDiscordMessageQuery(meetupNumericId, {
+      skip: localUser == null || !isLinked || meetup == null,
     });
 
   const hasEnded = meetup != null ? hasMeetupEnded(meetup) : false;
@@ -100,7 +102,7 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
 
   const onCreate = async (): Promise<void> => {
     const result = await createMessage({
-      meetupId,
+      meetupId: meetupNumericId,
       server_id: selectedServer,
       channel_id: selectedChannel,
       allow_rsvp: allowRsvp,
@@ -113,19 +115,22 @@ export const MeetupDiscordCard = ({ meetupId }: Props): ReactNode => {
   };
 
   const onUpdate = async (): Promise<void> => {
-    const result = await updateMessage({ meetupId });
+    const result = await updateMessage({ meetupId: meetupNumericId });
     if (handleMutationError(result, 'Failed to update Discord message')) return;
     toast.success('Discord message updated.');
   };
 
   const onToggleRsvp = async (allow: boolean): Promise<void> => {
-    const result = await updateMessage({ meetupId, allow_rsvp: allow });
+    const result = await updateMessage({
+      meetupId: meetupNumericId,
+      allow_rsvp: allow,
+    });
     if (handleMutationError(result, 'Failed to update Discord message')) return;
     toast.success(allow ? 'Discord RSVPs enabled.' : 'Discord RSVPs disabled.');
   };
 
   const onDelete = async (): Promise<void> => {
-    const result = await deleteMessage(meetupId);
+    const result = await deleteMessage(meetupNumericId);
     setConfirmDeleteOpen(false);
     if (handleMutationError(result, 'Failed to delete Discord message')) return;
     toast.success('Discord message deleted.');

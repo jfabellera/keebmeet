@@ -59,10 +59,19 @@ export const meetupSlice = createApi({
       providesTags: ['Meetups'],
     }),
     getMeetup: builder.query<MeetupInfo, string>({
-      query: (id) => ({
-        url: `meetups/${id}`,
+      query: (slug) => ({
+        url: `meetups/${slug}`,
       }),
       providesTags: (result, error, arg) => [{ type: 'Meetup', id: arg }],
+    }),
+    checkSlugAvailable: builder.query<
+      { available: boolean },
+      { slug: string; excludeId?: string }
+    >({
+      query: ({ slug, excludeId }) => ({
+        url: `meetups/slug-available`,
+        params: { slug, exclude_id: excludeId },
+      }),
     }),
     createMeetup: builder.mutation<void, CreateMeetupPayload>({
       query: (payload) => ({
@@ -204,6 +213,7 @@ export const meetupSlice = createApi({
 export const {
   useGetMeetupsQuery,
   useGetMeetupQuery,
+  useCheckSlugAvailableQuery,
   useCreateMeetupMutation,
   useCreateArchiveMeetupMutation,
   useUploadMeetupImageMutation,

@@ -21,8 +21,10 @@ const gridClass =
   'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]';
 
 const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
-  const { data: displayAssets, isLoading } =
-    useGetMeetupDisplayAssetsQuery(meetupId);
+  const { data: displayAssets, isLoading } = useGetMeetupDisplayAssetsQuery(
+    meetupId,
+    { skip: meetupId === '' }
+  );
   const [updateMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
   const { isUploading, onUploadingChange } = usePendingUploads();
   const [isEditable, setIsEditable] = useBoolean(false);

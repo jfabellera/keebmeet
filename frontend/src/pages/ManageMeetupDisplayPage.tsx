@@ -5,12 +5,14 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { useGetMeetupQuery } from '@/store/meetupSlice';
 import { ReactNode, useState } from 'react';
 import { FiCheck, FiCopy } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export const ManageMeetupDisplayPage = (): ReactNode => {
   const { meetupId } = useParams();
+  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
   const [copied, setCopied] = useState(false);
   const [interval, setInterval] = useState<number>(15);
   const navigate = useNavigate();
@@ -76,7 +78,7 @@ export const ManageMeetupDisplayPage = (): ReactNode => {
         </Button>
       </Card>
 
-      <MeetupDisplaySettingsCard meetupId={meetupId ?? ''} />
+      <MeetupDisplaySettingsCard meetupId={meetup?.id ?? ''} />
     </div>
   );
 };

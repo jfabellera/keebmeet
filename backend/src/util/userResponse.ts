@@ -10,6 +10,7 @@ export const toUserResponse = (user: User): UserInterface => {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     display_name: user.nick_name,
     first_name: user.first_name,
     last_name: user.last_name,

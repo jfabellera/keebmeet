@@ -14,6 +14,7 @@ import {
   getMeetup,
   getMeetupAttendees,
   getMeetupDisplayAssets,
+  slugAvailable,
   syncEventbriteAttendees,
   transferMeetup,
   updateMeetup,
@@ -35,6 +36,12 @@ import { uploadImageFile } from '../middleware/imageUpload';
 const router = express.Router();
 
 router.get('/', getAllMeetups as RequestHandler);
+
+router.get(
+  '/slug-available',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  slugAvailable as RequestHandler
+);
 
 router.get('/:meetup_id', getMeetup as RequestHandler);
 

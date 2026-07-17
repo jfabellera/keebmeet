@@ -3,6 +3,7 @@ import {
   createMeetupFromEventbriteSchema,
   createMeetupSchema,
   editMeetupSchema,
+  SLUG_REGEX,
   transferMeetupSchema,
   type EditMeetupPayload,
   type MeetupDisplayAssets,
@@ -59,6 +60,7 @@ import {
 import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
 import { hmacTicket } from '../util/qrCode';
 import { decrypt } from '../util/security';
+import { slugify, uniqueMeetupSlug } from '../util/slug';
 import { syncEventbriteAttendee } from './tickets';
 
 dayjs.extend(utc);
@@ -75,6 +77,7 @@ const mapMeetupInfo = async (
 ): Promise<MeetupInfo> => {
   const meetupInfo: MeetupInfo = {
     id: meetup.id,
+    slug: meetup.slug,
     name: meetup.name,
     date: dayjs(meetup.date).utcOffset(meetup.utc_offset).format(),
     duration_hours: meetup.duration_hours,
@@ -106,11 +109,13 @@ const mapMeetupInfo = async (
 
     meetupInfo.organizers = meetup.organizers.map((organizer) => ({
       id: organizer.id,
+      username: organizer.username,
       display_name: organizer.nick_name,
     }));
     if (meetup.lead_organizer != null) {
       meetupInfo.lead_organizer = {
         id: meetup.lead_organizer.id,
+        username: meetup.lead_organizer.username,
         display_name: meetup.lead_organizer.nick_name,
       };
     }
@@ -238,7 +243,7 @@ export const getMeetup = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { meetup_id } = req.params as Record<string, string>;
+  const { meetup_id: slug } = req.params as Record<string, string>;
   const { detail_level } = req.query;
 
   const detailLevel =
@@ -246,6 +251,7 @@ export const getMeetup = async (
       ? MeetupInfoDetailLevel.Simple
       : MeetupInfoDetailLevel.Detailed;
 
+  // Public reads resolve by slug only; a numeric id 404s.
   const meetup = await Meetup.findOne({
     relations: {
       organizers: true,
@@ -253,17 +259,36 @@ export const getMeetup = async (
       eventbriteRecord: true,
     },
     where: {
-      id: meetup_id,
+      slug,
     },
   });
 
   if (meetup == null) {
-    return res.status(404).json({ message: 'Invalid meetup ID.' });
+    return res.status(404).json({ message: 'Meetup not found.' });
   }
 
   const meetupInfo = await mapMeetupInfo(meetup, detailLevel);
 
   return res.json(meetupInfo);
+};
+
+export const slugAvailable = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const slug = String(req.query.slug ?? '');
+  const excludeId =
+    req.query.exclude_id != null ? String(req.query.exclude_id) : null;
+
+  if (!SLUG_REGEX.test(slug)) {
+    return res.json({ available: false });
+  }
+
+  const existing = await Meetup.findOne({
+    where: { slug },
+    select: { id: true },
+  });
+  return res.json({ available: existing == null || existing.id === excludeId });
 };
 
 /**
@@ -318,6 +343,7 @@ export const createMeetup = async (
 
   const newMeetup = Meetup.create({
     name: result.data.name,
+    slug: result.data.slug,
     date: result.data.date,
     address: result.data.address,
     organizers: [],
@@ -360,6 +386,10 @@ export const createMeetup = async (
 
   if (existingMeetup != null) {
     return res.status(409).json({ message: 'Meetup name is taken.' });
+  }
+
+  if ((await Meetup.countBy({ slug: result.data.slug })) > 0) {
+    return res.status(409).json({ message: 'That URL is already taken.' });
   }
 
   // Get UTC offset for the inputted address
@@ -421,8 +451,13 @@ export const createArchiveMeetup = async (
     return res.status(409).json({ message: 'Meetup name is taken.' });
   }
 
+  if ((await Meetup.countBy({ slug: result.data.slug })) > 0) {
+    return res.status(409).json({ message: 'That URL is already taken.' });
+  }
+
   const newMeetup = Meetup.create({
     name: result.data.name,
+    slug: result.data.slug,
     date: result.data.date,
     address: result.data.address,
     image_key: result.data.image_key,
@@ -584,6 +619,8 @@ export const createMeetupFromEventbrite = async (
       // only additional co-organizers (none for an Eventbrite import).
       newMeetup.lead_organizer = user;
       newMeetup.utc_offset = utcOffset;
+      // No form here, so derive a unique slug from the event name server-side.
+      newMeetup.slug = await uniqueMeetupSlug(slugify(ebEvent.name));
 
       await manager.save(newMeetup);
 
@@ -744,10 +781,17 @@ export const updateMeetup = async (
     return res.status(409).json({ message: 'Meetup name is taken.' });
   }
 
+  if (result.data.slug != null && result.data.slug !== meetup.slug) {
+    if ((await Meetup.countBy({ slug: result.data.slug })) > 0) {
+      return res.status(409).json({ message: 'That URL is already taken.' });
+    }
+  }
+
   // Remember the current image so we can clean it up if it gets replaced.
   const previousImageKey = meetup.image_key;
 
   meetup.name = req.body.name ?? meetup.name;
+  meetup.slug = req.body.slug ?? meetup.slug;
   meetup.duration_hours = req.body.duration_hours ?? meetup.duration_hours;
   meetup.has_raffle = req.body.has_raffle ?? meetup.has_raffle;
   meetup.capacity = req.body.capacity ?? meetup.capacity;
@@ -950,7 +994,7 @@ export const transferMeetup = async (
         newLead.email,
         meetup.name,
         requestor.nick_name,
-        `${config.webUrl}/meetup/${meetup.id}/manage`
+        `${config.webUrl}/meetup/${meetup.slug}/manage`
       );
     } catch (error) {
       console.error('Failed to send meetup transferred email:', error);

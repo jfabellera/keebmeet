@@ -1,14 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { FormField } from '@/components/ui/form-field';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useAppSelector } from '@/store/hooks';
+import { SLUG_REGEX, slugify } from '@keebmeet/shared';
 import { useFormik } from 'formik';
-import { type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
@@ -16,7 +18,10 @@ import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import { usePendingUploads } from '../hooks/usePendingUploads';
-import { useCreateMeetupMutation } from '../store/meetupSlice';
+import {
+  useCheckSlugAvailableQuery,
+  useCreateMeetupMutation,
+} from '../store/meetupSlice';
 import MeetupFormSchema from '../util/schemas/MeetupFormSchema';
 
 const NewMeetupPage = (): ReactNode => {
@@ -24,9 +29,12 @@ const NewMeetupPage = (): ReactNode => {
   const { isUploading, onUploadingChange } = usePendingUploads();
   const currentUserId = useAppSelector((state) => state.user.user?.id);
   const navigate = useNavigate();
+  // Track whether the user edited the slug so name changes stop overwriting it.
+  const [slugEdited, setSlugEdited] = useState(false);
   const formik = useFormik({
     initialValues: {
       name: '',
+      slug: '',
       date: '',
       startTime: '',
       address: '',
@@ -42,6 +50,7 @@ const NewMeetupPage = (): ReactNode => {
     onSubmit: async (values) => {
       const result = await createMeetup({
         name: formik.values.name,
+        slug: formik.values.slug,
         date: new Date(
           `${formik.values.date}T${formik.values.startTime}Z`
         ).toISOString(),
@@ -70,6 +79,27 @@ const NewMeetupPage = (): ReactNode => {
     validationSchema: MeetupFormSchema,
     validateOnMount: true,
   });
+
+  // Auto-fill the slug from the name until the user edits it directly.
+  useEffect(() => {
+    if (!slugEdited) {
+      void formik.setFieldValue('slug', slugify(formik.values.name));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.name, slugEdited]);
+
+  const slugValid = SLUG_REGEX.test(formik.values.slug);
+  const { data: slugCheck } = useCheckSlugAvailableQuery(
+    { slug: formik.values.slug },
+    { skip: !slugValid }
+  );
+  const slugTaken = slugValid && slugCheck?.available === false;
+  const slugError =
+    formik.values.slug !== '' && !slugValid
+      ? 'Lowercase letters, numbers, and hyphens only'
+      : slugTaken
+        ? 'That URL is already taken'
+        : undefined;
 
   const onDescriptionChange = (
     event: ChangeEvent<HTMLTextAreaElement>
@@ -120,6 +150,24 @@ const NewMeetupPage = (): ReactNode => {
                 </Field>
 
                 <FormField formik={formik} name="name" label="Meetup Name" />
+
+                <Field data-invalid={slugError != null} className="gap-1.5">
+                  <FieldLabel htmlFor="slug">URL slug</FieldLabel>
+                  <Input
+                    id="slug"
+                    name="slug"
+                    value={formik.values.slug}
+                    aria-invalid={slugError != null}
+                    onChange={(event) => {
+                      setSlugEdited(true);
+                      formik.handleChange(event);
+                    }}
+                    onBlur={formik.handleBlur}
+                  />
+                  {slugError != null ? (
+                    <FieldError>{slugError}</FieldError>
+                  ) : null}
+                </Field>
 
                 <div className="flex gap-2">
                   <FormField
@@ -213,7 +261,13 @@ const NewMeetupPage = (): ReactNode => {
 
                 <Button
                   type="submit"
-                  disabled={!formik.isValid || isLoading || isUploading}
+                  disabled={
+                    !formik.isValid ||
+                    isLoading ||
+                    isUploading ||
+                    slugError != null ||
+                    formik.values.slug === ''
+                  }
                   size="lg"
                 >
                   Create

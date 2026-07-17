@@ -111,6 +111,10 @@ export const createUser = async (
     return res.status(409).json({ message: 'Email is taken.' });
   }
 
+  if ((await User.countBy({ username: result.data.username })) > 0) {
+    return res.status(409).json({ message: 'Username is taken.' });
+  }
+
   // Hash password and create
   const password_hash = await hashPassword(req.body.password);
 
@@ -130,6 +134,7 @@ export const createUser = async (
     first_name: req.body.first_name,
     last_name: req.body.last_name,
     nick_name: req.body.nick_name,
+    username: result.data.username,
     photo_key,
     password_hash,
   });
@@ -253,6 +258,15 @@ export const updateUser = async (
     }
   }
 
+  if (result.data.username != null && result.data.username !== user.username) {
+    const existingUser = await User.findOneBy({
+      username: result.data.username,
+    });
+    if (existingUser != null) {
+      return res.status(409).json({ message: 'Username is taken.' });
+    }
+  }
+
   // Remember the current photo so we can clean it up if it's replaced/removed.
   const previousPhotoKey = user.photo_key;
 
@@ -260,6 +274,7 @@ export const updateUser = async (
   user.first_name = req.body.first_name ?? user.first_name;
   user.last_name = req.body.last_name ?? user.last_name;
   user.nick_name = req.body.nick_name ?? user.nick_name;
+  user.username = result.data.username ?? user.username;
   user.photo_key = req.body.photo_key ?? user.photo_key;
 
   // Role changes require admin (or owner). The hierarchy is owner > admin >

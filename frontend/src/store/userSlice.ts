@@ -34,10 +34,19 @@ export const userSlice = createApi({
       providesTags: ['User'],
     }),
     getPublicUser: builder.query<PublicUser, string>({
-      query: (userId) => ({
-        url: `/users/${userId}/public`,
+      query: (username) => ({
+        url: `/users/${username}/public`,
       }),
       providesTags: (result, error, arg) => [{ type: 'User', id: arg }],
+    }),
+    checkUsernameAvailable: builder.query<
+      { available: boolean },
+      { username: string; excludeId?: string }
+    >({
+      query: ({ username, excludeId }) => ({
+        url: `/users/username-available`,
+        params: { username, exclude_id: excludeId },
+      }),
     }),
     // Uploads a profile photo to R2, returning its temp key + preview URL. Used
     // during registration (no token) and on the account page.
@@ -122,6 +131,7 @@ export const userSlice = createApi({
 export const {
   useGetUserQuery,
   useGetPublicUserQuery,
+  useCheckUsernameAvailableQuery,
   useUploadUserImageMutation,
   useGetAllUsersQuery,
   useGetOrganizersQuery,

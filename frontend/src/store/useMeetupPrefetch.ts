@@ -16,7 +16,7 @@ export const useMeetupPrefetch = (): ((meetup: MeetupInfo) => void) => {
   return useCallback(
     (meetup: MeetupInfo) => {
       // Meetup details
-      prefetchMeetup(meetup.id);
+      prefetchMeetup(meetup.slug);
 
       // Hero banner
       if (meetup.image_url !== '') {

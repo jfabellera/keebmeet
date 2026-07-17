@@ -84,10 +84,7 @@ const App = (): ReactNode => {
                 </RequireOrganizer>
               }
             />
-            <Route
-              path="/organizers/:organizerId"
-              element={<OrganizerMeetupsPage />}
-            />
+            <Route path="/user/:username" element={<OrganizerMeetupsPage />} />
             <Route
               path="/new-meetup"
               element={

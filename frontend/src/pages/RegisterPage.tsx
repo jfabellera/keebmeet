@@ -2,6 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { USERNAME_REGEX } from '@keebmeet/shared';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
@@ -16,6 +18,7 @@ import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useCheckUsernameAvailableQuery } from '../store/userSlice';
 
 const RegisterSchema = Yup.object().shape({
   // Because Yup.string().email() sucks
@@ -28,6 +31,12 @@ const RegisterSchema = Yup.object().shape({
   firstName: Yup.string().required('Required'),
   lastName: Yup.string().required('Required'),
   nickName: Yup.string().required('Required'),
+  username: Yup.string()
+    .required('Required')
+    .matches(
+      USERNAME_REGEX,
+      'Lowercase letters, numbers, and underscores only, and cannot start or end with an underscore'
+    ),
   password: Yup.string()
     .required('Required')
     .matches(
@@ -52,6 +61,7 @@ const RegisterPage = (): ReactNode => {
       firstName: '',
       lastName: '',
       nickName: '',
+      username: '',
       password: '',
       confirmPassword: '',
       requestOrganizer: false,
@@ -86,6 +96,13 @@ const RegisterPage = (): ReactNode => {
     validateOnMount: true,
   });
 
+  const usernameValid = USERNAME_REGEX.test(formik.values.username);
+  const { data: usernameCheck } = useCheckUsernameAvailableQuery(
+    { username: formik.values.username },
+    { skip: !usernameValid }
+  );
+  const usernameTaken = usernameValid && usernameCheck?.available === false;
+
   return (
     <Page>
       <div className="flex items-center justify-center p-4">
@@ -115,50 +132,85 @@ const RegisterPage = (): ReactNode => {
                     }}
                   />
                 </div>
-                <div className="flex flex-row gap-2">
+                <div className="mt-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+                      Public · shown on your profile
+                    </h2>
+                    <Separator className="flex-1" />
+                  </div>
                   <FormField
                     formik={formik}
-                    name="firstName"
-                    label="First Name"
-                    className="flex-1"
+                    name="nickName"
+                    label="Display Name"
                   />
                   <FormField
                     formik={formik}
-                    name="lastName"
-                    label="Last Name"
-                    className="flex-1"
+                    name="username"
+                    label="Username"
+                    invalid={
+                      usernameTaken ||
+                      (formik.errors.username != null &&
+                        formik.touched.username)
+                    }
+                    message={usernameTaken ? 'Username is taken' : undefined}
                   />
                 </div>
-                <FormField
-                  formik={formik}
-                  name="nickName"
-                  label="Display Name"
-                />
-                <FormField
-                  formik={formik}
-                  name="email"
-                  label="Email address"
-                  type="email"
-                  invalid={
-                    error === 409 ||
-                    (formik.errors.email != null && formik.touched.email)
-                  }
-                  message={
-                    error === 409 ? 'Email is already in use' : undefined
-                  }
-                />
-                <FormField
-                  formik={formik}
-                  name="password"
-                  label="Password"
-                  type="password"
-                />
-                <FormField
-                  formik={formik}
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type="password"
-                />
+                <div className="mt-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+                      Private · only visible to you
+                    </h2>
+                    <Separator className="flex-1" />
+                  </div>
+                  <FormField
+                    formik={formik}
+                    name="email"
+                    label="Email address"
+                    type="email"
+                    invalid={
+                      error === 409 ||
+                      (formik.errors.email != null && formik.touched.email)
+                    }
+                    message={
+                      error === 409 ? 'Email is already in use' : undefined
+                    }
+                  />
+                  <div className="flex flex-row gap-2">
+                    <FormField
+                      formik={formik}
+                      name="firstName"
+                      label="First Name"
+                      className="flex-1"
+                    />
+                    <FormField
+                      formik={formik}
+                      name="lastName"
+                      label="Last Name"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+                      Password
+                    </h2>
+                    <Separator className="flex-1" />
+                  </div>
+                  <FormField
+                    formik={formik}
+                    name="password"
+                    label="Password"
+                    type="password"
+                  />
+                  <FormField
+                    formik={formik}
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    type="password"
+                  />
+                </div>
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <Label htmlFor="requestOrganizer" className="pr-4">
                     Are you an organizer?
@@ -190,7 +242,9 @@ const RegisterPage = (): ReactNode => {
                 <div className="flex flex-col gap-10 pt-2">
                   <Button
                     type="submit"
-                    disabled={loading || !formik.isValid || isUploading}
+                    disabled={
+                      loading || !formik.isValid || isUploading || usernameTaken
+                    }
                     size="lg"
                   >
                     Sign up

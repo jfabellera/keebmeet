@@ -171,12 +171,12 @@ export const MeetupRsvpForm = ({
             label="Display Name"
             disabled={!isLoggedIn}
           />
-          {/* Personal details grouped together so the "organizers only"
-            note is stated once rather than repeated per field. */}
+          {/* Name and email come from the account and can't be edited here;
+            change them in account settings. Shown read-only for context. */}
           <div className="border-border flex flex-col gap-4 rounded-md border border-dashed p-3">
             <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <FiLock className="size-3 shrink-0" />
-              Only visible to organizers
+              From your account · only visible to organizers
             </p>
             <div className="flex flex-row gap-2">
               <FormField
@@ -184,14 +184,14 @@ export const MeetupRsvpForm = ({
                 name="firstName"
                 label="First Name"
                 className="flex-1"
-                disabled={!isLoggedIn}
+                disabled
               />
               <FormField
                 formik={formik}
                 name="lastName"
                 label="Last Name"
                 className="flex-1"
-                disabled={!isLoggedIn}
+                disabled
               />
             </div>
             <FormField
@@ -199,7 +199,7 @@ export const MeetupRsvpForm = ({
               name="email"
               label="Email"
               type="email"
-              disabled={!isLoggedIn}
+              disabled
             />
           </div>
         </div>

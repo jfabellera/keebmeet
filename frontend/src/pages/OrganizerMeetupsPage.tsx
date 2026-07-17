@@ -19,33 +19,41 @@ import { useGetPublicUserQuery } from '../store/userSlice';
 import { hasMeetupEnded } from '../util/timeUtil';
 
 const OrganizerMeetupsPage = (): ReactNode => {
-  const { organizerId } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
 
   // The open meetup is local state, not the URL: on a profile page the modal
   // expands in place rather than routing back to the homepage.
-  const [selectedMeetupId, setSelectedMeetupId] = useState('');
+  const [selectedSlug, setSelectedSlug] = useState('');
 
-  // Navigating to another organizer (e.g. via an organizer link inside the
-  // modal) reuses this component, so close any open meetup on that switch.
-  const [renderedOrganizerId, setRenderedOrganizerId] = useState(organizerId);
-  if (organizerId !== renderedOrganizerId) {
-    setRenderedOrganizerId(organizerId);
-    setSelectedMeetupId('');
+  // Navigating to another user (e.g. via an organizer link inside the modal)
+  // reuses this component, so close any open meetup on that switch.
+  const [renderedUsername, setRenderedUsername] = useState(username);
+  if (username !== renderedUsername) {
+    setRenderedUsername(username);
+    setSelectedSlug('');
   }
 
-  const { data: organizer } = useGetPublicUserQuery(organizerId ?? '', {
-    skip: organizerId == null,
-  });
+  const { data: profileUser, isLoading: isUserLoading } = useGetPublicUserQuery(
+    username ?? '',
+    { skip: username == null }
+  );
 
-  const { data: meetups, isLoading } = useGetMeetupsQuery(
+  const isOrganizer = profileUser?.is_organizer === true;
+  const notFound = !isUserLoading && username != null && profileUser == null;
+
+  // Only organizers have meetups to list; filter by the numeric id resolved
+  // from the username.
+  const organizerId = profileUser?.id;
+  const { data: meetups, isLoading: isMeetupsLoading } = useGetMeetupsQuery(
     {
       by_organizer_id: organizerId != null ? [organizerId] : [],
       detail_level: 'detailed',
     },
-    { skip: organizerId == null }
+    { skip: organizerId == null || !isOrganizer }
   );
+  const isLoading = isUserLoading || (isOrganizer && isMeetupsLoading);
 
   // The logged-in user's tickets let the modal reflect their RSVP state
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
@@ -118,7 +126,7 @@ const OrganizerMeetupsPage = (): ReactNode => {
             <div
               key={meetup.id}
               onClick={() => {
-                setSelectedMeetupId(meetup.id);
+                setSelectedSlug(meetup.slug);
               }}
             >
               <MeetupCard
@@ -153,6 +161,22 @@ const OrganizerMeetupsPage = (): ReactNode => {
         <div className="flex h-full w-full items-center justify-center">
           <Spinner className="size-10" />
         </div>
+      ) : notFound ? (
+        <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
+          <FiUser className="size-8 opacity-60" />
+          <p>User not found.</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void navigate('/');
+            }}
+            className="gap-1.5"
+          >
+            <ArrowLeftIcon className="size-4" />
+            Back to home
+          </Button>
+        </div>
       ) : (
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-6">
           <Button
@@ -168,7 +192,10 @@ const OrganizerMeetupsPage = (): ReactNode => {
           </Button>
           <div className="bg-card flex flex-row items-center gap-4 rounded-xl border p-4 shadow-sm sm:gap-5 sm:px-6 sm:py-6">
             <Avatar className="size-16 shrink-0 sm:size-24">
-              <AvatarImage src={organizer?.photo_url ?? ''} resizeWidth={256} />
+              <AvatarImage
+                src={profileUser?.photo_url ?? ''}
+                resizeWidth={256}
+              />
               <AvatarFallback>
                 <FiUser className="size-8 sm:size-9" />
               </AvatarFallback>
@@ -176,58 +203,71 @@ const OrganizerMeetupsPage = (): ReactNode => {
             <div className="flex flex-1 flex-col items-start gap-1.5 sm:gap-2">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <h1 className="text-xl font-bold sm:text-2xl">
-                  {organizer?.display_name ?? 'Organizer'}
+                  {profileUser?.display_name ?? 'User'}
                 </h1>
-                <Badge variant="secondary" className="gap-1">
-                  <FiAward />
-                  Organizer
-                </Badge>
+                {isOrganizer ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <FiAward />
+                    Organizer
+                  </Badge>
+                ) : null}
               </div>
-              <div className="flex flex-col items-start gap-0.5">
-                <p className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-semibold tabular-nums">
-                    {total}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {total === 1 ? 'meetup' : 'meetups'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  <span className="text-foreground font-medium tabular-nums">
-                    {hostCount}
-                  </span>{' '}
-                  hosted
-                  <span className="px-1.5">·</span>
-                  <span className="text-foreground font-medium tabular-nums">
-                    {coHostCount}
-                  </span>{' '}
-                  co-hosted
-                </p>
-              </div>
+              {isOrganizer ? (
+                <div className="flex flex-col items-start gap-0.5">
+                  <p className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-semibold tabular-nums">
+                      {total}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {total === 1 ? 'meetup' : 'meetups'}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    <span className="text-foreground font-medium tabular-nums">
+                      {hostCount}
+                    </span>{' '}
+                    hosted
+                    <span className="px-1.5">·</span>
+                    <span className="text-foreground font-medium tabular-nums">
+                      {coHostCount}
+                    </span>{' '}
+                    co-hosted
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
-          {upcomingMeetups.length > 0
-            ? meetupSection('Upcoming', upcomingMeetups)
-            : null}
+          {isOrganizer ? (
+            <>
+              {upcomingMeetups.length > 0
+                ? meetupSection('Upcoming', upcomingMeetups)
+                : null}
 
-          {pastMeetups.length > 0 ? meetupSection('Past', pastMeetups) : null}
+              {pastMeetups.length > 0
+                ? meetupSection('Past', pastMeetups)
+                : null}
 
-          {total === 0 ? (
-            <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
-              <FiCalendar className="size-8 opacity-60" />
-              <p>No meetups organized yet.</p>
-            </div>
+              {total === 0 ? (
+                <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
+                  <FiCalendar className="size-8 opacity-60" />
+                  <p>No meetups organized yet.</p>
+                </div>
+              ) : null}
+            </>
           ) : null}
 
           <MeetupModal
-            meetupId={selectedMeetupId}
-            ticket={getTicketForMeetup(selectedMeetupId)}
+            meetupId={selectedSlug}
+            ticket={getTicketForMeetup(
+              organizerMeetups.find((meetup) => meetup.slug === selectedSlug)
+                ?.id ?? ''
+            )}
             isLoggedIn={isLoggedIn}
-            isOpen={selectedMeetupId !== ''}
+            isOpen={selectedSlug !== ''}
             isRsvp={false}
             onClose={() => {
-              setSelectedMeetupId('');
+              setSelectedSlug('');
             }}
           />
         </div>

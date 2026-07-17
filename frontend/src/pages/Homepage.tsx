@@ -48,18 +48,22 @@ const PrefetchingMeetupCard = ({
 
 const Homepage = (): ReactNode => {
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
-  const { meetupId: meetupIdParam } = useParams();
+  const { meetupId: slugParam } = useParams();
   const navigate = useNavigate();
-  // The selected meetup is driven by the URL so meetups can be linked to.
-  const meetupId = meetupIdParam ?? '';
+  // The selected meetup is driven by the URL slug so meetups can be linked to.
+  const slug = slugParam ?? '';
   const { data: meetups, isLoading } = useGetMeetupsQuery({});
+  // Tickets and modal lookups are keyed by the numeric id; resolve it from the
+  // loaded list via the URL slug.
+  const selectedMeetupId =
+    meetups?.find((meetup) => meetup.slug === slug)?.id ?? '';
   // TODO(jan): figure out how to remove this ugly ternary without getting linting errors
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
   // The modal is open whenever a meetup is selected via the URL. The modal
   // itself renders nothing until its data has loaded, so there is no empty flash.
-  const isOpen = meetupId !== '';
+  const isOpen = slug !== '';
   const isRsvp = useMatch('/meetup/:meetupId/rsvp') != null;
 
   const currentMeetups = useMemo(
@@ -96,8 +100,8 @@ const Homepage = (): ReactNode => {
     return null;
   };
 
-  const meetupCardOnClick = (selectedMeetupId: string): void => {
-    void navigate('/meetup/' + selectedMeetupId);
+  const meetupCardOnClick = (slug: string): void => {
+    void navigate('/meetup/' + slug);
   };
 
   // Return to the homepage URL when the modal is closed. Clearing the meetup
@@ -117,7 +121,7 @@ const Homepage = (): ReactNode => {
               meetup={meetup}
               attending={getTicketForMeetup(meetup.id) != null}
               onClick={() => {
-                meetupCardOnClick(meetup.id);
+                meetupCardOnClick(meetup.slug);
               }}
             />
           ))}
@@ -146,8 +150,8 @@ const Homepage = (): ReactNode => {
             ? meetupSection('Past meetups', pastMeetups)
             : null}
           <MeetupModal
-            meetupId={meetupId}
-            ticket={getTicketForMeetup(meetupId)}
+            meetupId={slug}
+            ticket={getTicketForMeetup(selectedMeetupId)}
             isLoggedIn={isLoggedIn}
             isOpen={isOpen}
             isRsvp={isRsvp}

@@ -65,10 +65,10 @@ const OrganizerDashboard = (): ReactNode => {
         ticketsAvailable={meetup.tickets?.available ?? NaN}
         ticketsTotal={meetup.tickets?.total ?? NaN}
         onClick={() => {
-          void navigate(`/meetup/${meetup.id}/manage`);
+          void navigate(`/meetup/${meetup.slug}/manage`);
         }}
         onMouseEnter={() => {
-          prefetchMeetup(meetup.id);
+          prefetchMeetup(meetup.slug);
         }}
       />
     );

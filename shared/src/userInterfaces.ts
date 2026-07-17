@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   email: string;
+  username: string;
   display_name: string;
   first_name: string;
   last_name: string;
@@ -20,6 +21,7 @@ export interface User {
 
 export interface Organizer {
   id: string;
+  username: string;
   display_name: string;
   photo_url: string;
 }
@@ -27,8 +29,10 @@ export interface Organizer {
 // Minimal, non-sensitive user profile safe to expose without authentication.
 export interface PublicUser {
   id: string;
+  username: string;
   display_name: string;
   photo_url: string;
+  is_organizer: boolean;
 }
 
 export interface OrganizerRequestInfo {
