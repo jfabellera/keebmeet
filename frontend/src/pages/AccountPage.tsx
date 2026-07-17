@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { USERNAME_REGEX } from '@keebmeet/shared';
 import { useFormik } from 'formik';
@@ -179,42 +180,58 @@ const AccountPage = (): ReactNode => {
                   }}
                 />
               </div>
-              <FormField
-                formik={formik}
-                name="email"
-                label="Email address"
-                type="email"
-                disabled
-              />
-              <div className="flex flex-row gap-2">
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+                    Public · shown on your profile
+                  </h2>
+                  <Separator className="flex-1" />
+                </div>
                 <FormField
                   formik={formik}
-                  name="firstName"
-                  label="First Name"
-                  className="flex-1"
+                  name="displayName"
+                  label="Display Name"
                 />
                 <FormField
                   formik={formik}
-                  name="lastName"
-                  label="Last Name"
-                  className="flex-1"
+                  name="username"
+                  label="Username"
+                  invalid={
+                    usernameTaken ||
+                    (formik.errors.username != null && formik.touched.username)
+                  }
+                  message={usernameTaken ? 'Username is taken' : undefined}
                 />
               </div>
-              <FormField
-                formik={formik}
-                name="displayName"
-                label="Display Name"
-              />
-              <FormField
-                formik={formik}
-                name="username"
-                label="Username"
-                invalid={
-                  usernameTaken ||
-                  (formik.errors.username != null && formik.touched.username)
-                }
-                message={usernameTaken ? 'Username is taken' : undefined}
-              />
+              <div className="mt-4 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+                    Private · visible to organizers
+                  </h2>
+                  <Separator className="flex-1" />
+                </div>
+                <FormField
+                  formik={formik}
+                  name="email"
+                  label="Email address"
+                  type="email"
+                  disabled
+                />
+                <div className="flex flex-row gap-2">
+                  <FormField
+                    formik={formik}
+                    name="firstName"
+                    label="First Name"
+                    className="flex-1"
+                  />
+                  <FormField
+                    formik={formik}
+                    name="lastName"
+                    label="Last Name"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
               <div className="border-border mt-2 border-t pt-4">
                 <div className="flex flex-col gap-4">
                   <FormField
