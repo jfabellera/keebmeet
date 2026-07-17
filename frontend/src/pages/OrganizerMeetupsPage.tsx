@@ -19,33 +19,35 @@ import { useGetPublicUserQuery } from '../store/userSlice';
 import { hasMeetupEnded } from '../util/timeUtil';
 
 const OrganizerMeetupsPage = (): ReactNode => {
-  const { organizerId } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
 
   // The open meetup is local state, not the URL: on a profile page the modal
   // expands in place rather than routing back to the homepage.
-  const [selectedMeetupId, setSelectedMeetupId] = useState('');
+  const [selectedSlug, setSelectedSlug] = useState('');
 
-  // Navigating to another organizer (e.g. via an organizer link inside the
-  // modal) reuses this component, so close any open meetup on that switch.
-  const [renderedOrganizerId, setRenderedOrganizerId] = useState(organizerId);
-  if (organizerId !== renderedOrganizerId) {
-    setRenderedOrganizerId(organizerId);
-    setSelectedMeetupId('');
+  // Navigating to another user (e.g. via an organizer link inside the modal)
+  // reuses this component, so close any open meetup on that switch.
+  const [renderedUsername, setRenderedUsername] = useState(username);
+  if (username !== renderedUsername) {
+    setRenderedUsername(username);
+    setSelectedSlug('');
   }
 
-  const { data: organizer } = useGetPublicUserQuery(organizerId ?? '', {
-    skip: organizerId == null,
-  });
+  const { data: organizer, isLoading: isOrganizerLoading } =
+    useGetPublicUserQuery(username ?? '', { skip: username == null });
 
-  const { data: meetups, isLoading } = useGetMeetupsQuery(
+  // Meetups are filtered by the numeric id resolved from the username.
+  const organizerId = organizer?.id;
+  const { data: meetups, isLoading: isMeetupsLoading } = useGetMeetupsQuery(
     {
       by_organizer_id: organizerId != null ? [organizerId] : [],
       detail_level: 'detailed',
     },
     { skip: organizerId == null }
   );
+  const isLoading = isOrganizerLoading || isMeetupsLoading;
 
   // The logged-in user's tickets let the modal reflect their RSVP state
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
@@ -118,7 +120,7 @@ const OrganizerMeetupsPage = (): ReactNode => {
             <div
               key={meetup.id}
               onClick={() => {
-                setSelectedMeetupId(meetup.id);
+                setSelectedSlug(meetup.slug);
               }}
             >
               <MeetupCard
@@ -221,13 +223,16 @@ const OrganizerMeetupsPage = (): ReactNode => {
           ) : null}
 
           <MeetupModal
-            meetupId={selectedMeetupId}
-            ticket={getTicketForMeetup(selectedMeetupId)}
+            meetupId={selectedSlug}
+            ticket={getTicketForMeetup(
+              organizerMeetups.find((meetup) => meetup.slug === selectedSlug)
+                ?.id ?? ''
+            )}
             isLoggedIn={isLoggedIn}
-            isOpen={selectedMeetupId !== ''}
+            isOpen={selectedSlug !== ''}
             isRsvp={false}
             onClose={() => {
-              setSelectedMeetupId('');
+              setSelectedSlug('');
             }}
           />
         </div>

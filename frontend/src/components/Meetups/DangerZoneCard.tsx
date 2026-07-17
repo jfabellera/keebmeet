@@ -71,7 +71,7 @@ export const DangerZoneCard = ({ meetupId }: Props): ReactNode => {
   const onDelete = async (): Promise<void> => {
     if (!canConfirm) return;
 
-    const result = await deleteMeetup(meetupId);
+    const result = await deleteMeetup(meetup?.id ?? '');
 
     if ('error' in result && result.error != null) {
       const error = result.error as { data?: { message?: string } };
@@ -91,7 +91,7 @@ export const DangerZoneCard = ({ meetupId }: Props): ReactNode => {
     if (!canConfirmTransfer || selectedOrganizer == null) return;
 
     const result = await transferMeetup({
-      meetupId,
+      meetupId: meetup?.id ?? '',
       payload: { new_lead_organizer_id: selectedOrganizer.id },
     });
 

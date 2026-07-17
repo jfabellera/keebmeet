@@ -2,6 +2,7 @@ import {
   type Organizer as OrganizerInterface,
   type PublicUser as PublicUserInterface,
   type User as UserInterface,
+  USERNAME_REGEX,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
@@ -79,6 +80,7 @@ export const getOrganizers = async (
     (user) =>
       ({
         id: user.id,
+        username: user.username,
         display_name: user.nick_name,
         photo_url: publicUrl(user.photo_key ?? ''),
       }) satisfies OrganizerInterface
@@ -87,27 +89,46 @@ export const getOrganizers = async (
   return res.json(response);
 };
 
+// Public profiles resolve by username only; a numeric id 404s.
 export const getPublicUser = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { user_id } = req.params as Record<string, string>;
+  const { user_id: username } = req.params as Record<string, string>;
 
-  const user = await User.findOneBy({
-    id: user_id,
-  });
+  const user = await User.findOneBy({ username });
 
   if (user == null) {
-    return res.status(404).json({ message: 'Invalid user ID.' });
+    return res.status(404).json({ message: 'User not found.' });
   }
 
   const response: PublicUserInterface = {
     id: user.id,
+    username: user.username,
     display_name: user.nick_name,
     photo_url: publicUrl(user.photo_key ?? ''),
   };
 
   return res.json(response);
+};
+
+export const usernameAvailable = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const username = String(req.query.username ?? '');
+  const excludeId =
+    req.query.exclude_id != null ? String(req.query.exclude_id) : null;
+
+  if (!USERNAME_REGEX.test(username)) {
+    return res.json({ available: false });
+  }
+
+  const existing = await User.findOne({
+    where: { username },
+    select: { id: true },
+  });
+  return res.json({ available: existing == null || existing.id === excludeId });
 };
 
 export const getUser = async (

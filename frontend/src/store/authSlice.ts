@@ -18,6 +18,7 @@ export interface RegisterPayload {
   firstName: string;
   lastName: string;
   nickName: string;
+  username: string;
   password: string;
   requestOrganizer: boolean;
   turnstileToken: string;
@@ -44,6 +45,7 @@ export interface UpdateProfilePayload {
   firstName: string;
   lastName: string;
   displayName: string;
+  username: string;
   /** New password. Omit or leave empty to keep the current one. */
   password?: string;
   /**
@@ -242,6 +244,7 @@ export const register = createAsyncThunk(
         first_name: payload.firstName,
         last_name: payload.lastName,
         nick_name: payload.nickName,
+        username: payload.username,
         password: payload.password,
         is_organizer_requested: payload.requestOrganizer,
         turnstile_token: payload.turnstileToken,
@@ -357,6 +360,7 @@ export const updateProfile = createAsyncThunk(
           first_name: payload.firstName,
           last_name: payload.lastName,
           nick_name: payload.displayName,
+          username: payload.username,
           // Only send a password when the user actually entered a new one.
           ...(payload.password != null && payload.password !== ''
             ? { password: payload.password }

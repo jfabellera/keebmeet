@@ -40,6 +40,7 @@ jest.mock('../entity/User', () => ({
   User: {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
+    countBy: jest.fn(),
     create: jest.fn(),
   },
 }));
@@ -158,6 +159,7 @@ const validCreateBody = (overrides: Record<string, unknown> = {}) => ({
   first_name: 'New',
   last_name: 'User',
   nick_name: 'newbie',
+  username: 'newbie',
   password: 'password123',
   turnstile_token: 'turnstile-token',
   ...overrides,
@@ -165,6 +167,7 @@ const validCreateBody = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockedUser.countBy.mockResolvedValue(0);
   // create() echoes its input back as a saveable row by default.
   mockedUser.create.mockImplementation((attrs: any) => fakeUser(attrs) as never);
   mockedOrganizerRequest.create.mockReturnValue({

@@ -5,6 +5,7 @@
 export interface MeetupInfo {
   // Ids are opaque bigint identifiers, carried as strings end-to-end.
   id: string;
+  slug: string;
   name: string;
   date: string;
   location: {
@@ -16,8 +17,8 @@ export interface MeetupInfo {
     country: string;
     postal_code?: string;
   };
-  organizers?: { id: string; display_name: string }[];
-  lead_organizer?: { id: string; display_name: string };
+  organizers?: { id: string; username: string; display_name: string }[];
+  lead_organizer?: { id: string; username: string; display_name: string };
   tickets?: {
     total: number;
     available: number;

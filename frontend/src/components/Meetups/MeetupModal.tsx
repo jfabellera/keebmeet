@@ -88,7 +88,7 @@ export const MeetupModal = ({
   }, [currentData]);
   const meetup =
     currentData ??
-    (!isOpen || retainedMeetup?.id === meetupId ? retainedMeetup : undefined);
+    (!isOpen || retainedMeetup?.slug === meetupId ? retainedMeetup : undefined);
   const [rsvpPanelOpen, setRsvpPanelOpen] = useState(isRsvp);
   useEffect(() => {
     if (isOpen) setRsvpPanelOpen(isRsvp);
@@ -132,22 +132,23 @@ export const MeetupModal = ({
   useEffect(() => {
     if (meetup == null) return;
 
-    const onMeetupUpdate = (meetupId: string): void => {
+    // Socket rooms are keyed by the numeric id; the getMeetup cache tag by slug.
+    const invalidate = (): void => {
       dispatch(
-        meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetupId }])
+        meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetup.slug }])
       );
     };
 
-    socket.emit('meetup:subscribe', { meetupId });
+    socket.emit('meetup:subscribe', { meetupId: meetup.id });
 
-    socket.on('meetup:update', (payload) => {
-      onMeetupUpdate(payload.meetupId);
+    socket.on('meetup:update', () => {
+      invalidate();
     });
 
     // Resubscribe and force update on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId });
-      onMeetupUpdate(meetupId);
+      socket.emit('meetup:subscribe', { meetupId: meetup.id });
+      invalidate();
     });
 
     // Stay subscribed to updates in case user comes back to page
@@ -201,7 +202,7 @@ export const MeetupModal = ({
       return (
         <Link
           key={i}
-          to={`/organizers/${organizer.id}`}
+          to={`/user/${organizer.username}`}
           className="text-primary hover:underline"
         >
           {part.value}

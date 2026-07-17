@@ -1,7 +1,30 @@
 import { z } from 'zod';
 
+// URL identifiers. Slug: lowercase alphanumerics separated by single hyphens.
+// Username: same charset plus underscore, must include a letter (so it can't be
+// mistaken for a numeric id) and can't start/end with a separator.
+export const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$/;
+
+// Lowercase, hyphen-separated slug from arbitrary text. Returns '' when the
+// input has no usable characters (callers decide on a fallback).
+export const slugify = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const slugField = z.string().max(120).regex(SLUG_REGEX, 'Invalid URL slug');
+const usernameField = z
+  .string()
+  .min(3)
+  .max(30)
+  .regex(USERNAME_REGEX, 'Invalid username')
+  .regex(/[a-z]/, 'Username must include a letter');
+
 export const createMeetupSchema = z.object({
   name: z.string().min(3),
+  slug: slugField,
   date: z.string().datetime({
     offset: false,
     message: 'Datetime must be in the format of YYYY-MM-DDT:HH:mm:ssZ',
@@ -20,6 +43,7 @@ export type CreateMeetupPayload = z.infer<typeof createMeetupSchema>;
 
 export const createArchiveMeetupSchema = z.object({
   name: z.string().min(3),
+  slug: slugField,
   date: z.string().datetime({
     offset: false,
     message: 'Datetime must be in the format of YYYY-MM-DDT:HH:mm:ssZ',
@@ -50,6 +74,7 @@ export type CreateMeetupFromEventbritePayload = z.infer<
 
 export const editMeetupSchema = z.object({
   name: z.string().min(3).optional(),
+  slug: slugField.optional(),
   date: z
     .string()
     .datetime({
@@ -150,6 +175,7 @@ export const createUserSchema = z.object({
   first_name: z.string(),
   last_name: z.string(),
   nick_name: z.string(),
+  username: usernameField,
   password: z.string(), // TODO(jan): check for password strength?
   is_organizer_requested: z.boolean().optional().default(false),
   // Optional R2 key of a profile photo uploaded before registration.
@@ -171,6 +197,7 @@ export const editUserSchema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   nick_name: z.string().optional(),
+  username: usernameField.optional(),
   password: z.string().optional(), // TODO(jan): check for password strength?
   is_organizer: z.boolean().optional(),
   is_admin: z.boolean().optional(),

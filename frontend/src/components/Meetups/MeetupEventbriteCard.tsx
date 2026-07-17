@@ -20,7 +20,7 @@ export const MeetupEventbriteCard = ({ meetupId }: Props): ReactNode => {
   if (meetup?.eventbrite_url == null) return null;
 
   const onSync = async (): Promise<void> => {
-    const result = await syncAttendees(meetupId);
+    const result = await syncAttendees(meetup?.id ?? '');
 
     if ('error' in result && result.error != null) {
       const error = result.error as { data?: { message?: string } };

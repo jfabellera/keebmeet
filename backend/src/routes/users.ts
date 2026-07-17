@@ -10,6 +10,7 @@ import {
   getPublicUser,
   getUser,
   uploadUserImage,
+  usernameAvailable,
 } from '../controllers/users';
 import { authChecker, Rule } from '../middleware/authChecker';
 import { uploadImageFile } from '../middleware/imageUpload';
@@ -36,6 +37,7 @@ router.get(
   authChecker() as RequestHandler,
   getOrganizers as RequestHandler
 );
+router.get('/username-available', usernameAvailable as RequestHandler);
 router.get('/:user_id/public', getPublicUser as RequestHandler);
 router.get(
   '/:user_id',

@@ -8,7 +8,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import useMeasure from 'react-use-measure';
 import { socket } from '../socket';
-import { useGetMeetupDisplayAssetsQuery } from '../store/meetupSlice';
+import {
+  useGetMeetupDisplayAssetsQuery,
+  useGetMeetupQuery,
+} from '../store/meetupSlice';
 
 // Durstenfeld shuffle taken from https://stackoverflow.com/a/12646864
 const shuffleArray = (array: any[]): any[] => {
@@ -20,7 +23,9 @@ const shuffleArray = (array: any[]): any[] => {
 };
 
 const MeetupDisplayPage = (): ReactNode => {
-  const { meetupId } = useParams();
+  const { meetupId: slug } = useParams();
+  const { data: meetup } = useGetMeetupQuery(slug ?? '');
+  const meetupId = meetup?.id ?? '';
   const [searchParams] = useSearchParams();
 
   const parsedInterval = Number(searchParams.get('interval'));
@@ -33,9 +38,9 @@ const MeetupDisplayPage = (): ReactNode => {
     'idle'
   );
   const [raffleType, setRaffleType] = useState<'single' | 'batch'>('single');
-  const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(
-    meetupId ?? ''
-  );
+  const { data: displayAssets } = useGetMeetupDisplayAssetsQuery(meetupId, {
+    skip: meetupId === '',
+  });
   const [idleImageIndex, setIdleImageIndex] = useState<number>(0);
   const [winners, setWinners] = useState<string[] | null>(null);
   const [losers, setLosers] = useState<string[] | null>(null);
@@ -48,10 +53,11 @@ const MeetupDisplayPage = (): ReactNode => {
   const [raffleWinnerActive, setRaffleWinnerActive] = useState<boolean>(true);
 
   useEffect(() => {
-    socket.emit('meetup:subscribe', { meetupId: meetupId ?? '' });
+    if (meetupId === '') return;
+    socket.emit('meetup:subscribe', { meetupId });
     // Resubscribe on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId: meetupId ?? '' });
+      socket.emit('meetup:subscribe', { meetupId });
     });
 
     socket.on('meetup:display', (payload) => {
@@ -66,7 +72,7 @@ const MeetupDisplayPage = (): ReactNode => {
         setDisplayState('idle');
       }
     });
-  }, []);
+  }, [meetupId]);
 
   useEffect(() => {
     if (

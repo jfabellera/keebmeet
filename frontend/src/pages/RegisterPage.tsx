@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/ui/form-field';
 import { Label } from '@/components/ui/label';
+import { USERNAME_REGEX } from '@keebmeet/shared';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useFormik } from 'formik';
 import { Loader2 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useCheckUsernameAvailableQuery } from '../store/userSlice';
 
 const RegisterSchema = Yup.object().shape({
   // Because Yup.string().email() sucks
@@ -28,6 +30,12 @@ const RegisterSchema = Yup.object().shape({
   firstName: Yup.string().required('Required'),
   lastName: Yup.string().required('Required'),
   nickName: Yup.string().required('Required'),
+  username: Yup.string()
+    .required('Required')
+    .matches(
+      USERNAME_REGEX,
+      'Lowercase letters, numbers, hyphens, and underscores only'
+    ),
   password: Yup.string()
     .required('Required')
     .matches(
@@ -52,6 +60,7 @@ const RegisterPage = (): ReactNode => {
       firstName: '',
       lastName: '',
       nickName: '',
+      username: '',
       password: '',
       confirmPassword: '',
       requestOrganizer: false,
@@ -85,6 +94,13 @@ const RegisterPage = (): ReactNode => {
     validationSchema: RegisterSchema,
     validateOnMount: true,
   });
+
+  const usernameValid = USERNAME_REGEX.test(formik.values.username);
+  const { data: usernameCheck } = useCheckUsernameAvailableQuery(
+    { username: formik.values.username },
+    { skip: !usernameValid }
+  );
+  const usernameTaken = usernameValid && usernameCheck?.available === false;
 
   return (
     <Page>
@@ -133,6 +149,16 @@ const RegisterPage = (): ReactNode => {
                   formik={formik}
                   name="nickName"
                   label="Display Name"
+                />
+                <FormField
+                  formik={formik}
+                  name="username"
+                  label="Username"
+                  invalid={
+                    usernameTaken ||
+                    (formik.errors.username != null && formik.touched.username)
+                  }
+                  message={usernameTaken ? 'Username is taken' : undefined}
                 />
                 <FormField
                   formik={formik}
@@ -190,7 +216,9 @@ const RegisterPage = (): ReactNode => {
                 <div className="flex flex-col gap-10 pt-2">
                   <Button
                     type="submit"
-                    disabled={loading || !formik.isValid || isUploading}
+                    disabled={
+                      loading || !formik.isValid || isUploading || usernameTaken
+                    }
                     size="lg"
                   >
                     Sign up

@@ -25,12 +25,13 @@ const ManageMeetupHomePage = (): ReactNode => {
     meetupId ?? ''
   );
   const { data: attendees, isLoading: isAttendeesLoading } =
-    useGetMeetupAttendeesQuery({
-      meetup_id: meetupId ?? '',
-    });
+    useGetMeetupAttendeesQuery(
+      { meetup_id: meetup?.id ?? '' },
+      { skip: meetup == null }
+    );
 
   const { data: raffleRecords, isLoading: isRafflesLoading } =
-    useGetRaffleHistoryQuery(meetupId ?? '');
+    useGetRaffleHistoryQuery(meetup?.id ?? '', { skip: meetup == null });
 
   const isLoading = isMeetupLoading || isAttendeesLoading || isRafflesLoading;
   const navigate = useNavigate();

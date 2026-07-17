@@ -20,6 +20,7 @@ jest.mock('../entity/Meetup', () => ({
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     count: jest.fn(),
+    countBy: jest.fn(),
     create: jest.fn(),
   },
 }));
@@ -224,6 +225,7 @@ const mockRequest = (
 const fakeMeetupRow = (overrides = {}): any => ({
   id: '10',
   name: 'Tex Mechs',
+  slug: 'tex-mechs',
   date: '2026-07-01T18:00:00.000Z',
   utc_offset: -5,
   duration_hours: 3,
@@ -255,6 +257,7 @@ beforeEach(() => {
   mockedGalleryRecord.createQueryBuilder.mockReturnValue(
     galleryQueryBuilder as any
   );
+  mockedMeetup.countBy.mockResolvedValue(0);
   mockedMeetup.create.mockImplementation((attrs: any) => ({
     organizers: [],
     ...attrs,
@@ -348,12 +351,25 @@ describe('getMeetup', () => {
 
     expect((res.body as any).tickets).toBeUndefined();
   });
+
+  it('resolves by slug (not id) and returns the slug', async () => {
+    mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
+    const res = mockResponse();
+
+    await getMeetup(mockRequest({}, { meetup_id: 'tex-mechs' }), res);
+
+    expect(mockedMeetup.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'tex-mechs' } })
+    );
+    expect((res.body as any).slug).toBe('tex-mechs');
+  });
 });
 
 // ---- createMeetup ----------------------------------------------------------
 
 const validCreateBody = (overrides = {}) => ({
   name: 'Brand New Meetup',
+  slug: 'brand-new-meetup',
   date: '2026-08-01T18:00:00.000Z',
   address: '500 Congress Ave',
   duration_hours: 4,
@@ -381,6 +397,18 @@ describe('createMeetup', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body).toEqual({ message: 'Meetup name is taken.' });
+  });
+
+  it('returns 409 when the slug is taken', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedMeetup.countBy.mockResolvedValue(1);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({ message: 'That URL is already taken.' });
   });
 
   it('returns 400 when geocoding fails', async () => {
@@ -518,6 +546,7 @@ describe('createMeetup', () => {
 
 const validArchiveBody = (overrides = {}) => ({
   name: 'Archived Meetup 2019',
+  slug: 'archived-meetup-2019',
   date: '2019-08-01T18:00:00.000Z',
   address: '500 Congress Ave',
   image_key: 'http://img',
@@ -1456,7 +1485,7 @@ describe('transferMeetup', () => {
       'john@example.com',
       'Tex Mechs',
       'jane',
-      expect.stringContaining('/meetup/10/manage')
+      expect.stringContaining('/meetup/tex-mechs/manage')
     );
     expect(res.statusCode).toBe(200);
   });

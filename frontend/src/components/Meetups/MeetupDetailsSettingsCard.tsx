@@ -11,13 +11,14 @@ import {
 import { useBoolean } from '@/hooks/useBoolean';
 import { usePendingUploads } from '@/hooks/usePendingUploads';
 import { useAppSelector } from '@/store/hooks';
-import { type EditMeetupPayload } from '@keebmeet/shared';
+import { SLUG_REGEX, type EditMeetupPayload } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormik } from 'formik';
 import { useEffect, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import {
+  useCheckSlugAvailableQuery,
   useEditMeetupMutation,
   useGetMeetupQuery,
 } from '../../store/meetupSlice';
@@ -42,6 +43,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const formik = useFormik({
     initialValues: {
       name: '',
+      slug: '',
       date: '',
       startTime: '',
       address: '',
@@ -57,6 +59,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
     onSubmit: async (values) => {
       const payload: EditMeetupPayload = {};
       if (formik.initialValues.name !== values.name) payload.name = values.name;
+      if (formik.initialValues.slug !== values.slug) payload.slug = values.slug;
       if (
         formik.initialValues.date !== values.date ||
         formik.initialValues.startTime !== values.startTime
@@ -95,7 +98,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       if (organizerName !== initialOrganizerName)
         payload.organizer_name = organizerName;
 
-      const result = await editMeetup({ meetupId, payload });
+      const result = await editMeetup({ meetupId: meetup?.id ?? '', payload });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
         // is this allowed
@@ -112,10 +115,26 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
     validateOnMount: true,
   });
 
+  const slugChanged = formik.values.slug !== formik.initialValues.slug;
+  const slugValid = SLUG_REGEX.test(formik.values.slug);
+  const { data: slugCheck } = useCheckSlugAvailableQuery(
+    { slug: formik.values.slug, excludeId: meetup?.id },
+    { skip: !isEditable || !slugChanged || !slugValid }
+  );
+  const slugTaken = slugChanged && slugValid && slugCheck?.available === false;
+  const slugError = slugChanged
+    ? !slugValid
+      ? 'Use lowercase letters, numbers, and hyphens'
+      : slugTaken
+        ? 'That URL is already taken'
+        : undefined
+    : undefined;
+
   useEffect(() => {
     formik.resetForm({
       values: {
         name: meetup?.name ?? '',
+        slug: meetup?.slug ?? '',
         date: dayjs(meetup?.date, 'YYYY-MM-DDTHH:mm:ss').format('YYYY-MM-DD'),
         startTime: dayjs(meetup?.date, 'YYYY-MM-DDTHH:mm:ss').format('hh:mm'),
         address: meetup?.location.full_address ?? '',
@@ -150,7 +169,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       onEditCancel={onCancel}
       onEditSubmit={onSubmit}
       isSubmitLoading={isSaving}
-      isFormInvalid={false}
+      isFormInvalid={slugError != null}
       isSubmitDisabled={isUploading}
     >
       <form onSubmit={formik.handleSubmit} noValidate>
@@ -242,6 +261,17 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onChange={formik.handleChange}
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.name}
+        />
+        <EditableFormField
+          name={'URL slug'}
+          value={meetup?.slug}
+          editable={isEditable}
+          id={'slug'}
+          type={'text'}
+          isInvalid={slugError != null}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          errorMessage={slugError}
         />
         <EditableFormField
           name={'Date'}

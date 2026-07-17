@@ -32,6 +32,7 @@ import { FiCheck } from 'react-icons/fi';
 import { MdQrCodeScanner } from 'react-icons/md';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useGetMeetupQuery } from '../store/meetupSlice';
 import {
   useCheckInAttendeeMutation,
   useEditAttendeeMutation,
@@ -39,12 +40,15 @@ import {
 } from '../store/organizerSlice';
 
 const CheckInPage = (): ReactNode => {
-  const { meetupId: meetupIdParam } = useParams();
-  const meetupId = meetupIdParam ?? '';
-  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery({
-    meetup_id: meetupId,
-    params: { detail_level: 'detailed' },
-  });
+  const { meetupId: slugParam } = useParams();
+  const { data: meetup } = useGetMeetupQuery(slugParam ?? '');
+  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery(
+    {
+      meetup_id: meetup?.id ?? '',
+      params: { detail_level: 'detailed' },
+    },
+    { skip: meetup == null }
+  );
 
   const [searchValue, setSearchValue] = useState<string>('');
   const searchRef = useRef<HTMLInputElement>(null);

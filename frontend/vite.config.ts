@@ -11,6 +11,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // @keebmeet/shared is a linked CommonJS workspace package; Vite won't
+  // pre-bundle linked deps by default, and its re-exported (export *) names
+  // aren't statically analyzable when served raw. Force pre-bundling so named
+  // imports resolve.
+  optimizeDeps: {
+    include: ['@keebmeet/shared'],
+  },
   // Dev-only single-origin proxy mirroring the production Caddyfile, so the
   // whole app (SPA + API + auth + socket) is reachable from one origin. This
   // lets an HTTPS tunnel (e.g. `cloudflared tunnel --url http://localhost:5173`)

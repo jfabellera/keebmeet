@@ -23,6 +23,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { FiEdit2 } from 'react-icons/fi';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useGetMeetupQuery } from '../store/meetupSlice';
 import {
   useEditAttendeeMutation,
   useGetMeetupAttendeesQuery,
@@ -30,12 +31,16 @@ import {
 
 const ManageMeetupAttendeesPage = (): ReactNode => {
   const { meetupId } = useParams();
-  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery({
-    meetup_id: meetupId ?? '',
-    params: {
-      detail_level: 'detailed',
+  const { data: meetup } = useGetMeetupQuery(meetupId ?? '');
+  const { data: attendees, isLoading } = useGetMeetupAttendeesQuery(
+    {
+      meetup_id: meetup?.id ?? '',
+      params: {
+        detail_level: 'detailed',
+      },
     },
-  });
+    { skip: meetup == null }
+  );
 
   const [editAttendee, { isLoading: isSaving }] = useEditAttendeeMutation();
   const { isOpen, onOpen, onClose } = useDisclosure();

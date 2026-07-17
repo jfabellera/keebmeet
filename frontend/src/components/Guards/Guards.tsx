@@ -121,8 +121,7 @@ export const RequireMeetupOrganizer = ({ children }: GuardProps): ReactNode => {
   if (isLoading) return null;
 
   const organizesMeetup =
-    organizedMeetups?.some((meetup) => meetup.id === id) ??
-    false;
+    organizedMeetups?.some((meetup) => meetup.slug === id) ?? false;
 
   if (!organizesMeetup) return <Navigate to="/" replace />;
 

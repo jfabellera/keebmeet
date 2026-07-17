@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { isNotFoundError } from '../components/Guards/Guards';
 import RaffleHistoryList from '../components/RafflePage/RaffleHistoryList';
 import { socket } from '../socket';
+import { useGetMeetupQuery } from '../store/meetupSlice';
 import {
   useClaimRaffleWinnerMutation,
   useGetRaffleRecordQuery,
@@ -42,8 +43,9 @@ const colorClass = (color: StateColor): string =>
   })[color];
 
 const RafflePage = (): ReactNode => {
-  const { meetupId: meetupIdParam } = useParams();
-  const meetupId = meetupIdParam ?? '';
+  const { meetupId: slugParam } = useParams();
+  const { data: meetup } = useGetMeetupQuery(slugParam ?? '');
+  const meetupId = meetup?.id ?? '';
   const [
     rollRaffleWinner,
     {

@@ -26,38 +26,41 @@ const ManageMeetupPage = ({ children }: ManageMeetupPageProps): ReactNode => {
    * cache for the fetched meetup and attendees whenever a meetup is updated.
    */
   useEffect(() => {
-    const onMeetupUpdate = (meetupId: string): void => {
-      console.log(meetupId);
+    if (meetup == null) return;
+
+    // Socket rooms and the attendee/raffle caches are keyed by the numeric id;
+    // the getMeetup cache tag by slug.
+    const invalidate = (): void => {
       dispatch(
-        meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetupId }])
+        meetupSlice.util.invalidateTags([{ type: 'Meetup', id: meetup.slug }])
       );
       dispatch(
         organizerSlice.util.invalidateTags([
-          { type: 'Attendees', id: meetupId },
+          { type: 'Attendees', id: meetup.id },
         ])
       );
       dispatch(
         organizerSlice.util.invalidateTags([
           'Raffle',
-          { type: 'Raffles', id: meetupId },
+          { type: 'Raffles', id: meetup.id },
         ])
       );
     };
 
-    socket.emit('meetup:subscribe', { meetupId });
+    socket.emit('meetup:subscribe', { meetupId: meetup.id });
 
-    socket.on('meetup:update', (payload) => {
-      onMeetupUpdate(payload.id);
+    socket.on('meetup:update', () => {
+      invalidate();
     });
 
     // Resubscribe and force update on reconnection after losing connection
     socket.on('connect', () => {
-      socket.emit('meetup:subscribe', { meetupId });
-      onMeetupUpdate(meetupId ?? '');
+      socket.emit('meetup:subscribe', { meetupId: meetup.id });
+      invalidate();
     });
 
     // Stay subscribed to updates in case user comes back to page
-  }, []);
+  }, [meetup]);
 
   const allSidebarItems: SidebarItem[] = [
     {

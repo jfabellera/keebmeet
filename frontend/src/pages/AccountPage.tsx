@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Spinner } from '@/components/ui/spinner';
+import { USERNAME_REGEX } from '@keebmeet/shared';
 import { useFormik } from 'formik';
 import { type ReactNode } from 'react';
 import { FaDiscord } from 'react-icons/fa';
@@ -15,6 +16,7 @@ import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { updateProfile } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
+  useCheckUsernameAvailableQuery,
   useGetUserQuery,
   useRequestOrganizerMutation,
 } from '../store/userSlice';
@@ -27,6 +29,12 @@ const ProfileSchema = Yup.object().shape({
   firstName: Yup.string().required('Required'),
   lastName: Yup.string().required('Required'),
   displayName: Yup.string().required('Required'),
+  username: Yup.string()
+    .required('Required')
+    .matches(
+      USERNAME_REGEX,
+      'Lowercase letters, numbers, hyphens, and underscores only'
+    ),
   // Password is optional; only validated when the user types a new one.
   password: Yup.string().test(
     'password-strength',
@@ -70,6 +78,7 @@ const AccountPage = (): ReactNode => {
       firstName: user?.first_name ?? '',
       lastName: user?.last_name ?? '',
       displayName: user?.display_name ?? '',
+      username: user?.username ?? '',
       password: '',
       confirmPassword: '',
       // photoUrl is the preview; photoKey is only set on a new upload.
@@ -99,6 +108,7 @@ const AccountPage = (): ReactNode => {
           firstName: values.firstName,
           lastName: values.lastName,
           displayName: values.displayName,
+          username: values.username,
           password: values.password,
           photoKey,
         })
@@ -114,6 +124,7 @@ const AccountPage = (): ReactNode => {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 displayName: values.displayName,
+                username: values.username,
                 password: '',
                 confirmPassword: '',
                 photoUrl: values.photoUrl,
@@ -128,6 +139,16 @@ const AccountPage = (): ReactNode => {
         .catch(() => {});
     },
   });
+
+  const usernameChanged =
+    formik.values.username !== formik.initialValues.username;
+  const usernameValid = USERNAME_REGEX.test(formik.values.username);
+  const { data: usernameCheck } = useCheckUsernameAvailableQuery(
+    { username: formik.values.username, excludeId: user?.id },
+    { skip: !usernameChanged || !usernameValid }
+  );
+  const usernameTaken =
+    usernameChanged && usernameValid && usernameCheck?.available === false;
 
   return (
     <Page>
@@ -184,6 +205,16 @@ const AccountPage = (): ReactNode => {
                 name="displayName"
                 label="Display Name"
               />
+              <FormField
+                formik={formik}
+                name="username"
+                label="Username"
+                invalid={
+                  usernameTaken ||
+                  (formik.errors.username != null && formik.touched.username)
+                }
+                message={usernameTaken ? 'Username is taken' : undefined}
+              />
               <div className="border-border mt-2 border-t pt-4">
                 <div className="flex flex-col gap-4">
                   <FormField
@@ -203,7 +234,11 @@ const AccountPage = (): ReactNode => {
               <Button
                 type="submit"
                 disabled={
-                  loading || !formik.isValid || !formik.dirty || isUploading
+                  loading ||
+                  !formik.isValid ||
+                  !formik.dirty ||
+                  isUploading ||
+                  usernameTaken
                 }
                 size="lg"
               >
