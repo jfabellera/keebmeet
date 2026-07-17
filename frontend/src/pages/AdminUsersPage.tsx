@@ -23,6 +23,7 @@ import { type User } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { setUserAccess } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -275,18 +276,28 @@ const AdminUsersPage = (): ReactNode => {
               return (
                 <TableRow key={user.id}>
                   <TableCell>
-                    <Avatar>
-                      <AvatarImage
-                        src={user.photo_url}
-                        alt={`${user.display_name}'s avatar`}
-                      />
-                      <AvatarFallback>
-                        {user.display_name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link
+                      to={`/user/${user.username}`}
+                      aria-label={`View ${user.display_name}'s profile`}
+                    >
+                      <Avatar>
+                        <AvatarImage
+                          src={user.photo_url}
+                          alt={`${user.display_name}'s avatar`}
+                        />
+                        <AvatarFallback>
+                          {user.display_name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {user.display_name}
+                    <Link
+                      to={`/user/${user.username}`}
+                      className="hover:underline"
+                    >
+                      {user.display_name}
+                    </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {user.email}
