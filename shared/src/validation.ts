@@ -20,7 +20,10 @@ const usernameField = z
   .string()
   .min(3)
   .max(30)
-  .regex(USERNAME_REGEX, 'Invalid username')
+  .regex(
+    USERNAME_REGEX,
+    'Lowercase letters, numbers, and underscores only, and cannot start or end with an underscore'
+  )
   .regex(/[a-z]/, 'Username must include a letter');
 
 export const createMeetupSchema = z.object({
