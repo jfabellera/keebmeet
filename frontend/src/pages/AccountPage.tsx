@@ -33,7 +33,7 @@ const ProfileSchema = Yup.object().shape({
     .required('Required')
     .matches(
       USERNAME_REGEX,
-      'Lowercase letters, numbers, hyphens, and underscores only'
+      'Lowercase letters, numbers, and underscores only'
     ),
   // Password is optional; only validated when the user types a new one.
   password: Yup.string().test(

@@ -34,7 +34,7 @@ const RegisterSchema = Yup.object().shape({
     .required('Required')
     .matches(
       USERNAME_REGEX,
-      'Lowercase letters, numbers, hyphens, and underscores only'
+      'Lowercase letters, numbers, and underscores only'
     ),
   password: Yup.string()
     .required('Required')

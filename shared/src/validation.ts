@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 // URL identifiers. Slug: lowercase alphanumerics separated by single hyphens.
-// Username: same charset plus underscore, must include a letter (so it can't be
-// mistaken for a numeric id) and can't start/end with a separator.
+// Username: lowercase alphanumerics and underscores only (snake_case, no
+// hyphens), must include a letter (so it can't be mistaken for a numeric id)
+// and can't start/end with an underscore.
 export const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?$/;
+export const USERNAME_REGEX = /^[a-z0-9](?:[a-z0-9_]*[a-z0-9])?$/;
 
 // Lowercase, hyphen-separated slug from arbitrary text. Returns '' when the
 // input has no usable characters (callers decide on a fallback).

@@ -23,7 +23,7 @@ export class AddUserUsername1784310000000 implements MigrationInterface {
       let n = 1;
       while (used.has(candidate)) {
         n += 1;
-        candidate = `${base}-${n}`;
+        candidate = `${base}_${n}`;
       }
       used.add(candidate);
       await queryRunner.query(`UPDATE users SET username = $1 WHERE id = $2`, [
