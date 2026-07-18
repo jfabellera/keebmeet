@@ -1,3 +1,4 @@
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
@@ -84,6 +85,22 @@ const Homepage = (): ReactNode => {
     [meetups]
   );
 
+  // Past meetups are already newest-first, so grouping into consecutive runs
+  // yields years in descending order.
+  const pastMeetupsByYear = useMemo(() => {
+    const groups: { year: number; meetups: MeetupInfo[] }[] = [];
+    for (const meetup of pastMeetups ?? []) {
+      const year = dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').year();
+      const last = groups[groups.length - 1];
+      if (last != null && last.year === year) {
+        last.meetups.push(meetup);
+      } else {
+        groups.push({ year, meetups: [meetup] });
+      }
+    }
+    return groups;
+  }, [pastMeetups]);
+
   /**
    * Get ticket for a meetup if the logged in user is attending the meetup. Otherwise, return null.
    *
@@ -110,36 +127,54 @@ const Homepage = (): ReactNode => {
     void navigate('/');
   };
 
-  interface MeetupSectionOptions {
-    gridClass?: string;
-  }
+  const UPCOMING_GRID =
+    'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] sm:gap-5';
+  const PAST_GRID =
+    'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-5';
 
-  const meetupSection = (
-    title: string,
-    meetups: MeetupInfo[],
-    { gridClass }: MeetupSectionOptions = {}
-  ): ReactNode => {
-    const grid =
-      gridClass ??
-      'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] sm:gap-5';
-    return (
-      <div>
-        <h2 className="mb-3 text-2xl font-bold">{title}</h2>
-        <div className={grid}>
-          {meetups?.map((meetup) => (
-            <PrefetchingMeetupCard
-              key={meetup.id}
-              meetup={meetup}
-              attending={getTicketForMeetup(meetup.id) != null}
-              onClick={() => {
-                meetupCardOnClick(meetup.slug);
-              }}
-            />
-          ))}
-        </div>
+  const meetupGrid = (meetups: MeetupInfo[], gridClass: string): ReactNode => (
+    <div className={gridClass}>
+      {meetups.map((meetup) => (
+        <PrefetchingMeetupCard
+          key={meetup.id}
+          meetup={meetup}
+          attending={getTicketForMeetup(meetup.id) != null}
+          onClick={() => {
+            meetupCardOnClick(meetup.slug);
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => (
+    <div>
+      <h2 className="mb-3 text-2xl font-bold">{title}</h2>
+      {meetupGrid(meetups, UPCOMING_GRID)}
+    </div>
+  );
+
+  const pastMeetupsSection = (): ReactNode => (
+    <div>
+      <h2 className="mb-3 text-2xl font-bold">Past meetups</h2>
+      <div className="flex flex-col gap-6">
+        {pastMeetupsByYear.map(({ year, meetups }) => (
+          <section key={year}>
+            <div className="mb-4 flex items-center gap-3">
+              <h3 className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
+                {year}
+              </h3>
+              <Separator className="flex-1" />
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {meetups.length}
+              </span>
+            </div>
+            {meetupGrid(meetups, PAST_GRID)}
+          </section>
+        ))}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <Page>
@@ -157,12 +192,7 @@ const Homepage = (): ReactNode => {
             ? meetupSection('Upcoming meetups', futureMeetups)
             : null}
 
-          {pastMeetups != null && pastMeetups.length > 0
-            ? meetupSection('Past meetups', pastMeetups, {
-                gridClass:
-                  'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-5',
-              })
-            : null}
+          {pastMeetupsByYear.length > 0 ? pastMeetupsSection() : null}
           <MeetupModal
             meetupId={slug}
             ticket={getTicketForMeetup(selectedMeetupId)}
