@@ -48,6 +48,9 @@ const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
 const attendeesField = (embed: any): any =>
   embed.fields.find((field: any) => field.name.startsWith('Attendees'));
 
+const fieldNamed = (embed: any, name: string): any =>
+  embed.fields.find((field: any) => field.name === name);
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -83,6 +86,15 @@ describe('buildMeetupEmbed', () => {
 
     expect(field.name).toBe('Attendees (2/100)');
     expect(field.value).toBe('Alice\nBob');
+  });
+
+  it('links the location to a Google Maps search', () => {
+    const embed = buildMeetupEmbed(fakeMeetup({ address: '123 St' }), []);
+    const field = fieldNamed(embed, 'Location');
+
+    expect(field.value).toBe(
+      '[123 St](https://www.google.com/maps/search/?api=1&query=123%20St)'
+    );
   });
 
   it('shows a placeholder when there are no attendees', () => {

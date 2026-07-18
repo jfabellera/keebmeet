@@ -119,7 +119,12 @@ export const buildMeetupEmbed = (
       name: 'Date',
       value: `<t:${Math.floor(Date.parse(meetup.date) / 1000)}:F>`,
     },
-    { name: 'Location', value: meetup.address },
+    {
+      name: 'Location',
+      value: `[${meetup.address}](https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        meetup.address
+      )})`,
+    },
     {
       name: `Attendees (${attendeeNames.length}/${meetup.capacity})`,
       value: buildAttendeesValue(attendeeNames),
