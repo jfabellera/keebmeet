@@ -42,6 +42,8 @@ const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   address: '123 St',
   image_key: 'http://img',
   capacity: 100,
+  lead_organizer: { id: '10', username: 'ada', nick_name: 'Ada' },
+  organizers: [],
   discordMessage: null,
   ...overrides,
 });
@@ -87,6 +89,27 @@ describe('buildMeetupEmbed', () => {
 
     expect(field.name).toBe('Attendees (2/100)');
     expect(field.value).toBe('Alice\nBob');
+  });
+
+  it('credits a single organizer in the footer', () => {
+    const embed = buildMeetupEmbed(fakeMeetup(), []);
+
+    expect(embed.footer?.text).toBe('Organized by Ada');
+  });
+
+  it('credits multiple organizers with lead first, deduped', () => {
+    const embed = buildMeetupEmbed(
+      fakeMeetup({
+        lead_organizer: { id: '10', username: 'ada', nick_name: 'Ada' },
+        organizers: [
+          { id: '10', username: 'ada', nick_name: 'Ada' },
+          { id: '11', username: 'grace', nick_name: 'Grace' },
+        ],
+      }),
+      []
+    );
+
+    expect(embed.footer?.text).toBe('Organized by Ada and Grace');
   });
 
   it('links the location to a Google Maps search', () => {

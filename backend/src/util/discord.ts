@@ -303,6 +303,7 @@ export interface DiscordEmbed {
   url?: string;
   image?: { url: string };
   fields?: Array<{ name: string; value: string; inline?: boolean }>;
+  footer?: { text: string; icon_url?: string };
 }
 
 // Message components (action rows + buttons). Loosely typed — the caller builds

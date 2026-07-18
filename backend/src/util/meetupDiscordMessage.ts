@@ -28,8 +28,7 @@ export const buildMeetupComponents = (
 ): DiscordComponent[] => {
   const meetupUrl = `${config.webUrl}/meetup/${meetup.slug}`;
 
-  // When RSVPs are interactive the RSVP button doesn't link anywhere, so add a
-  // link button to the meetup page. The non-RSVP button already links there.
+  // The interactive RSVP button doesn't link anywhere, so add a link button.
   const components: DiscordComponent[] = allowRsvp
     ? [
         {
@@ -105,6 +104,32 @@ const buildAttendeesValue = (names: string[]): string => {
   return lines.join('\n');
 };
 
+// Footers are plain text (no links), so this credits organizers by name only.
+const buildOrganizersFooter = (
+  meetup: Meetup
+): { text: string } | undefined => {
+  const seen = new Set<string>();
+  const names = [meetup.lead_organizer, ...(meetup.organizers ?? [])]
+    .filter((organizer) => organizer != null)
+    .filter((organizer) => {
+      if (seen.has(organizer.id)) return false;
+      seen.add(organizer.id);
+      return true;
+    })
+    .map((organizer) => organizer.nick_name);
+
+  if (names.length === 0) return undefined;
+
+  const list =
+    names.length === 1
+      ? names[0]
+      : names.length === 2
+        ? `${names[0]} and ${names[1]}`
+        : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+
+  return { text: `Organized by ${list}` };
+};
+
 /**
  * Returns a wsrv.nl proxy URL that crops the image to a 2:1 aspect ratio
  * suitable for Discord embeds
@@ -125,6 +150,7 @@ export const buildMeetupEmbed = (
   description: meetup.description,
   url: `${config.webUrl}/meetup/${meetup.slug}`,
   image: { url: cropImageUrl(publicUrl(meetup.image_key)) },
+  footer: buildOrganizersFooter(meetup),
   fields: [
     {
       name: 'Date',
@@ -154,7 +180,7 @@ export const refreshMeetupDiscordMessage = async (
 ): Promise<void> => {
   try {
     const meetup = await Meetup.findOne({
-      relations: { discordMessage: true },
+      relations: { discordMessage: true, lead_organizer: true, organizers: true },
       where: { id: meetupId },
     });
 
