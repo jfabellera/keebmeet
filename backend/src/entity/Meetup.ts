@@ -99,4 +99,7 @@ export class Meetup extends BaseEntity {
   // always the submitter). Null when the submitter ran it themselves.
   @Column({ type: 'varchar', length: 30, nullable: true })
   organizer_name?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  is_unlisted: boolean;
 }
