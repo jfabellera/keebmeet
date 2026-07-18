@@ -35,18 +35,25 @@ const mockedEditEmbed = jest.mocked(editEmbedMessage);
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   id: '1',
+  slug: 'my-meetup',
   name: 'Meetup',
   description: 'desc',
   date: '2026-07-01T00:00:00Z',
+  duration_hours: 2,
   address: '123 St',
   image_key: 'http://img',
   capacity: 100,
+  lead_organizer: { id: '10', username: 'ada', nick_name: 'Ada' },
+  organizers: [],
   discordMessage: null,
   ...overrides,
 });
 
 const attendeesField = (embed: any): any =>
   embed.fields.find((field: any) => field.name.startsWith('Attendees'));
+
+const fieldNamed = (embed: any, name: string): any =>
+  embed.fields.find((field: any) => field.name === name);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -83,6 +90,52 @@ describe('buildMeetupEmbed', () => {
 
     expect(field.name).toBe('Attendees (2/100)');
     expect(field.value).toBe('Alice\nBob');
+  });
+
+  it('credits a single organizer in the footer', () => {
+    const embed = buildMeetupEmbed(fakeMeetup(), []);
+
+    expect(embed.footer?.text).toBe('Organized by Ada');
+  });
+
+  it('credits multiple organizers with lead first, deduped', () => {
+    const embed = buildMeetupEmbed(
+      fakeMeetup({
+        lead_organizer: { id: '10', username: 'ada', nick_name: 'Ada' },
+        organizers: [
+          { id: '10', username: 'ada', nick_name: 'Ada' },
+          { id: '11', username: 'grace', nick_name: 'Grace' },
+        ],
+      }),
+      []
+    );
+
+    expect(embed.footer?.text).toBe('Organized by Ada and Grace');
+  });
+
+  it('shows the date as a start–end range using the duration', () => {
+    const embed = buildMeetupEmbed(fakeMeetup(), []);
+    const field = fieldNamed(embed, 'Date');
+
+    const start = Date.parse('2026-07-01T00:00:00Z') / 1000;
+    expect(field.value).toBe(`<t:${start}:F> – <t:${start + 7200}:t>`);
+  });
+
+  it('shows only the start when there is no duration', () => {
+    const embed = buildMeetupEmbed(fakeMeetup({ duration_hours: 0 }), []);
+    const field = fieldNamed(embed, 'Date');
+
+    const start = Date.parse('2026-07-01T00:00:00Z') / 1000;
+    expect(field.value).toBe(`<t:${start}:F>`);
+  });
+
+  it('links the location to a Google Maps search', () => {
+    const embed = buildMeetupEmbed(fakeMeetup({ address: '123 St' }), []);
+    const field = fieldNamed(embed, 'Location');
+
+    expect(field.value).toBe(
+      '[123 St](https://www.google.com/maps/search/?api=1&query=123%20St)'
+    );
   });
 
   it('shows a placeholder when there are no attendees', () => {
@@ -125,11 +178,28 @@ describe('buildMeetupComponents', () => {
     expect(button(components)).not.toHaveProperty('url');
   });
 
+  it('adds a View on KeebMeet link button when RSVPs are allowed', () => {
+    const components = buildMeetupComponents(
+      fakeMeetup({ slug: 'my-meetup' }),
+      true
+    );
+
+    expect((components[0] as any).components[1]).toEqual(
+      expect.objectContaining({
+        label: 'View on KeebMeet',
+        url: 'http://web/meetup/my-meetup',
+      })
+    );
+  });
+
   it('uses a link to the meetup page when RSVPs are not allowed', () => {
-    const components = buildMeetupComponents(fakeMeetup({ id: '42' }), false);
+    const components = buildMeetupComponents(
+      fakeMeetup({ slug: 'my-meetup' }),
+      false
+    );
 
     expect(button(components)).toEqual(
-      expect.objectContaining({ url: 'http://web/meetup/42' })
+      expect.objectContaining({ url: 'http://web/meetup/my-meetup' })
     );
     expect(button(components)).not.toHaveProperty('custom_id');
   });
