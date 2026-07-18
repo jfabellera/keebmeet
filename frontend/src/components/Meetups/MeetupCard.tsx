@@ -42,49 +42,48 @@ export const MeetupCard = ({
           className="size-full object-cover"
         />
       </AspectRatio>
-      <div className="p-2.5 sm:p-3">
-        <div className="flex flex-col items-start gap-1 sm:gap-2">
-          <div className="flex w-full items-start gap-2">
-            <p className="text-muted-foreground text-sm font-semibold sm:text-base">
-              {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format(
-                'MMMM DD, YYYY'
-              )}
-            </p>
-            <div className="text-muted-foreground ml-auto flex items-center gap-2">
-              {meetup.is_archive ? (
-                <Tooltip>
-                  <TooltipTrigger className="flex" aria-label="Archived">
-                    <ArchiveIcon className="size-4.5" />
-                  </TooltipTrigger>
-                  <TooltipContent>This is an archived meetup</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {attending === true ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    className="flex text-green-600"
-                    aria-label={attendedLabel}
-                  >
-                    <FiCheck className="size-5" strokeWidth={2.5} />
-                  </TooltipTrigger>
-                  <TooltipContent>{attendedLabel}</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {meetup.has_photos === true ? (
-                <Tooltip>
-                  <TooltipTrigger className="flex" aria-label="Has photos">
-                    <FiImage className="size-5" />
-                  </TooltipTrigger>
-                  <TooltipContent>This meetup has photos!</TooltipContent>
-                </Tooltip>
-              ) : null}
-            </div>
+      <div className="p-3 sm:p-4">
+        <div className="flex items-center gap-2">
+          <h3 className="line-clamp-1 min-w-0 text-base font-semibold sm:text-lg">
+            {meetup.name}
+          </h3>
+          <div className="text-muted-foreground ml-auto flex shrink-0 items-center gap-2">
+            {meetup.is_archive ? (
+              <Tooltip>
+                <TooltipTrigger className="flex" aria-label="Archived">
+                  <ArchiveIcon className="size-4.5" />
+                </TooltipTrigger>
+                <TooltipContent>This is an archived meetup</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {attending === true ? (
+              <Tooltip>
+                <TooltipTrigger
+                  className="flex text-green-600"
+                  aria-label={attendedLabel}
+                >
+                  <FiCheck className="size-4.5" strokeWidth={2.5} />
+                </TooltipTrigger>
+                <TooltipContent>{attendedLabel}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {meetup.has_photos === true ? (
+              <Tooltip>
+                <TooltipTrigger className="flex" aria-label="Has photos">
+                  <FiImage className="size-4.5" />
+                </TooltipTrigger>
+                <TooltipContent>This meetup has photos!</TooltipContent>
+              </Tooltip>
+            ) : null}
           </div>
-          <h3 className="text-base font-semibold sm:text-xl">{meetup.name}</h3>
-          <p className="text-sm sm:text-base">{`${meetup.location.city}, ${
-            meetup.location.state ?? meetup.location.country
-          }`}</p>
         </div>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {dayjs(meetup.date, 'YYYY-MM-DDTHH:mm:ss').format('MMMM DD, YYYY')}
+          {' · '}
+          {`${meetup.location.city}, ${
+            meetup.location.state ?? meetup.location.country
+          }`}
+        </p>
       </div>
     </div>
   );
