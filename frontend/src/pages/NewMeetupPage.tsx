@@ -45,6 +45,7 @@ const NewMeetupPage = (): ReactNode => {
       description: '',
       hasRaffle: true,
       defaultRaffleEntries: 1,
+      isUnlisted: false,
       organizerIds: [] as string[],
     },
     onSubmit: async (values) => {
@@ -63,6 +64,7 @@ const NewMeetupPage = (): ReactNode => {
         default_raffle_entries: formik.values.hasRaffle
           ? formik.values.defaultRaffleEntries
           : formik.initialValues.defaultRaffleEntries,
+        is_unlisted: formik.values.isUnlisted,
         organizer_ids: formik.values.organizerIds,
       });
 
@@ -258,6 +260,21 @@ const NewMeetupPage = (): ReactNode => {
                   disabled={!formik.values.hasRaffle}
                   value={formik.values.defaultRaffleEntries}
                 />
+
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="isUnlisted" className="pr-4">
+                    Hide this meetup from public listings?
+                  </Label>
+                  <Checkbox
+                    id="isUnlisted"
+                    name="isUnlisted"
+                    checked={formik.values.isUnlisted}
+                    onCheckedChange={(checked) => {
+                      void formik.setFieldValue('isUnlisted', checked === true);
+                    }}
+                  />
+                  <span>Yes</span>
+                </div>
 
                 <Button
                   type="submit"
