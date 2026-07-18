@@ -60,10 +60,12 @@ const OrganizerDashboard = (): ReactNode => {
       <MeetupOrganizerCard
         key={meetup.id}
         name={meetup.name}
+        slug={meetup.slug}
         date={meetup.date}
         imageUrl={meetup.image_url}
         ticketsAvailable={meetup.tickets?.available ?? NaN}
         ticketsTotal={meetup.tickets?.total ?? NaN}
+        isUnlisted={meetup.is_unlisted}
         onClick={() => {
           void navigate(`/meetup/${meetup.slug}/manage`);
         }}

@@ -21,23 +21,21 @@ import { Settings } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
-  FiCheck,
   FiClock,
   FiExternalLink,
-  FiLink,
   FiMapPin,
   FiUser,
   FiUserCheck,
   FiX,
 } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { socket } from '../../socket';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { CopyLinkButton } from './CopyLinkButton';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 import { MeetupGallery } from './MeetupGallery';
 import { MeetupRsvpForm } from './MeetupRsvpForm';
@@ -109,12 +107,6 @@ export const MeetupModal = ({
     onDismiss: onClose,
   });
 
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const id = window.setTimeout(() => setCopied(false), 1500);
-    return () => window.clearTimeout(id);
-  }, [copied]);
 
   // A meetup id in the URL that doesn't resolve to a real meetup sends the
   // visitor back to the homepage rather than leaving a dead modal open.
@@ -155,13 +147,6 @@ export const MeetupModal = ({
   }, [meetup]);
 
   if (meetup == null) return <></>;
-
-  const handleCopyLink = (): void => {
-    const url = `${window.location.origin}/meetup/${meetupId}`;
-    void navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast.success('Link copied to clipboard');
-  };
 
   const handleCollapse = (): void => {
     void navigate('/meetup/' + meetupId);
@@ -390,42 +375,7 @@ export const MeetupModal = ({
                 <span />
               )}
               <div className="ml-auto flex flex-wrap items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Copy link"
-                  aria-label="Copy link"
-                  onClick={handleCopyLink}
-                  className="ml-auto"
-                >
-                  <AnimatePresence mode="wait" initial={false}>
-                    {copied ? (
-                      <motion.span
-                        key="check"
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 1000,
-                          damping: 50,
-                        }}
-                      >
-                        <FiCheck className="text-green-600" />
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="link"
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.1 }}
-                      >
-                        <FiLink />
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </Button>
+                <CopyLinkButton slug={meetupId} className="ml-auto" />
                 {isUserOrganizer && (
                   <Button
                     variant="outline"
