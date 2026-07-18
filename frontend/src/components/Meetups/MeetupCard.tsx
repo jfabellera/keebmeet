@@ -8,7 +8,7 @@ import {
 import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { ArchiveIcon } from 'lucide-react';
+import { ArchiveIcon, EyeOffIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
@@ -54,6 +54,14 @@ export const MeetupCard = ({
                   <ArchiveIcon className="size-4.5" />
                 </TooltipTrigger>
                 <TooltipContent>This is an archived meetup</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {meetup.is_unlisted === true ? (
+              <Tooltip>
+                <TooltipTrigger className="flex" aria-label="Unlisted">
+                  <EyeOffIcon className="size-4.5" />
+                </TooltipTrigger>
+                <TooltipContent>This meetup is unlisted</TooltipContent>
               </Tooltip>
             ) : null}
             {attending === true ? (

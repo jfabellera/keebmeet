@@ -30,12 +30,16 @@ import {
 } from '../controllers/gallery';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
-import { Rule, authChecker } from '../middleware/authChecker';
+import { Rule, authChecker, optionalAuth } from '../middleware/authChecker';
 import { uploadImageFile } from '../middleware/imageUpload';
 
 const router = express.Router();
 
-router.get('/', getAllMeetups as RequestHandler);
+router.get(
+  '/',
+  optionalAuth() as RequestHandler,
+  getAllMeetups as RequestHandler
+);
 
 router.get(
   '/slug-available',
