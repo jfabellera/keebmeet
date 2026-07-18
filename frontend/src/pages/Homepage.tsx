@@ -110,11 +110,22 @@ const Homepage = (): ReactNode => {
     void navigate('/');
   };
 
-  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
+  interface MeetupSectionOptions {
+    gridClass?: string;
+  }
+
+  const meetupSection = (
+    title: string,
+    meetups: MeetupInfo[],
+    { gridClass }: MeetupSectionOptions = {}
+  ): ReactNode => {
+    const grid =
+      gridClass ??
+      'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] sm:gap-5';
     return (
       <div>
         <h2 className="mb-3 text-2xl font-bold">{title}</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(250px,1fr))] sm:gap-4">
+        <div className={grid}>
           {meetups?.map((meetup) => (
             <PrefetchingMeetupCard
               key={meetup.id}
@@ -147,7 +158,10 @@ const Homepage = (): ReactNode => {
             : null}
 
           {pastMeetups != null && pastMeetups.length > 0
-            ? meetupSection('Past meetups', pastMeetups)
+            ? meetupSection('Past meetups', pastMeetups, {
+                gridClass:
+                  'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] sm:gap-5',
+              })
             : null}
           <MeetupModal
             meetupId={slug}
