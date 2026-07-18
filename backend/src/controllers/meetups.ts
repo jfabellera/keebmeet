@@ -106,6 +106,7 @@ const mapMeetupInfo = async (
   if (type === MeetupInfoDetailLevel.Detailed) {
     meetupInfo.location.full_address = meetup.address;
     meetupInfo.description = meetup.description;
+    meetupInfo.is_unlisted = meetup.is_unlisted;
 
     meetupInfo.organizers = meetup.organizers.map((organizer) => ({
       id: organizer.id,
@@ -353,6 +354,7 @@ export const createMeetup = async (
     description: result.data.description,
     has_raffle: result.data.has_raffle,
     default_raffle_entries: result.data.default_raffle_entries,
+    is_unlisted: result.data.is_unlisted,
   });
 
   const requestor = res.locals.requestor as User;
@@ -800,6 +802,7 @@ export const updateMeetup = async (
   meetup.description = req.body.description ?? meetup.description;
   meetup.default_raffle_entries =
     req.body.default_raffle_entries ?? meetup.default_raffle_entries;
+  meetup.is_unlisted = req.body.is_unlisted ?? meetup.is_unlisted;
 
   // Archive-only credit for who ran the meetup. An empty string clears it back
   // to the submitter (who is always the lead organizer).

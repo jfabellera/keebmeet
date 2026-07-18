@@ -41,6 +41,7 @@ export const createMeetupSchema = z.object({
   description: z.string().optional().default(''),
   has_raffle: z.boolean().optional().default(true),
   default_raffle_entries: z.number().gte(0).optional().default(1),
+  is_unlisted: z.boolean().optional().default(false),
 });
 
 export type CreateMeetupPayload = z.infer<typeof createMeetupSchema>;
@@ -95,6 +96,7 @@ export const editMeetupSchema = z.object({
   organizer_name: z.string().max(30).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
+  is_unlisted: z.boolean().optional(),
   display_idle_image_urls: z.string().array().optional(),
   display_raffle_background_url: z
     .string()

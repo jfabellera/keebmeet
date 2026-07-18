@@ -32,6 +32,8 @@ export interface MeetupInfo {
   is_archive: boolean;
   // Free-text credit for who ran an archive, when it wasn't the submitter.
   organizer_name?: string;
+  // Hidden from public listings; reachable only via direct link.
+  is_unlisted?: boolean;
 }
 
 export interface TicketInfo {
