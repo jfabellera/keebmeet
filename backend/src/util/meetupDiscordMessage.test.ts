@@ -39,6 +39,7 @@ const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   name: 'Meetup',
   description: 'desc',
   date: '2026-07-01T00:00:00Z',
+  duration_hours: 2,
   address: '123 St',
   image_key: 'http://img',
   capacity: 100,
@@ -110,6 +111,22 @@ describe('buildMeetupEmbed', () => {
     );
 
     expect(embed.footer?.text).toBe('Organized by Ada and Grace');
+  });
+
+  it('shows the date as a start–end range using the duration', () => {
+    const embed = buildMeetupEmbed(fakeMeetup(), []);
+    const field = fieldNamed(embed, 'Date');
+
+    const start = Date.parse('2026-07-01T00:00:00Z') / 1000;
+    expect(field.value).toBe(`<t:${start}:F> – <t:${start + 7200}:t>`);
+  });
+
+  it('shows only the start when there is no duration', () => {
+    const embed = buildMeetupEmbed(fakeMeetup({ duration_hours: 0 }), []);
+    const field = fieldNamed(embed, 'Date');
+
+    const start = Date.parse('2026-07-01T00:00:00Z') / 1000;
+    expect(field.value).toBe(`<t:${start}:F>`);
   });
 
   it('links the location to a Google Maps search', () => {

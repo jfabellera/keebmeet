@@ -139,6 +139,14 @@ const cropImageUrl = (url: string): string => {
   return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=600&fit=cover`;
 };
 
+const buildDateValue = (meetup: Meetup): string => {
+  const start = Math.floor(Date.parse(meetup.date) / 1000);
+  const end = start + Math.round((meetup.duration_hours ?? 0) * 3600);
+  return meetup.duration_hours
+    ? `<t:${start}:F> – <t:${end}:t>`
+    : `<t:${start}:F>`;
+};
+
 /**
  * Builds the meetup announcement embed from the meetup and its attendees.
  */
@@ -153,7 +161,7 @@ export const buildMeetupEmbed = (
   fields: [
     {
       name: 'Date',
-      value: `<t:${Math.floor(Date.parse(meetup.date) / 1000)}:F>`,
+      value: buildDateValue(meetup),
     },
     {
       name: 'Location',
