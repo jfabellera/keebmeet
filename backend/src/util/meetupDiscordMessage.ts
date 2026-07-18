@@ -25,26 +25,37 @@ const BUTTON_STYLE_LINK = 5;
 export const buildMeetupComponents = (
   meetup: Meetup,
   allowRsvp: boolean
-): DiscordComponent[] => [
-  {
-    type: ACTION_ROW,
-    components: [
-      allowRsvp
-        ? {
-            type: BUTTON,
-            style: BUTTON_STYLE_PRIMARY,
-            label: 'RSVP',
-            custom_id: `rsvp:${meetup.id}`,
-          }
-        : {
-            type: BUTTON,
-            style: BUTTON_STYLE_LINK,
-            label: 'RSVP on KeebMeet',
-            url: `${config.webUrl}/meetup/${meetup.id}`,
-          },
-    ],
-  },
-];
+): DiscordComponent[] => {
+  const meetupUrl = `${config.webUrl}/meetup/${meetup.slug}`;
+
+  // When RSVPs are interactive the RSVP button doesn't link anywhere, so add a
+  // link button to the meetup page. The non-RSVP button already links there.
+  const components: DiscordComponent[] = allowRsvp
+    ? [
+        {
+          type: BUTTON,
+          style: BUTTON_STYLE_PRIMARY,
+          label: 'RSVP',
+          custom_id: `rsvp:${meetup.id}`,
+        },
+        {
+          type: BUTTON,
+          style: BUTTON_STYLE_LINK,
+          label: 'View on KeebMeet',
+          url: meetupUrl,
+        },
+      ]
+    : [
+        {
+          type: BUTTON,
+          style: BUTTON_STYLE_LINK,
+          label: 'RSVP on KeebMeet',
+          url: meetupUrl,
+        },
+      ];
+
+  return [{ type: ACTION_ROW, components }];
+};
 
 // Discord caps an embed field value at 1024 characters.
 const FIELD_VALUE_LIMIT = 1024;
@@ -112,7 +123,7 @@ export const buildMeetupEmbed = (
 ): DiscordEmbed => ({
   title: meetup.name,
   description: meetup.description,
-  url: `${config.webUrl}/meetup/${meetup.id}`,
+  url: `${config.webUrl}/meetup/${meetup.slug}`,
   image: { url: cropImageUrl(publicUrl(meetup.image_key)) },
   fields: [
     {

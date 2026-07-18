@@ -35,6 +35,7 @@ const mockedEditEmbed = jest.mocked(editEmbedMessage);
 
 const fakeMeetup = (overrides: Record<string, unknown> = {}): any => ({
   id: '1',
+  slug: 'my-meetup',
   name: 'Meetup',
   description: 'desc',
   date: '2026-07-01T00:00:00Z',
@@ -137,11 +138,28 @@ describe('buildMeetupComponents', () => {
     expect(button(components)).not.toHaveProperty('url');
   });
 
+  it('adds a View on KeebMeet link button when RSVPs are allowed', () => {
+    const components = buildMeetupComponents(
+      fakeMeetup({ slug: 'my-meetup' }),
+      true
+    );
+
+    expect((components[0] as any).components[1]).toEqual(
+      expect.objectContaining({
+        label: 'View on KeebMeet',
+        url: 'http://web/meetup/my-meetup',
+      })
+    );
+  });
+
   it('uses a link to the meetup page when RSVPs are not allowed', () => {
-    const components = buildMeetupComponents(fakeMeetup({ id: '42' }), false);
+    const components = buildMeetupComponents(
+      fakeMeetup({ slug: 'my-meetup' }),
+      false
+    );
 
     expect(button(components)).toEqual(
-      expect.objectContaining({ url: 'http://web/meetup/42' })
+      expect.objectContaining({ url: 'http://web/meetup/my-meetup' })
     );
     expect(button(components)).not.toHaveProperty('custom_id');
   });
