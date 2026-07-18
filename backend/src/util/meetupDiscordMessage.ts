@@ -148,7 +148,6 @@ export const buildMeetupEmbed = (
 ): DiscordEmbed => ({
   title: meetup.name,
   description: meetup.description,
-  url: `${config.webUrl}/meetup/${meetup.slug}`,
   image: { url: cropImageUrl(publicUrl(meetup.image_key)) },
   footer: buildOrganizersFooter(meetup),
   fields: [
