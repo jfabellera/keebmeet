@@ -13,10 +13,23 @@ jest.mock('../entity/Group', () => ({
   },
 }));
 
-import { createGroup, deleteGroup, editGroup, getGroups } from './groups';
+jest.mock('../util/discord', () => ({
+  __esModule: true,
+  fetchBotServers: jest.fn(),
+}));
+
+import {
+  createGroup,
+  deleteGroup,
+  editGroup,
+  getDiscordServers,
+  getGroups,
+} from './groups';
 import { Group } from '../entity/Group';
+import { fetchBotServers } from '../util/discord';
 
 const mockedGroup = jest.mocked(Group);
+const mockedFetchBotServers = jest.mocked(fetchBotServers);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -81,6 +94,32 @@ describe('getGroups', () => {
     const res = mockResponse();
 
     await getGroups(mockRequest(), res);
+
+    expect(res.body).toEqual([]);
+  });
+});
+
+// ---- getDiscordServers -----------------------------------------------------
+
+describe('getDiscordServers', () => {
+  it('returns the servers the bot is in', async () => {
+    const servers = [
+      { id: '10', name: 'Keeb HQ', icon_url: 'https://cdn/icon.png' },
+      { id: '20', name: 'Split Kb', icon_url: null },
+    ];
+    mockedFetchBotServers.mockResolvedValue(servers as never);
+    const res = mockResponse();
+
+    await getDiscordServers(mockRequest(), res);
+
+    expect(res.body).toEqual(servers);
+  });
+
+  it('returns an empty array when the bot is in no servers', async () => {
+    mockedFetchBotServers.mockResolvedValue([] as never);
+    const res = mockResponse();
+
+    await getDiscordServers(mockRequest(), res);
 
     expect(res.body).toEqual([]);
   });

@@ -1,11 +1,13 @@
 import {
   createGroupSchema,
   editGroupSchema,
+  type DiscordServer,
   type GroupInfo,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { ILike } from 'typeorm';
 import { Group } from '../entity/Group';
+import { fetchBotServers } from '../util/discord';
 
 const toGroupResponse = (group: Group): GroupInfo => ({
   id: group.id,
@@ -13,6 +15,19 @@ const toGroupResponse = (group: Group): GroupInfo => ({
   code: group.code,
   discord_server_id: group.discord_server_id ?? null,
 });
+
+/**
+ * Lists every Discord server the KeebMeet bot is in, for populating the group
+ * server picker.
+ */
+export const getDiscordServers = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const servers: DiscordServer[] = await fetchBotServers();
+
+  return res.json(servers);
+};
 
 /**
  * Lists all groups, ordered by name.

@@ -1,5 +1,6 @@
 import {
   type CreateGroupPayload,
+  type DiscordServer,
   type EditGroupPayload,
   type GroupInfo,
 } from '@keebmeet/shared';
@@ -30,6 +31,12 @@ export const groupSlice = createApi({
         url: `/groups`,
       }),
       providesTags: ['Groups'],
+    }),
+    // The Discord servers the KeebMeet bot is in, for the group server picker.
+    getBotDiscordServers: builder.query<DiscordServer[], void>({
+      query: () => ({
+        url: `/groups/discord-servers`,
+      }),
     }),
     createGroup: builder.mutation<GroupInfo, CreateGroupPayload>({
       query: (body) => ({
@@ -62,6 +69,7 @@ export const groupSlice = createApi({
 
 export const {
   useGetGroupsQuery,
+  useGetBotDiscordServersQuery,
   useCreateGroupMutation,
   useEditGroupMutation,
   useDeleteGroupMutation,

@@ -9,6 +9,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import {
   Table,
@@ -18,17 +25,27 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { type GroupInfo } from '@keebmeet/shared';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { type DiscordServer, type GroupInfo } from '@keebmeet/shared';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2, FiInfo, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { CopyButton } from '../components/CopyButton';
 import {
   useCreateGroupMutation,
   useDeleteGroupMutation,
   useEditGroupMutation,
+  useGetBotDiscordServersQuery,
   useGetGroupsQuery,
 } from '../store/groupSlice';
+
+// Radix Select can't use an empty string as an item value, so "no server" gets
+// this sentinel, mapped back to '' in the form.
+const NO_SERVER = 'none';
 
 interface GroupForm {
   name: string;
@@ -38,8 +55,57 @@ interface GroupForm {
 
 const emptyForm: GroupForm = { name: '', code: '', discord_server_id: '' };
 
+// Renders a group's Discord server as its resolved name, with an info tooltip
+// exposing the raw server id. Falls back gracefully while the server list loads
+// and when the id can't be matched (bot removed, server deleted).
+const DiscordServerCell = ({
+  serverId,
+  servers,
+  isLoadingServers,
+}: {
+  serverId: string | null;
+  servers: DiscordServer[] | undefined;
+  isLoadingServers: boolean;
+}): ReactNode => {
+  if (serverId == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  const match = servers?.find((server) => server.id === serverId);
+  const label =
+    match != null ? (
+      match.name
+    ) : isLoadingServers ? (
+      <span className="text-muted-foreground italic">Loading…</span>
+    ) : (
+      <span className="text-muted-foreground italic">Unknown server</span>
+    );
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Show Discord server ID"
+          >
+            <FiInfo className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className="font-mono">{serverId}</span>
+        </TooltipContent>
+      </Tooltip>
+    </span>
+  );
+};
+
 const AdminGroupsPage = (): ReactNode => {
   const { data: groups, isLoading } = useGetGroupsQuery();
+  const { data: discordServers, isLoading: isLoadingServers } =
+    useGetBotDiscordServersQuery();
   const [createGroup, { isLoading: isCreating }] = useCreateGroupMutation();
   const [editGroup, { isLoading: isEditing }] = useEditGroupMutation();
   const [deleteGroup, { isLoading: isDeleting }] = useDeleteGroupMutation();
@@ -159,10 +225,12 @@ const AdminGroupsPage = (): ReactNode => {
                     />
                   </span>
                 </TableCell>
-                <TableCell className="text-muted-foreground font-mono">
-                  {group.discord_server_id ?? (
-                    <span className="font-sans">—</span>
-                  )}
+                <TableCell className="text-muted-foreground">
+                  <DiscordServerCell
+                    serverId={group.discord_server_id}
+                    servers={discordServers}
+                    isLoadingServers={isLoadingServers}
+                  />
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
@@ -247,19 +315,49 @@ const AdminGroupsPage = (): ReactNode => {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="group-discord">Discord server ID</Label>
-                <Input
-                  id="group-discord"
-                  value={form?.discord_server_id ?? ''}
-                  onChange={(event) =>
+                <Label htmlFor="group-discord">Discord server</Label>
+                <Select
+                  value={
+                    form?.discord_server_id != null &&
+                    form.discord_server_id !== ''
+                      ? form.discord_server_id
+                      : NO_SERVER
+                  }
+                  onValueChange={(value) =>
                     setForm((prev) =>
                       prev != null
-                        ? { ...prev, discord_server_id: event.target.value }
+                        ? {
+                            ...prev,
+                            discord_server_id: value === NO_SERVER ? '' : value,
+                          }
                         : prev
                     )
                   }
-                  placeholder="Optional"
-                />
+                >
+                  <SelectTrigger id="group-discord" className="w-full">
+                    <SelectValue placeholder="Select a server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_SERVER}>None</SelectItem>
+                    {discordServers?.map((server) => (
+                      <SelectItem key={server.id} value={server.id}>
+                        {server.name}
+                      </SelectItem>
+                    ))}
+                    {/* The bot may have left a server this group still points
+                        at; keep it selectable so editing doesn't silently drop
+                        the association. */}
+                    {form?.discord_server_id != null &&
+                    form.discord_server_id !== '' &&
+                    !(discordServers ?? []).some(
+                      (server) => server.id === form.discord_server_id
+                    ) ? (
+                      <SelectItem value={form.discord_server_id}>
+                        Unknown server ({form.discord_server_id})
+                      </SelectItem>
+                    ) : null}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>

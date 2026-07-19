@@ -3,6 +3,7 @@ import {
   createGroup,
   deleteGroup,
   editGroup,
+  getDiscordServers,
   getGroups,
 } from '../controllers/groups';
 import { authChecker, Rule } from '../middleware/authChecker';
@@ -14,6 +15,12 @@ router.get(
   '/',
   authChecker([Rule.requireAdmin]) as RequestHandler,
   getGroups as RequestHandler
+);
+// The Discord servers the bot is in, for the group server picker.
+router.get(
+  '/discord-servers',
+  authChecker([Rule.requireAdmin]) as RequestHandler,
+  getDiscordServers as RequestHandler
 );
 router.post(
   '/',
