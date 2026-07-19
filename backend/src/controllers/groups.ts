@@ -133,6 +133,28 @@ export const deleteGroup = async (
 };
 
 /**
+ * Lists the groups the authenticated user has joined, ordered by name.
+ */
+export const getMyGroups = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const requestor = res.locals.requestor as User;
+  const user = await User.findOne({
+    where: { id: requestor.id },
+    relations: { groups: true },
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  const groups = [...user.groups].sort((a, b) => a.name.localeCompare(b.name));
+
+  return res.json(groups.map(toGroupResponse));
+};
+
+/**
  * Joins the authenticated user to the group matching the supplied code (matched
  * case-insensitively, like code uniqueness). Rejects an unknown code, and is a
  * no-op error if the user is already a member.

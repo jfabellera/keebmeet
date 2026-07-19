@@ -5,6 +5,7 @@ import {
   editGroup,
   getDiscordServers,
   getGroups,
+  getMyGroups,
   joinGroup,
   leaveGroup,
 } from '../controllers/groups';
@@ -12,6 +13,11 @@ import { authChecker, Rule } from '../middleware/authChecker';
 
 const router = express.Router();
 
+router.get(
+  '/mine',
+  authChecker() as RequestHandler,
+  getMyGroups as RequestHandler
+);
 router.post(
   '/join',
   authChecker() as RequestHandler,

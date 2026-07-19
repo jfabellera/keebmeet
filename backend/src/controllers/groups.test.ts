@@ -31,6 +31,7 @@ import {
   editGroup,
   getDiscordServers,
   getGroups,
+  getMyGroups,
   joinGroup,
   leaveGroup,
 } from './groups';
@@ -360,6 +361,38 @@ describe('deleteGroup', () => {
     expect(group.remove).toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
     expect(res.end).toHaveBeenCalled();
+  });
+});
+
+// ---- getMyGroups -----------------------------------------------------------
+
+describe('getMyGroups', () => {
+  it("returns the user's groups as public shapes, ordered by name", async () => {
+    const user = fakeUser({
+      id: '100',
+      groups: [
+        fakeGroup({ id: '2', name: 'Beta', code: 'b' }),
+        fakeGroup({ id: '1', name: 'Alpha', code: 'a' }),
+      ],
+    });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await getMyGroups(mockRequest(), res);
+
+    const body = res.body as Array<{ id: string; name: string }>;
+    expect(body.map((group) => group.name)).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('returns an empty array when the user is in no groups', async () => {
+    mockedUser.findOne.mockResolvedValue(fakeUser({ groups: [] }) as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser();
+
+    await getMyGroups(mockRequest(), res);
+
+    expect(res.body).toEqual([]);
   });
 });
 
