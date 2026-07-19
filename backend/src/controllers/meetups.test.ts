@@ -31,7 +31,7 @@ jest.mock('../entity/MeetupDisplayRecord', () => ({
   MeetupDisplayRecord: { create: jest.fn() },
 }));
 jest.mock('../entity/Ticket', () => ({
-  Ticket: { count: jest.fn() },
+  Ticket: { count: jest.fn(), createQueryBuilder: jest.fn() },
 }));
 jest.mock('../entity/GalleryRecord', () => ({
   GalleryRecord: { createQueryBuilder: jest.fn() },
@@ -186,6 +186,13 @@ const galleryQueryBuilder = {
   groupBy: jest.fn().mockReturnThis(),
   getRawMany: jest.fn().mockResolvedValue([]),
 };
+// Chainable stub for Ticket.createQueryBuilder(...). getRawMany returns the
+// meetup_ids the requestor holds a ticket for; default is none.
+const ticketQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([]),
+};
 const mockedSocket = jest.mocked(socket);
 const mockedGeocode = jest.mocked(geocode);
 const mockedGetUtcOffset = jest.mocked(getUtcOffset);
@@ -257,6 +264,8 @@ beforeEach(() => {
   mockedGalleryRecord.createQueryBuilder.mockReturnValue(
     galleryQueryBuilder as any
   );
+  ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+  mockedTicket.createQueryBuilder.mockReturnValue(ticketQueryBuilder as any);
   mockedMeetup.countBy.mockResolvedValue(0);
   mockedMeetup.create.mockImplementation((attrs: any) => ({
     organizers: [],
@@ -313,6 +322,69 @@ describe('getAllMeetups', () => {
     expect(body[0].tickets).toEqual({ total: 100, available: 70 });
     expect(body[0].organizers).toEqual([{ id: '1', display_name: 'jane' }]);
     expect(body[0].lead_organizer).toEqual({ id: '1', display_name: 'jane' });
+  });
+
+  it('exposes is_unlisted on the simple shape', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow({ is_unlisted: true })]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest(), res);
+
+    const body = res.body as any[];
+    expect(body[0].is_unlisted).toBe(true);
+  });
+
+  it('excludes unlisted meetups for anonymous requests', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest(), res);
+
+    // No requestor: no ticket/organizer lookups, and the listing only matches
+    // public meetups.
+    expect(mockedMeetup.find).toHaveBeenCalledTimes(1);
+    expect(mockedTicket.createQueryBuilder).not.toHaveBeenCalled();
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { is_unlisted: false },
+    ]);
+  });
+
+  it('includes unlisted meetups the requestor attends or organizes', async () => {
+    // Requestor attends meetup 30 and organizes meetup 40.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([{ meetup_id: '30' }]);
+    mockedMeetup.find
+      .mockResolvedValueOnce([{ id: '40' }] as never) // organized lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    // The listing (second find) ORs public meetups with the requestor's own.
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual([
+      { is_unlisted: false },
+      { id: In(['30', '40']) },
+    ]);
+  });
+
+  it('scopes unlisted visibility to the given organizer', async () => {
+    ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+    mockedMeetup.find
+      .mockResolvedValueOnce([{ id: '40' }] as never) // organized lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest({}, {}, { by_organizer_id: '1' }), res);
+
+    // Each organizer scope (organizer or lead) is crossed with each visibility
+    // branch (public, or one of the requestor's own meetups).
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual([
+      { organizers: { id: '1' }, is_unlisted: false },
+      { organizers: { id: '1' }, id: In(['40']) },
+      { lead_organizer: { id: '1' }, is_unlisted: false },
+      { lead_organizer: { id: '1' }, id: In(['40']) },
+    ]);
   });
 });
 
@@ -439,6 +511,38 @@ describe('createMeetup', () => {
     expect(created.organizers).toEqual([]);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('passes is_unlisted through to the created meetup', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ is_unlisted: true })),
+      res
+    );
+
+    expect(mockedMeetup.create).toHaveBeenCalledWith(
+      expect.objectContaining({ is_unlisted: true })
+    );
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('defaults is_unlisted to false when omitted', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(mockedMeetup.create).toHaveBeenCalledWith(
+      expect.objectContaining({ is_unlisted: false })
+    );
   });
 
   it('sets the selected additional organizers as co-organizers (lead separate)', async () => {
@@ -706,6 +810,43 @@ describe('updateMeetup', () => {
     });
     expect(mockedRefresh).toHaveBeenCalledWith('10');
     expect(res.statusCode).toBe(201);
+  });
+
+  it('applies is_unlisted', async () => {
+    const meetup = fakeMeetupRow({
+      is_unlisted: false,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ is_unlisted: true }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.is_unlisted).toBe(true);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('can clear is_unlisted (false is not treated as absent)', async () => {
+    const meetup = fakeMeetupRow({
+      is_unlisted: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null); // name-collision lookup
+    const res = mockResponse();
+
+    await updateMeetup(
+      mockRequest({ is_unlisted: false }, { meetup_id: '10' }),
+      res
+    );
+
+    expect(meetup.is_unlisted).toBe(false);
   });
 
   it('sets the co-organizer join table to match organizer_ids', async () => {

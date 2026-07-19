@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -52,6 +54,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       imageUrl: '',
       imageKey: '',
       description: '',
+      isUnlisted: false,
       organizerIds: [] as string[],
       organizerType: 'me' as 'me' | 'other',
       organizerName: '',
@@ -84,6 +87,8 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       }
       if (formik.initialValues.description !== values.description)
         payload.description = values.description;
+      if (formik.initialValues.isUnlisted !== values.isUnlisted)
+        payload.is_unlisted = values.isUnlisted;
       if (
         JSON.stringify(formik.initialValues.organizerIds) !==
         JSON.stringify(values.organizerIds)
@@ -143,6 +148,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         imageUrl: meetup?.image_url ?? '',
         imageKey: '',
         description: meetup?.description ?? '',
+        isUnlisted: meetup?.is_unlisted ?? false,
         organizerIds:
           meetup?.organizers?.map((organizer) => organizer.id) ?? [],
         organizerType: meetup?.organizer_name != null ? 'other' : 'me',
@@ -371,6 +377,28 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.description}
         />
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor="isUnlisted">Visibility</FieldLabel>
+          {isEditable ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="isUnlisted"
+                name="isUnlisted"
+                checked={formik.values.isUnlisted}
+                onCheckedChange={(checked) => {
+                  void formik.setFieldValue('isUnlisted', checked === true);
+                }}
+              />
+              <Label htmlFor="isUnlisted">
+                Hide from public listings (reachable only by direct link)
+              </Label>
+            </div>
+          ) : (
+            <p className="text-foreground/70">
+              {meetup?.is_unlisted === true ? 'Unlisted' : 'Public'}
+            </p>
+          )}
+        </Field>
       </form>
     </EditableFormCard>
   );

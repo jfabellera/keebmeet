@@ -51,6 +51,28 @@ const checkMeetupOrganizer = async (
   return false;
 };
 
+// Populates res.locals.requestor when a valid token is present but lets
+// anonymous requests through. For public endpoints that tailor their response
+// to the signed-in user (e.g. surfacing their own unlisted meetups).
+export const optionalAuth =
+  () =>
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const token = req.header('Authorization')?.split(' ')[1];
+      if (token != null) {
+        const decodedToken = jwt.verify(
+          token,
+          config.jwtSecret
+        ) as TokenInterface;
+        const user = await User.findOneBy({ id: decodedToken.id });
+        if (user != null) res.locals.requestor = user;
+      }
+    } catch {
+      // Ignore invalid/expired tokens and continue as an anonymous request.
+    }
+    next();
+  };
+
 // TODO(jan): Make it so that there is only 1 next() at the end of the function.
 // so that if there is any data transfer from auth middleware to next function,
 // that is handled.

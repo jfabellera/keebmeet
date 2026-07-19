@@ -16,6 +16,7 @@ import { type RootState } from './store';
 export interface GetMeetupsOptions {
   detail_level?: string;
   by_organizer_id?: string[];
+  include_unlisted?: boolean;
 }
 
 interface EditMeetupOptions {

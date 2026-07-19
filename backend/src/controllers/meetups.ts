@@ -50,8 +50,8 @@ import { deleteManagedObjects } from '../util/imageCleanup';
 import { normalizeImage } from '../util/imageProcessing';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import {
-  IMAGE_EXT_BY_MIME,
   buildTempImageKey,
+  IMAGE_EXT_BY_MIME,
   promoteImage,
   publicUrl,
   toStoredKey,
@@ -88,6 +88,7 @@ const mapMeetupInfo = async (
     },
     image_url: publicUrl(meetup.image_key),
     is_archive: meetup.is_archive,
+    is_unlisted: meetup.is_unlisted,
   };
 
   // Display-only credit for an archive's organizer, surfaced on cards/detail.
@@ -140,35 +141,49 @@ const mapMeetupInfo = async (
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
 
+// Builds the OR'd where-clauses for a meetup listing. `visibleUnlistedIds` are
+// the meetups whose unlisted status the requestor is allowed to see (ones they
+// organize or attend); every other unlisted meetup stays hidden from listings.
 const createMeetupsFilter = (
-  query: ParsedQs
-): FindOptionsWhere<Meetup> | FindOptionsWhere<Meetup>[] => {
-  const findOptionsWhere: FindOptionsWhere<Meetup> = {};
+  query: ParsedQs,
+  visibleUnlistedIds: string[]
+): FindOptionsWhere<Meetup>[] => {
+  const base: FindOptionsWhere<Meetup> = {};
 
   if (query.by_city != null) {
-    const city = String(query.by_city);
-    findOptionsWhere.city = ILike(city);
+    base.city = ILike(String(query.by_city));
   }
-
   if (query.by_state != null) {
-    const state = String(query.by_state);
-    findOptionsWhere.state = ILike(state);
+    base.state = ILike(String(query.by_state));
   }
-
   if (query.by_country != null) {
-    const country = String(query.by_country);
-    findOptionsWhere.country = ILike(country);
+    base.country = ILike(String(query.by_country));
   }
 
-  if (query.by_organizer_id != null) {
-    const organizerId = String(query.by_organizer_id);
-    return [
-      { ...findOptionsWhere, organizers: { id: organizerId } },
-      { ...findOptionsWhere, lead_organizer: { id: organizerId } },
-    ];
+  // Restrict to a single organizer's meetups (as an organizer or the lead), or
+  // leave unscoped for the general listing.
+  const organizerScopes: FindOptionsWhere<Meetup>[] =
+    query.by_organizer_id != null
+      ? [
+          { organizers: { id: String(query.by_organizer_id) } },
+          { lead_organizer: { id: String(query.by_organizer_id) } },
+        ]
+      : [{}];
+
+  // Public meetups, plus any unlisted meetup the requestor may see.
+  const visibilityScopes: FindOptionsWhere<Meetup>[] = [{ is_unlisted: false }];
+  if (visibleUnlistedIds.length > 0) {
+    visibilityScopes.push({ id: In(visibleUnlistedIds) });
   }
 
-  return findOptionsWhere;
+  // Cartesian product: find() ORs the array, and each entry ANDs its keys.
+  return organizerScopes.flatMap((organizerScope) =>
+    visibilityScopes.map((visibilityScope) => ({
+      ...base,
+      ...organizerScope,
+      ...visibilityScope,
+    }))
+  );
 };
 
 const createMeetupsSorting = (query: ParsedQs): FindOptionsOrder<Meetup> => {
@@ -201,8 +216,30 @@ export const getAllMeetups = async (
       ? MeetupInfoDetailLevel.Detailed
       : MeetupInfoDetailLevel.Simple;
 
+  // Unlisted meetups stay out of listings for the public, but interested
+  // parties — the organizers and the attendees — still see them (badged).
+  const requestor = res.locals.requestor as User | undefined;
+  let visibleUnlistedIds: string[] = [];
+  if (requestor != null) {
+    const attended = await Ticket.createQueryBuilder('ticket')
+      .select('ticket.meetup_id', 'meetup_id')
+      .where('ticket.user_id = :userId', { userId: requestor.id })
+      .getRawMany<{ meetup_id: string }>();
+    const organized = await Meetup.find({
+      select: { id: true },
+      where: [
+        { lead_organizer: { id: requestor.id } },
+        { organizers: { id: requestor.id } },
+      ],
+    });
+    visibleUnlistedIds = [
+      ...attended.map((row) => String(row.meetup_id)),
+      ...organized.map((meetup) => meetup.id),
+    ];
+  }
+
   // Build filters and sorting
-  const findOptionsWhere = createMeetupsFilter(req.query);
+  const findOptionsWhere = createMeetupsFilter(req.query, visibleUnlistedIds);
   const findOptionsOrder = createMeetupsSorting(req.query);
 
   // Query
@@ -353,6 +390,7 @@ export const createMeetup = async (
     description: result.data.description,
     has_raffle: result.data.has_raffle,
     default_raffle_entries: result.data.default_raffle_entries,
+    is_unlisted: result.data.is_unlisted,
   });
 
   const requestor = res.locals.requestor as User;
@@ -800,6 +838,7 @@ export const updateMeetup = async (
   meetup.description = req.body.description ?? meetup.description;
   meetup.default_raffle_entries =
     req.body.default_raffle_entries ?? meetup.default_raffle_entries;
+  meetup.is_unlisted = req.body.is_unlisted ?? meetup.is_unlisted;
 
   // Archive-only credit for who ran the meetup. An empty string clears it back
   // to the submitter (who is always the lead organizer).
