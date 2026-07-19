@@ -1,12 +1,14 @@
 import {
   createGroupSchema,
   editGroupSchema,
+  joinGroupSchema,
   type DiscordServer,
   type GroupInfo,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { ILike } from 'typeorm';
 import { Group } from '../entity/Group';
+import { User } from '../entity/User';
 import { fetchBotServers } from '../util/discord';
 
 const toGroupResponse = (group: Group): GroupInfo => ({
@@ -126,6 +128,83 @@ export const deleteGroup = async (
   }
 
   await group.remove();
+
+  return res.status(204).end();
+};
+
+/**
+ * Joins the authenticated user to the group matching the supplied code (matched
+ * case-insensitively, like code uniqueness). Rejects an unknown code, and is a
+ * no-op error if the user is already a member.
+ */
+export const joinGroup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const result = joinGroupSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const group = await Group.findOne({
+    where: { code: ILike(result.data.code.trim()) },
+  });
+
+  if (group == null) {
+    return res.status(404).json({ message: 'Invalid group code.' });
+  }
+
+  const requestor = res.locals.requestor as User;
+  const user = await User.findOne({
+    where: { id: requestor.id },
+    relations: { groups: true },
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  if (user.groups.some((joined) => joined.id === group.id)) {
+    return res
+      .status(409)
+      .json({ message: 'You are already a member of this group.' });
+  }
+
+  user.groups.push(group);
+  await user.save();
+
+  return res.status(200).json(toGroupResponse(group));
+};
+
+/**
+ * Removes the authenticated user from the group with the given id. Leaving a
+ * group the user isn't in returns 404 so the caller can distinguish the states.
+ */
+export const leaveGroup = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { group_id } = req.params as Record<string, string>;
+
+  const requestor = res.locals.requestor as User;
+  const user = await User.findOne({
+    where: { id: requestor.id },
+    relations: { groups: true },
+  });
+
+  if (user == null) {
+    return res.status(404).json({ message: 'Invalid user ID.' });
+  }
+
+  if (!user.groups.some((joined) => joined.id === group_id)) {
+    return res
+      .status(404)
+      .json({ message: 'You are not a member of this group.' });
+  }
+
+  user.groups = user.groups.filter((joined) => joined.id !== group_id);
+  await user.save();
 
   return res.status(204).end();
 };

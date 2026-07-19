@@ -5,10 +5,23 @@ import {
   editGroup,
   getDiscordServers,
   getGroups,
+  joinGroup,
+  leaveGroup,
 } from '../controllers/groups';
 import { authChecker, Rule } from '../middleware/authChecker';
 
 const router = express.Router();
+
+router.post(
+  '/join',
+  authChecker() as RequestHandler,
+  joinGroup as RequestHandler
+);
+router.delete(
+  '/:group_id/leave',
+  authChecker() as RequestHandler,
+  leaveGroup as RequestHandler
+);
 
 // Managing groups is admin only.
 router.get(

@@ -2,9 +2,12 @@ import {
   BaseEntity,
   Column,
   Entity,
+  JoinTable,
+  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Group } from './Group';
 import { Ticket } from './Ticket';
 
 @Entity({ name: 'users' })
@@ -61,4 +64,12 @@ export class User extends BaseEntity {
 
   @Column({ type: 'boolean', default: false })
   is_verified: boolean;
+
+  @ManyToMany(() => Group)
+  @JoinTable({
+    name: 'users_groups',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' },
+  })
+  groups: Group[];
 }

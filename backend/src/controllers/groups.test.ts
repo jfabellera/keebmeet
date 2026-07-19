@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 import { type Request, type Response } from 'express';
+import { ILike } from 'typeorm';
 
 // ---- Mocks -----------------------------------------------------------------
 
@@ -10,6 +11,12 @@ jest.mock('../entity/Group', () => ({
     findOneBy: jest.fn(),
     create: jest.fn(),
     countBy: jest.fn(),
+  },
+}));
+
+jest.mock('../entity/User', () => ({
+  User: {
+    findOne: jest.fn(),
   },
 }));
 
@@ -24,11 +31,15 @@ import {
   editGroup,
   getDiscordServers,
   getGroups,
+  joinGroup,
+  leaveGroup,
 } from './groups';
 import { Group } from '../entity/Group';
+import { User } from '../entity/User';
 import { fetchBotServers } from '../util/discord';
 
 const mockedGroup = jest.mocked(Group);
+const mockedUser = jest.mocked(User);
 const mockedFetchBotServers = jest.mocked(fetchBotServers);
 
 // ---- Helpers ---------------------------------------------------------------
@@ -63,6 +74,14 @@ const fakeGroup = (overrides: Record<string, unknown> = {}): any => ({
   discord_server_id: null,
   save: jest.fn().mockResolvedValue(undefined),
   remove: jest.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
+/** A fake user row with a stubbed save() and a groups relation. */
+const fakeUser = (overrides: Record<string, unknown> = {}): any => ({
+  id: '100',
+  groups: [],
+  save: jest.fn().mockResolvedValue(undefined),
   ...overrides,
 });
 
@@ -339,6 +358,99 @@ describe('deleteGroup', () => {
     await deleteGroup(mockRequest({}, { group_id: '1' }), res);
 
     expect(group.remove).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+    expect(res.end).toHaveBeenCalled();
+  });
+});
+
+// ---- joinGroup -------------------------------------------------------------
+
+describe('joinGroup', () => {
+  it('returns 400 when no code is supplied', async () => {
+    const res = mockResponse();
+    res.locals.requestor = fakeUser();
+
+    await joinGroup(mockRequest({}), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedGroup.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the code matches no group', async () => {
+    mockedGroup.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser();
+
+    await joinGroup(mockRequest({ code: 'nope' }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(mockedUser.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the user is already a member', async () => {
+    const group = fakeGroup({ id: '1', code: 'keeb' });
+    mockedGroup.findOne.mockResolvedValue(group as never);
+    const user = fakeUser({ id: '100', groups: [group] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await joinGroup(mockRequest({ code: 'keeb' }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('adds the group to the user and returns 200 with the group', async () => {
+    const group = fakeGroup({ id: '7', code: 'keeb', name: 'Keeb Club' });
+    mockedGroup.findOne.mockResolvedValue(group as never);
+    const user = fakeUser({ id: '100', groups: [] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await joinGroup(mockRequest({ code: 'KEEB' }), res);
+
+    // The lookup is case-insensitive on the trimmed code.
+    expect(mockedGroup.findOne).toHaveBeenCalledWith({
+      where: { code: ILike('KEEB') },
+    });
+    expect(user.groups).toContain(group);
+    expect(user.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(
+      expect.objectContaining({ id: '7', code: 'keeb', name: 'Keeb Club' })
+    );
+  });
+});
+
+// ---- leaveGroup ------------------------------------------------------------
+
+describe('leaveGroup', () => {
+  it('returns 404 when the user is not a member of the group', async () => {
+    const user = fakeUser({ id: '100', groups: [fakeGroup({ id: '1' })] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await leaveGroup(mockRequest({}, { group_id: '2' }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('removes the group from the user and returns 204', async () => {
+    const stay = fakeGroup({ id: '1' });
+    const leave = fakeGroup({ id: '2' });
+    const user = fakeUser({ id: '100', groups: [stay, leave] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await leaveGroup(mockRequest({}, { group_id: '2' }), res);
+
+    expect(user.groups).toEqual([stay]);
+    expect(user.save).toHaveBeenCalled();
     expect(res.statusCode).toBe(204);
     expect(res.end).toHaveBeenCalled();
   });

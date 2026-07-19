@@ -263,3 +263,9 @@ export const editGroupSchema = z.object({
 });
 
 export type EditGroupPayload = z.input<typeof editGroupSchema>;
+
+export const joinGroupSchema = z.object({
+  code: z.string().min(1).max(30),
+});
+
+export type JoinGroupPayload = z.infer<typeof joinGroupSchema>;
