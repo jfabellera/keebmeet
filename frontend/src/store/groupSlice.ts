@@ -3,6 +3,7 @@ import {
   type DiscordServer,
   type EditGroupPayload,
   type GroupInfo,
+  type JoinGroupPayload,
 } from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
@@ -12,7 +13,7 @@ import { type RootState } from './store';
 export const groupSlice = createApi({
   reducerPath: 'groupSlice',
   ...apiCacheDefaults,
-  tagTypes: ['Groups'],
+  tagTypes: ['Groups', 'MyGroups'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -64,6 +65,28 @@ export const groupSlice = createApi({
       }),
       invalidatesTags: ['Groups'],
     }),
+    // The groups the logged-in user has joined.
+    getMyGroups: builder.query<GroupInfo[], void>({
+      query: () => ({
+        url: `/groups/mine`,
+      }),
+      providesTags: ['MyGroups'],
+    }),
+    joinGroup: builder.mutation<GroupInfo, JoinGroupPayload>({
+      query: (body) => ({
+        url: `/groups/join`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['MyGroups'],
+    }),
+    leaveGroup: builder.mutation<void, string>({
+      query: (groupId) => ({
+        url: `/groups/${groupId}/leave`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['MyGroups'],
+    }),
   }),
 });
 
@@ -73,4 +96,7 @@ export const {
   useCreateGroupMutation,
   useEditGroupMutation,
   useDeleteGroupMutation,
+  useGetMyGroupsQuery,
+  useJoinGroupMutation,
+  useLeaveGroupMutation,
 } = groupSlice;

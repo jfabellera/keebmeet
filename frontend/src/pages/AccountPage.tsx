@@ -8,6 +8,7 @@ import { type ReactNode } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
+import GroupsCard from '../components/Account/GroupsCard';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import ImageUploadField from '../components/shared/ImageUploadField';
@@ -265,6 +266,7 @@ const AccountPage = (): ReactNode => {
             </div>
           </form>
         </div>
+        <GroupsCard />
         <div className="bg-card text-card-foreground flex flex-col gap-4 rounded-lg p-8 shadow-lg">
           <h2 className="text-lg font-medium">Connections</h2>
           <div className="flex items-center justify-between gap-4">
