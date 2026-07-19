@@ -19,10 +19,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { type GroupInfo } from '@keebmeet/shared';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { FiCheck, FiCopy, FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { CopyButton } from '../components/CopyButton';
 import {
   useCreateGroupMutation,
   useDeleteGroupMutation,
@@ -37,56 +37,6 @@ interface GroupForm {
 }
 
 const emptyForm: GroupForm = { name: '', code: '', discord_server_id: '' };
-
-const CopyCodeButton = ({ code }: { code: string }): ReactNode => {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const id = window.setTimeout(() => setCopied(false), 1500);
-    return () => window.clearTimeout(id);
-  }, [copied]);
-
-  const handleCopy = (): void => {
-    void navigator.clipboard.writeText(code);
-    setCopied(true);
-    toast.success('Code copied to clipboard');
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="size-6"
-      title="Copy code"
-      aria-label={`Copy code ${code}`}
-      onClick={handleCopy}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {copied ? (
-          <motion.span
-            key="check"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 1000, damping: 50 }}
-          >
-            <FiCheck className="text-green-600" />
-          </motion.span>
-        ) : (
-          <motion.span
-            key="copy"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.1 }}
-          >
-            <FiCopy />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </Button>
-  );
-};
 
 const AdminGroupsPage = (): ReactNode => {
   const { data: groups, isLoading } = useGetGroupsQuery();
@@ -201,7 +151,12 @@ const AdminGroupsPage = (): ReactNode => {
                 <TableCell className="text-muted-foreground font-mono">
                   <span className="inline-flex items-center gap-1">
                     {group.code}
-                    <CopyCodeButton code={group.code} />
+                    <CopyButton
+                      value={group.code}
+                      label={`Copy code ${group.code}`}
+                      toastMessage="Code copied to clipboard"
+                      className="size-6"
+                    />
                   </span>
                 </TableCell>
                 <TableCell className="text-muted-foreground font-mono">

@@ -23,6 +23,7 @@ import {
   FiCalendar,
   FiClock,
   FiExternalLink,
+  FiLink,
   FiMapPin,
   FiUser,
   FiUserCheck,
@@ -35,7 +36,7 @@ import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { CopyLinkButton } from './CopyLinkButton';
+import { CopyButton } from '../CopyButton';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 import { MeetupGallery } from './MeetupGallery';
 import { MeetupRsvpForm } from './MeetupRsvpForm';
@@ -375,7 +376,13 @@ export const MeetupModal = ({
                 <span />
               )}
               <div className="ml-auto flex flex-wrap items-center gap-3">
-                <CopyLinkButton slug={meetupId} className="ml-auto" />
+                <CopyButton
+                  value={`${window.location.origin}/meetup/${meetupId}`}
+                  icon={FiLink}
+                  label="Copy link"
+                  toastMessage="Link copied to clipboard"
+                  className="ml-auto"
+                />
                 {isUserOrganizer && (
                   <Button
                     variant="outline"

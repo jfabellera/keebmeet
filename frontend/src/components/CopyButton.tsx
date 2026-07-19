@@ -1,18 +1,29 @@
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
-import { FiCheck, FiLink } from 'react-icons/fi';
+import { FiCheck, FiCopy } from 'react-icons/fi';
+import { type IconType } from 'react-icons';
 import { toast } from 'sonner';
 
-interface CopyLinkButtonProps {
-  slug: string;
+interface CopyButtonProps {
+  // The exact text written to the clipboard.
+  value: string;
+  // Toast shown on success; omit to suppress the toast.
+  toastMessage?: string;
+  // Accessible label / tooltip for the button.
+  label?: string;
+  // Idle-state icon; swaps to a check while copied.
+  icon?: IconType;
   className?: string;
 }
 
-export const CopyLinkButton = ({
-  slug,
+export const CopyButton = ({
+  value,
+  toastMessage = 'Copied to clipboard',
+  label = 'Copy',
+  icon: Icon = FiCopy,
   className,
-}: CopyLinkButtonProps): ReactNode => {
+}: CopyButtonProps): ReactNode => {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -20,22 +31,22 @@ export const CopyLinkButton = ({
     return () => window.clearTimeout(id);
   }, [copied]);
 
-  const handleCopyLink = (event: MouseEvent): void => {
-    // Cards wrap the button in a click handler; don't trigger it.
+  const handleCopy = (event: MouseEvent): void => {
+    // Callers may wrap the button in a click handler (e.g. cards); don't
+    // trigger it.
     event.stopPropagation();
-    const url = `${window.location.origin}/meetup/${slug}`;
-    void navigator.clipboard.writeText(url);
+    void navigator.clipboard.writeText(value);
     setCopied(true);
-    toast.success('Link copied to clipboard');
+    if (toastMessage != null) toast.success(toastMessage);
   };
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      title="Copy link"
-      aria-label="Copy link"
-      onClick={handleCopyLink}
+      title={label}
+      aria-label={label}
+      onClick={handleCopy}
       className={className}
     >
       <AnimatePresence mode="wait" initial={false}>
@@ -51,13 +62,13 @@ export const CopyLinkButton = ({
           </motion.span>
         ) : (
           <motion.span
-            key="link"
+            key="idle"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 0.1 }}
           >
-            <FiLink />
+            <Icon />
           </motion.span>
         )}
       </AnimatePresence>

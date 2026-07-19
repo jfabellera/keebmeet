@@ -4,8 +4,8 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { EyeOffIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
-import { FiCalendar, FiClock, FiUsers } from 'react-icons/fi';
-import { CopyLinkButton } from './CopyLinkButton';
+import { FiCalendar, FiClock, FiLink, FiUsers } from 'react-icons/fi';
+import { CopyButton } from '../CopyButton';
 
 dayjs.extend(customParseFormat);
 
@@ -77,7 +77,13 @@ export const MeetupOrganizerCard = ({
           </div>
         </div>
       </div>
-      <CopyLinkButton slug={slug} className="absolute top-2 right-2" />
+      <CopyButton
+        value={`${window.location.origin}/meetup/${slug}`}
+        icon={FiLink}
+        label="Copy link"
+        toastMessage="Link copied to clipboard"
+        className="absolute top-2 right-2"
+      />
     </div>
   );
 };
