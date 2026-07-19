@@ -237,3 +237,24 @@ export const unclaimRaffleWinnerSchema = z.object({
 export type UnclaimRaffleWinnerPayload = z.input<
   typeof unclaimRaffleWinnerSchema
 >;
+
+export const createGroupSchema = z.object({
+  name: z.string().min(3).max(100),
+  code: z.string().min(1).max(30),
+  discord_server_id: z.string().max(32).optional(),
+});
+
+export type CreateGroupPayload = z.infer<typeof createGroupSchema>;
+
+export const editGroupSchema = z.object({
+  name: z.string().min(3).max(100).optional(),
+  code: z.string().min(1).max(30).optional(),
+  // Empty string clears the association; otherwise it's the Discord server id.
+  discord_server_id: z
+    .string()
+    .max(32)
+    .transform((value) => (value === '' ? null : value))
+    .optional(),
+});
+
+export type EditGroupPayload = z.input<typeof editGroupSchema>;

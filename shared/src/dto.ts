@@ -82,3 +82,10 @@ export interface TokenData {
   is_admin: boolean;
   is_owner: boolean;
 }
+
+export interface GroupInfo {
+  id: string;
+  name: string;
+  code: string;
+  discord_server_id: string | null;
+}
