@@ -1,0 +1,68 @@
+import {
+  type CreateGroupPayload,
+  type EditGroupPayload,
+  type GroupInfo,
+} from '@keebmeet/shared';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import config from '../config';
+import { apiCacheDefaults } from './apiCacheDefaults';
+import { type RootState } from './store';
+
+export const groupSlice = createApi({
+  reducerPath: 'groupSlice',
+  ...apiCacheDefaults,
+  tagTypes: ['Groups'],
+  baseQuery: fetchBaseQuery({
+    baseUrl: `${config.apiUrl}/`,
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).user.user?.token;
+
+      if (token != null) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getGroups: builder.query<GroupInfo[], void>({
+      query: () => ({
+        url: `/groups`,
+      }),
+      providesTags: ['Groups'],
+    }),
+    createGroup: builder.mutation<GroupInfo, CreateGroupPayload>({
+      query: (body) => ({
+        url: `/groups`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Groups'],
+    }),
+    editGroup: builder.mutation<
+      GroupInfo,
+      { groupId: string; changes: EditGroupPayload }
+    >({
+      query: ({ groupId, changes }) => ({
+        url: `/groups/${groupId}`,
+        method: 'PUT',
+        body: changes,
+      }),
+      invalidatesTags: ['Groups'],
+    }),
+    deleteGroup: builder.mutation<void, string>({
+      query: (groupId) => ({
+        url: `/groups/${groupId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Groups'],
+    }),
+  }),
+});
+
+export const {
+  useGetGroupsQuery,
+  useCreateGroupMutation,
+  useEditGroupMutation,
+  useDeleteGroupMutation,
+} = groupSlice;

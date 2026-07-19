@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import authSlice, { refreshSession } from './authSlice';
 import { eventbriteSlice } from './eventbriteSlice';
+import { groupSlice } from './groupSlice';
 import { meetupSlice } from './meetupSlice';
 import { organizerSlice } from './organizerSlice';
 import { gallerySlice } from './gallerySlice';
@@ -16,6 +17,7 @@ export const store = configureStore({
     [userSlice.reducerPath]: userSlice.reducer,
     [eventbriteSlice.reducerPath]: eventbriteSlice.reducer,
     [gallerySlice.reducerPath]: gallerySlice.reducer,
+    [groupSlice.reducerPath]: groupSlice.reducer,
     user: authSlice,
   },
   middleware: (getDefaultMiddleware) =>
@@ -25,7 +27,8 @@ export const store = configureStore({
       .concat(organizerSlice.middleware)
       .concat(userSlice.middleware)
       .concat(eventbriteSlice.middleware)
-      .concat(gallerySlice.middleware),
+      .concat(gallerySlice.middleware)
+      .concat(groupSlice.middleware),
 });
 
 setupListeners(store.dispatch);

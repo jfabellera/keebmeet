@@ -32,6 +32,7 @@ import {
 import { TooltipProvider } from './components/ui/tooltip';
 import AccountPage from './pages/AccountPage';
 import AdminPage from './pages/AdminPage';
+import AdminGroupsPage from './pages/AdminGroupsPage';
 import AdminRequestsPage from './pages/AdminRequestsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AuthorizeEventbritePage from './pages/AuthorizeEventbritePage';
@@ -162,6 +163,7 @@ const App = (): ReactNode => {
             >
               <Route path="" element={<AdminRequestsPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="groups" element={<AdminGroupsPage />} />
             </Route>
           </Routes>
         </Router>

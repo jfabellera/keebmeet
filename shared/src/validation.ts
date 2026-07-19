@@ -241,10 +241,15 @@ export type UnclaimRaffleWinnerPayload = z.input<
 export const createGroupSchema = z.object({
   name: z.string().min(3).max(100),
   code: z.string().min(1).max(30),
-  discord_server_id: z.string().max(32).optional(),
+  // Empty string means no association; normalized to null like editGroupSchema.
+  discord_server_id: z
+    .string()
+    .max(32)
+    .transform((value) => (value === '' ? null : value))
+    .optional(),
 });
 
-export type CreateGroupPayload = z.infer<typeof createGroupSchema>;
+export type CreateGroupPayload = z.input<typeof createGroupSchema>;
 
 export const editGroupSchema = z.object({
   name: z.string().min(3).max(100).optional(),

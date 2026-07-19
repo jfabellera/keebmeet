@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { FiShield, FiUsers } from 'react-icons/fi';
+import { FiLayers, FiShield, FiUsers } from 'react-icons/fi';
 import { useLocation } from 'react-router-dom';
 import Page from '../components/Page/Page';
 import { type SidebarItem } from '../components/Sidebar/Sidebar';
@@ -20,6 +20,12 @@ const sidebarItems: SidebarItem[] = [
     value: 'users',
     icon: FiUsers,
     url: '/admin/users',
+  },
+  {
+    name: 'Manage Groups',
+    value: 'groups',
+    icon: FiLayers,
+    url: '/admin/groups',
   },
 ];
 
