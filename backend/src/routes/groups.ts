@@ -3,12 +3,18 @@ import {
   createGroup,
   deleteGroup,
   editGroup,
+  getGroups,
 } from '../controllers/groups';
 import { authChecker, Rule } from '../middleware/authChecker';
 
 const router = express.Router();
 
 // Managing groups is admin only.
+router.get(
+  '/',
+  authChecker([Rule.requireAdmin]) as RequestHandler,
+  getGroups as RequestHandler
+);
 router.post(
   '/',
   authChecker([Rule.requireAdmin]) as RequestHandler,

@@ -15,6 +15,18 @@ const toGroupResponse = (group: Group): GroupInfo => ({
 });
 
 /**
+ * Lists all groups, ordered by name.
+ */
+export const getGroups = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const groups = await Group.find({ order: { name: 'ASC' } });
+
+  return res.json(groups.map(toGroupResponse));
+};
+
+/**
  * Creates a group. The code is a case-insensitive unique identifier, so a
  * collision with an existing group is rejected.
  */

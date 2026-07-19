@@ -5,6 +5,7 @@ import { type Request, type Response } from 'express';
 
 jest.mock('../entity/Group', () => ({
   Group: {
+    find: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     create: jest.fn(),
@@ -12,7 +13,7 @@ jest.mock('../entity/Group', () => ({
   },
 }));
 
-import { createGroup, deleteGroup, editGroup } from './groups';
+import { createGroup, deleteGroup, editGroup, getGroups } from './groups';
 import { Group } from '../entity/Group';
 
 const mockedGroup = jest.mocked(Group);
@@ -54,6 +55,35 @@ const fakeGroup = (overrides: Record<string, unknown> = {}): any => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+// ---- getGroups -------------------------------------------------------------
+
+describe('getGroups', () => {
+  it('returns every group as its public shape, ordered by name', async () => {
+    mockedGroup.find.mockResolvedValue([
+      fakeGroup({ id: '1', name: 'Alpha', code: 'a', discord_server_id: '9' }),
+      fakeGroup({ id: '2', name: 'Beta', code: 'b', discord_server_id: null }),
+    ] as never);
+    const res = mockResponse();
+
+    await getGroups(mockRequest(), res);
+
+    expect(mockedGroup.find).toHaveBeenCalledWith({ order: { name: 'ASC' } });
+    expect(res.body).toEqual([
+      { id: '1', name: 'Alpha', code: 'a', discord_server_id: '9' },
+      { id: '2', name: 'Beta', code: 'b', discord_server_id: null },
+    ]);
+  });
+
+  it('returns an empty array when there are no groups', async () => {
+    mockedGroup.find.mockResolvedValue([] as never);
+    const res = mockResponse();
+
+    await getGroups(mockRequest(), res);
+
+    expect(res.body).toEqual([]);
+  });
 });
 
 // ---- createGroup -----------------------------------------------------------
