@@ -163,6 +163,22 @@ describe('createGroup', () => {
       discord_server_id: null,
     });
   });
+
+  it('normalizes an empty discord_server_id to null', async () => {
+    mockedGroup.countBy.mockResolvedValue(0);
+    const save = jest.fn().mockResolvedValue(fakeGroup());
+    mockedGroup.create.mockReturnValue({ save } as never);
+    const res = mockResponse();
+
+    await createGroup(
+      mockRequest({ name: 'Keeb Club', code: 'keeb', discord_server_id: '' }),
+      res
+    );
+
+    expect(mockedGroup.create).toHaveBeenCalledWith(
+      expect.objectContaining({ discord_server_id: null })
+    );
+  });
 });
 
 // ---- editGroup -------------------------------------------------------------
