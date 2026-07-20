@@ -33,6 +33,10 @@ import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
+import {
+  getEffectiveGroupIds,
+  getEffectiveGroups,
+} from '../util/groupMembership';
 import { sendMeetupTransferredEmail } from '../util/email';
 import {
   createEventbriteWebhook,
@@ -149,8 +153,9 @@ const mapMeetupInfo = async (
 };
 
 // The subset of the requested group ids the user actually belongs to, as Group
-// entities. Organizers may only assign a meetup to groups they're a member of,
-// so any requested id the user isn't in is silently dropped.
+// entities. Membership is effective (explicit joins plus Discord-derived), so an
+// organizer can assign a meetup to a group they're only in via Discord; any
+// requested id the user isn't in is silently dropped.
 const resolveOwnedGroups = async (
   userId: string,
   requestedGroupIds: string[]
@@ -160,8 +165,10 @@ const resolveOwnedGroups = async (
     where: { id: userId },
     relations: { groups: true },
   });
+  if (user == null) return [];
   const requested = new Set(requestedGroupIds);
-  return (user?.groups ?? []).filter((group) => requested.has(group.id));
+  const effective = await getEffectiveGroups(user);
+  return effective.filter((group) => requested.has(group.id));
 };
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
@@ -259,12 +266,14 @@ export const getAllMeetups = async (
       ],
     });
 
-    // Meetups assigned to any group the requestor belongs to.
+    // Meetups assigned to any group the requestor belongs to (explicitly or via
+    // a linked Discord server).
     const membership = await User.findOne({
       where: { id: requestor.id },
       relations: { groups: true },
     });
-    const groupIds = (membership?.groups ?? []).map((group) => group.id);
+    const groupIds =
+      membership != null ? await getEffectiveGroupIds(membership) : [];
     const groupMeetups =
       groupIds.length > 0
         ? await Meetup.find({
@@ -1015,7 +1024,9 @@ export const updateMeetup = async (
       where: { id: requestor.id },
       relations: { groups: true },
     });
-    const memberIds = new Set((membership?.groups ?? []).map((g) => g.id));
+    const memberIds = new Set(
+      membership != null ? await getEffectiveGroupIds(membership) : []
+    );
     // The requestor can only set groups they're in; ignore any others.
     const desiredIds = new Set(
       result.data.group_ids.filter((id) => memberIds.has(id))

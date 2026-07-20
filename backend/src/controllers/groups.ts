@@ -10,6 +10,11 @@ import { ILike } from 'typeorm';
 import { Group } from '../entity/Group';
 import { User } from '../entity/User';
 import { fetchBotServers } from '../util/discord';
+import {
+  clearMemberServerCache,
+  getDiscordDerivedGroups,
+  getEffectiveGroupIds,
+} from '../util/groupMembership';
 
 const toGroupResponse = (group: Group): GroupInfo => ({
   id: group.id,
@@ -67,6 +72,8 @@ export const createGroup = async (
     discord_server_id: result.data.discord_server_id ?? null,
   }).save();
 
+  if (group.discord_server_id != null) clearMemberServerCache();
+
   return res.status(201).json(toGroupResponse(group));
 };
 
@@ -103,11 +110,16 @@ export const editGroup = async (
   }
 
   if (result.data.name != null) group.name = result.data.name;
+  const serverChanged =
+    result.data.discord_server_id !== undefined &&
+    result.data.discord_server_id !== group.discord_server_id;
   if (result.data.discord_server_id !== undefined) {
     group.discord_server_id = result.data.discord_server_id;
   }
 
   await group.save();
+
+  if (serverChanged) clearMemberServerCache();
 
   return res.status(200).json(toGroupResponse(group));
 };
@@ -149,9 +161,33 @@ export const getMyGroups = async (
     return res.status(404).json({ message: 'Invalid user ID.' });
   }
 
-  const groups = [...user.groups].sort((a, b) => a.name.localeCompare(b.name));
+  const explicitIds = new Set(user.groups.map((group) => group.id));
+  const derived = await getDiscordDerivedGroups(user.discord_id);
+  const derivedIds = new Set(derived.map((group) => group.id));
 
-  return res.json(groups.map(toGroupResponse));
+  const byId = new Map<string, Group>();
+  for (const group of user.groups) byId.set(group.id, group);
+  for (const group of derived) if (!byId.has(group.id)) byId.set(group.id, group);
+
+  const groups = [...byId.values()].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  return res.json(
+    groups.map((group) => {
+      const inExplicit = explicitIds.has(group.id);
+      const inDerived = derivedIds.has(group.id);
+      return {
+        ...toGroupResponse(group),
+        membership_source:
+          inExplicit && inDerived
+            ? 'both'
+            : inDerived
+              ? 'discord'
+              : 'explicit',
+      } satisfies GroupInfo;
+    })
+  );
 };
 
 /**
@@ -220,6 +256,12 @@ export const leaveGroup = async (
   }
 
   if (!user.groups.some((joined) => joined.id === group_id)) {
+    const effectiveIds = await getEffectiveGroupIds(user);
+    if (effectiveIds.includes(group_id)) {
+      return res.status(409).json({
+        message: "This membership comes from Discord and can't be removed here.",
+      });
+    }
     return res
       .status(404)
       .json({ message: 'You are not a member of this group.' });

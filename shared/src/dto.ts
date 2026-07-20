@@ -89,4 +89,5 @@ export interface GroupInfo {
   name: string;
   code: string;
   discord_server_id: string | null;
+  membership_source?: 'explicit' | 'discord' | 'both';
 }

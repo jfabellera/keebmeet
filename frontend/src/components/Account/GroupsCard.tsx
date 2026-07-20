@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -100,16 +101,21 @@ const GroupsCard = (): ReactNode => {
               <span className="flex items-center gap-2">
                 <FiUsers className="text-muted-foreground size-4 shrink-0" />
                 <span className="font-medium">{group.name}</span>
+                {group.membership_source !== 'explicit' && (
+                  <Badge variant="secondary">via Discord</Badge>
+                )}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPendingLeave(group)}
-                aria-label={`Leave ${group.name}`}
-              >
-                <FiX />
-                Leave
-              </Button>
+              {group.membership_source !== 'discord' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPendingLeave(group)}
+                  aria-label={`Leave ${group.name}`}
+                >
+                  <FiX />
+                  Leave
+                </Button>
+              )}
             </li>
           ))}
         </ul>

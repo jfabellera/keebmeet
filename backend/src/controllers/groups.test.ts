@@ -25,6 +25,13 @@ jest.mock('../util/discord', () => ({
   fetchBotServers: jest.fn(),
 }));
 
+jest.mock('../util/groupMembership', () => ({
+  __esModule: true,
+  getDiscordDerivedGroups: jest.fn().mockResolvedValue([]),
+  getEffectiveGroupIds: jest.fn().mockResolvedValue([]),
+  clearMemberServerCache: jest.fn(),
+}));
+
 import {
   createGroup,
   deleteGroup,
@@ -38,10 +45,18 @@ import {
 import { Group } from '../entity/Group';
 import { User } from '../entity/User';
 import { fetchBotServers } from '../util/discord';
+import {
+  clearMemberServerCache,
+  getDiscordDerivedGroups,
+  getEffectiveGroupIds,
+} from '../util/groupMembership';
 
 const mockedGroup = jest.mocked(Group);
 const mockedUser = jest.mocked(User);
 const mockedFetchBotServers = jest.mocked(fetchBotServers);
+const mockedGetDerived = jest.mocked(getDiscordDerivedGroups);
+const mockedGetEffectiveIds = jest.mocked(getEffectiveGroupIds);
+const mockedClearCache = jest.mocked(clearMemberServerCache);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -206,6 +221,8 @@ describe('createGroup', () => {
       code: 'keeb',
       discord_server_id: '123',
     });
+    // A group with a Discord server invalidates cached membership.
+    expect(mockedClearCache).toHaveBeenCalled();
   });
 
   it('stores a null discord_server_id when none is provided', async () => {
@@ -320,6 +337,8 @@ describe('editGroup', () => {
     expect(res.body).toEqual(
       expect.objectContaining({ id: '1', name: 'Renamed', code: 'keeb' })
     );
+    // The Discord server didn't change, so the membership cache is untouched.
+    expect(mockedClearCache).not.toHaveBeenCalled();
   });
 
   it('clears the discord_server_id when passed an empty string', async () => {
@@ -336,6 +355,8 @@ describe('editGroup', () => {
     expect(res.body).toEqual(
       expect.objectContaining({ discord_server_id: null })
     );
+    // Changing the server invalidates every user's cached membership.
+    expect(mockedClearCache).toHaveBeenCalled();
   });
 });
 
@@ -393,6 +414,26 @@ describe('getMyGroups', () => {
     await getMyGroups(mockRequest(), res);
 
     expect(res.body).toEqual([]);
+  });
+
+  it('tags each group with its membership source (explicit/discord/both)', async () => {
+    const explicitOnly = fakeGroup({ id: '1', name: 'Alpha' });
+    const both = fakeGroup({ id: '2', name: 'Beta' });
+    const discordOnly = fakeGroup({ id: '3', name: 'Gamma' });
+    mockedUser.findOne.mockResolvedValue(
+      fakeUser({ id: '100', groups: [explicitOnly, both] }) as never
+    );
+    mockedGetDerived.mockResolvedValue([both, discordOnly] as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await getMyGroups(mockRequest(), res);
+
+    const body = res.body as Array<{ id: string; membership_source: string }>;
+    const sourceById = Object.fromEntries(
+      body.map((g) => [g.id, g.membership_source])
+    );
+    expect(sourceById).toEqual({ '1': 'explicit', '2': 'both', '3': 'discord' });
   });
 });
 
@@ -455,6 +496,22 @@ describe('joinGroup', () => {
       expect.objectContaining({ id: '7', code: 'keeb', name: 'Keeb Club' })
     );
   });
+
+  it('lets an implicit-only member still create an explicit join', async () => {
+    const group = fakeGroup({ id: '7', code: 'keeb' });
+    mockedGroup.findOne.mockResolvedValue(group as never);
+    // No explicit row, even though the user may be an implicit (Discord) member.
+    const user = fakeUser({ id: '100', groups: [] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await joinGroup(mockRequest({ code: 'keeb' }), res);
+
+    expect(user.groups).toContain(group);
+    expect(user.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+  });
 });
 
 // ---- leaveGroup ------------------------------------------------------------
@@ -469,6 +526,19 @@ describe('leaveGroup', () => {
     await leaveGroup(mockRequest({}, { group_id: '2' }), res);
 
     expect(res.statusCode).toBe(404);
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 for a Discord-derived (implicit) membership', async () => {
+    const user = fakeUser({ id: '100', groups: [] });
+    mockedUser.findOne.mockResolvedValue(user as never);
+    mockedGetEffectiveIds.mockResolvedValue(['2'] as never);
+    const res = mockResponse();
+    res.locals.requestor = fakeUser({ id: '100' });
+
+    await leaveGroup(mockRequest({}, { group_id: '2' }), res);
+
+    expect(res.statusCode).toBe(409);
     expect(user.save).not.toHaveBeenCalled();
   });
 

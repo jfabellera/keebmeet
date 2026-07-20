@@ -123,6 +123,12 @@ jest.mock('../util/imageProcessing', () => ({
   normalizeImage: jest.fn(async (buffer: Buffer) => buffer),
 }));
 
+jest.mock('../util/groupMembership', () => ({
+  __esModule: true,
+  getEffectiveGroups: jest.fn().mockResolvedValue([]),
+  getEffectiveGroupIds: jest.fn().mockResolvedValue([]),
+}));
+
 import {
   createArchiveMeetup,
   createMeetup,
@@ -160,7 +166,13 @@ import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteObject, promoteImage, upload } from '../util/objectStorage';
 import { normalizeImage } from '../util/imageProcessing';
+import {
+  getEffectiveGroupIds,
+  getEffectiveGroups,
+} from '../util/groupMembership';
 
+const mockedGetEffectiveGroups = jest.mocked(getEffectiveGroups);
+const mockedGetEffectiveGroupIds = jest.mocked(getEffectiveGroupIds);
 const mockedMeetup = jest.mocked(Meetup);
 const mockedUser = jest.mocked(User);
 const mockedDataSource = jest.mocked(AppDataSource);
@@ -277,6 +289,8 @@ beforeEach(() => {
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
   }));
+  mockedGetEffectiveGroups.mockResolvedValue([]);
+  mockedGetEffectiveGroupIds.mockResolvedValue([]);
 });
 
 // ---- getAllMeetups ---------------------------------------------------------
@@ -392,10 +406,8 @@ describe('getAllMeetups', () => {
     // No attended/organized meetups; the requestor is only in group g1, which
     // is assigned to (unlisted) meetup 50.
     ticketQueryBuilder.getRawMany.mockResolvedValue([]);
-    mockedUser.findOne.mockResolvedValue({
-      id: '1',
-      groups: [{ id: 'g1' }],
-    } as never);
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1'] as never);
     mockedMeetup.find
       .mockResolvedValueOnce([] as never) // organized lookup
       .mockResolvedValueOnce([{ id: '50' }] as never) // group-meetups lookup
@@ -590,11 +602,12 @@ describe('createMeetup', () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
     mockedGetUtcOffset.mockResolvedValue(-5);
-    // The requestor is in g1 and g2, but not g3.
-    mockedUser.findOne.mockResolvedValue({
-      id: '1',
-      groups: [{ id: 'g1' }, { id: 'g2' }],
-    } as never);
+    // The requestor's effective membership is g1 and g2, but not g3.
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroups.mockResolvedValue([
+      { id: 'g1' },
+      { id: 'g2' },
+    ] as never);
     const res = mockResponse();
     res.locals.requestor = { id: '1', nick_name: 'jane' };
 
@@ -978,11 +991,10 @@ describe('updateMeetup', () => {
       .mockResolvedValueOnce({
         groups: [{ id: 'g1' }, { id: 'g4' }],
       } as never); // current groups lookup
-    // The requestor belongs to g1 and g2 (not g4, which another organizer added).
-    mockedUser.findOne.mockResolvedValue({
-      id: '1',
-      groups: [{ id: 'g1' }, { id: 'g2' }],
-    } as never);
+    // The requestor's effective membership is g1 and g2 (not g4, which another
+    // organizer added).
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1', 'g2'] as never);
     const res = mockResponse();
     res.locals.requestor = { id: '1' };
 
