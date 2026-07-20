@@ -242,7 +242,8 @@ export const getAllMeetups = async (
       : MeetupInfoDetailLevel.Simple;
 
   // Unlisted meetups stay out of listings for the public, but interested
-  // parties — the organizers and the attendees — still see them (badged).
+  // parties — the organizers, the attendees, and members of a group the meetup
+  // is assigned to — still see them (badged).
   const requestor = res.locals.requestor as User | undefined;
   let visibleUnlistedIds: string[] = [];
   if (requestor != null) {
@@ -257,9 +258,25 @@ export const getAllMeetups = async (
         { organizers: { id: requestor.id } },
       ],
     });
+
+    // Meetups assigned to any group the requestor belongs to.
+    const membership = await User.findOne({
+      where: { id: requestor.id },
+      relations: { groups: true },
+    });
+    const groupIds = (membership?.groups ?? []).map((group) => group.id);
+    const groupMeetups =
+      groupIds.length > 0
+        ? await Meetup.find({
+            select: { id: true },
+            where: { groups: { id: In(groupIds) } },
+          })
+        : [];
+
     visibleUnlistedIds = [
       ...attended.map((row) => String(row.meetup_id)),
       ...organized.map((meetup) => meetup.id),
+      ...groupMeetups.map((meetup) => meetup.id),
     ];
   }
 

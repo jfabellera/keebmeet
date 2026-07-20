@@ -387,6 +387,52 @@ describe('getAllMeetups', () => {
       { lead_organizer: { id: '1' }, id: In(['40']) },
     ]);
   });
+
+  it('includes unlisted meetups assigned to the requestor\'s groups', async () => {
+    // No attended/organized meetups; the requestor is only in group g1, which
+    // is assigned to (unlisted) meetup 50.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+    mockedUser.findOne.mockResolvedValue({
+      id: '1',
+      groups: [{ id: 'g1' }],
+    } as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([] as never) // organized lookup
+      .mockResolvedValueOnce([{ id: '50' }] as never) // group-meetups lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    // The group-meetups lookup filters by the requestor's group ids.
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual({
+      groups: { id: In(['g1']) },
+    });
+    // The group's meetup (50) becomes visible in the listing.
+    expect((mockedMeetup.find.mock.calls[2][0] as any).where).toEqual([
+      { is_unlisted: false },
+      { id: In(['50']) },
+    ]);
+  });
+
+  it('skips the group lookup when the requestor is in no groups', async () => {
+    ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([] as never) // organized lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query (no group find)
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    // Only two finds: organized + listing (no group-meetups query).
+    expect(mockedMeetup.find).toHaveBeenCalledTimes(2);
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual([
+      { is_unlisted: false },
+    ]);
+  });
 });
 
 // ---- getMeetup -------------------------------------------------------------
