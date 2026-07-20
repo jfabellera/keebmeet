@@ -25,6 +25,7 @@ import config from '../config';
 import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { GalleryRecord } from '../entity/GalleryRecord';
+import { Group } from '../entity/Group';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
@@ -121,6 +122,13 @@ const mapMeetupInfo = async (
       };
     }
 
+    if (meetup.groups != null) {
+      meetupInfo.groups = meetup.groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+      }));
+    }
+
     // Get ticket details
     const ticketCount = await Ticket.count({
       where: {
@@ -137,6 +145,22 @@ const mapMeetupInfo = async (
   }
 
   return meetupInfo;
+};
+
+// The subset of the requested group ids the user actually belongs to, as Group
+// entities. Organizers may only assign a meetup to groups they're a member of,
+// so any requested id the user isn't in is silently dropped.
+const resolveOwnedGroups = async (
+  userId: string,
+  requestedGroupIds: string[]
+): Promise<Group[]> => {
+  if (requestedGroupIds.length === 0) return [];
+  const user = await User.findOne({
+    where: { id: userId },
+    relations: { groups: true },
+  });
+  const requested = new Set(requestedGroupIds);
+  return (user?.groups ?? []).filter((group) => requested.has(group.id));
 };
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
@@ -294,6 +318,7 @@ export const getMeetup = async (
       organizers: true,
       lead_organizer: true,
       eventbriteRecord: true,
+      groups: true,
     },
     where: {
       slug,
@@ -460,6 +485,13 @@ export const createMeetup = async (
   } catch (error) {
     return res.status(500).json({ message: 'Failed to store meetup image.' });
   }
+
+  // Assign the meetup to the requestor's own groups. As a fresh entity, saving
+  // with the relation set inserts the join rows (safe here, unlike on edit).
+  newMeetup.groups = await resolveOwnedGroups(
+    requestor.id,
+    result.data.group_ids ?? []
+  );
 
   await newMeetup.save();
 
@@ -799,12 +831,16 @@ export const updateMeetup = async (
   // edit every other field, but altering who runs the meetup is reserved to the
   // lead. Checked before any mutation so a forbidden request changes nothing.
   const requestor = res.locals.requestor as User;
-  if (
-    result.data.organizer_ids != null &&
-    meetup.lead_organizer?.id !== requestor.id
-  ) {
+  const isLead = meetup.lead_organizer?.id === requestor?.id;
+  if (result.data.organizer_ids != null && !isLead) {
     return res.status(403).json({
       message: 'Only the lead organizer can update the organizers list.',
+    });
+  }
+  // Likewise, only the lead organizer may change the meetup's groups.
+  if (result.data.group_ids != null && !isLead) {
+    return res.status(403).json({
+      message: "Only the lead organizer can update the meetup's groups.",
     });
   }
 
@@ -938,6 +974,38 @@ export const updateMeetup = async (
       meetup.name,
       meetup.lead_organizer?.nick_name ?? 'A lead organizer'
     );
+  }
+
+  // Sync the meetup's groups to the requestor's selection, but only within the
+  // groups the requestor belongs to: they can add/remove their own groups while
+  // leaving groups assigned by other organizers untouched. Updated via the
+  // relation builder for the same reason organizers are (see above).
+  if (result.data.group_ids != null) {
+    const membership = await User.findOne({
+      where: { id: requestor.id },
+      relations: { groups: true },
+    });
+    const memberIds = new Set((membership?.groups ?? []).map((g) => g.id));
+    // The requestor can only set groups they're in; ignore any others.
+    const desiredIds = new Set(
+      result.data.group_ids.filter((id) => memberIds.has(id))
+    );
+    const withGroups = await Meetup.findOne({
+      relations: { groups: true },
+      where: { id: meetup.id },
+    });
+    const currentIds = (withGroups?.groups ?? []).map((g) => g.id);
+    const toAddGroups = [...desiredIds].filter((id) => !currentIds.includes(id));
+    // Only remove groups the requestor is a member of; leave others' groups.
+    const toRemoveGroups = currentIds.filter(
+      (id) => memberIds.has(id) && !desiredIds.has(id)
+    );
+    if (toAddGroups.length > 0 || toRemoveGroups.length > 0) {
+      await AppDataSource.createQueryBuilder()
+        .relation(Meetup, 'groups')
+        .of(meetup.id)
+        .addAndRemove(toAddGroups, toRemoveGroups);
+    }
   }
 
   // Best-effort cleanup of the replaced image, after a successful save.

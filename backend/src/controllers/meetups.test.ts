@@ -99,6 +99,7 @@ jest.mock('../datasource', () => {
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
   },
 }));
@@ -513,6 +514,29 @@ describe('createMeetup', () => {
     expect(created.save).toHaveBeenCalled();
   });
 
+  it('assigns only the groups the requestor belongs to', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    // The requestor is in g1 and g2, but not g3.
+    mockedUser.findOne.mockResolvedValue({
+      id: '1',
+      groups: [{ id: 'g1' }, { id: 'g2' }],
+    } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ group_ids: ['g1', 'g3'] })),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    // g3 is dropped (not a member); g1 is kept.
+    expect(created.groups).toEqual([{ id: 'g1' }]);
+  });
+
   it('passes is_unlisted through to the created meetup', async () => {
     mockedMeetup.findOne.mockResolvedValue(null);
     mockedGeocode.mockResolvedValue(geocodeResult);
@@ -872,6 +896,35 @@ describe('updateMeetup', () => {
     expect(res.statusCode).toBe(201);
   });
 
+  it('syncs only the requestor-owned groups, leaving others untouched', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null) // name-collision lookup
+      .mockResolvedValueOnce({
+        groups: [{ id: 'g1' }, { id: 'g4' }],
+      } as never); // current groups lookup
+    // The requestor belongs to g1 and g2 (not g4, which another organizer added).
+    mockedUser.findOne.mockResolvedValue({
+      id: '1',
+      groups: [{ id: 'g1' }, { id: 'g2' }],
+    } as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await updateMeetup(
+      mockRequest({ group_ids: ['g2'] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Add g2; remove g1 (owned, deselected); g4 is left alone (not the
+    // requestor's group).
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['g2'], ['g1']);
+    expect(res.statusCode).toBe(201);
+  });
+
   it('never adds the lead to the co-organizer list', async () => {
     // fakeMeetupRow's lead is user 1; a client that includes it is ignored.
     const meetup = fakeMeetupRow({
@@ -968,6 +1021,25 @@ describe('updateMeetup', () => {
     );
 
     // Forbidden, and nothing is mutated: no save, no join-table write.
+    expect(res.statusCode).toBe(403);
+    expect(meetup.save).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-lead organizer changing group_ids', async () => {
+    // fakeMeetupRow's lead is user 1; user 2 is a co-organizer, not the lead.
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup); // target lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ group_ids: ['g1'] }, { meetup_id: '10' }),
+      res
+    );
+
     expect(res.statusCode).toBe(403);
     expect(meetup.save).not.toHaveBeenCalled();
     expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();

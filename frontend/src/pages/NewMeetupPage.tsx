@@ -14,6 +14,7 @@ import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
+import GroupCombobox from '../components/Meetups/GroupCombobox';
 import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
@@ -47,6 +48,7 @@ const NewMeetupPage = (): ReactNode => {
       defaultRaffleEntries: 1,
       isUnlisted: false,
       organizerIds: [] as string[],
+      groupIds: [] as string[],
     },
     onSubmit: async (values) => {
       const result = await createMeetup({
@@ -66,6 +68,7 @@ const NewMeetupPage = (): ReactNode => {
           : formik.initialValues.defaultRaffleEntries,
         is_unlisted: formik.values.isUnlisted,
         organizer_ids: formik.values.organizerIds,
+        group_ids: formik.values.groupIds,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -148,6 +151,17 @@ const NewMeetupPage = (): ReactNode => {
                       void formik.setFieldValue('organizerIds', organizerIds)
                     }
                     excludeIds={currentUserId ? [currentUserId] : []}
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="groups">Groups</FieldLabel>
+                  <GroupCombobox
+                    id="groups"
+                    value={formik.values.groupIds}
+                    onChange={(groupIds) =>
+                      void formik.setFieldValue('groupIds', groupIds)
+                    }
                   />
                 </Field>
 

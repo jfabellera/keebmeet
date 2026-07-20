@@ -19,6 +19,7 @@ export interface MeetupInfo {
   };
   organizers?: { id: string; username: string; display_name: string }[];
   lead_organizer?: { id: string; username: string; display_name: string };
+  groups?: { id: string; name: string }[];
   tickets?: {
     total: number;
     available: number;

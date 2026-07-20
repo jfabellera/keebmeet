@@ -27,6 +27,7 @@ import {
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
+import GroupCombobox from './GroupCombobox';
 import OrganizerCombobox from './OrganizerCombobox';
 
 dayjs.extend(customParseFormat);
@@ -38,6 +39,8 @@ interface Props {
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const currentUserId = useAppSelector((state) => state.user.user?.id);
+  // Only the lead organizer may change the organizers and groups.
+  const isLead = currentUserId === meetup?.lead_organizer?.id;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
   const { isUploading, onUploadingChange } = usePendingUploads();
@@ -56,6 +59,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       description: '',
       isUnlisted: false,
       organizerIds: [] as string[],
+      groupIds: [] as string[],
       organizerType: 'me' as 'me' | 'other',
       organizerName: '',
     },
@@ -94,6 +98,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         JSON.stringify(values.organizerIds)
       )
         payload.organizer_ids = values.organizerIds;
+      if (
+        JSON.stringify(formik.initialValues.groupIds) !==
+        JSON.stringify(values.groupIds)
+      )
+        payload.group_ids = values.groupIds;
       const organizerName =
         values.organizerType === 'other' ? values.organizerName : '';
       const initialOrganizerName =
@@ -151,6 +160,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         isUnlisted: meetup?.is_unlisted ?? false,
         organizerIds:
           meetup?.organizers?.map((organizer) => organizer.id) ?? [],
+        groupIds: meetup?.groups?.map((group) => group.id) ?? [],
         organizerType: meetup?.organizer_name != null ? 'other' : 'me',
         organizerName: meetup?.organizer_name ?? '',
       },
@@ -224,38 +234,67 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
             )}
           </Field>
         ) : (
-          <Field className="max-w-sm min-w-0 py-2">
-            <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {meetup?.lead_organizer != null ? (
-                <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
-              ) : null}
+          <>
+            <Field className="max-w-sm min-w-0 py-2">
+              <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {meetup?.lead_organizer != null ? (
+                  <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
+                ) : null}
 
-              {!isEditable &&
-                meetup?.organizers?.map((organizer) => (
-                  <Badge variant="secondary" key={organizer.id}>
-                    {organizer.display_name}
-                  </Badge>
-                ))}
-            </div>
-            {isEditable && (
-              <OrganizerCombobox
-                id="organizers"
-                disabled={
-                  !isEditable || currentUserId !== meetup?.lead_organizer?.id
-                }
-                excludeIds={
-                  meetup?.lead_organizer != null
-                    ? [meetup.lead_organizer.id]
-                    : []
-                }
-                value={formik.values.organizerIds}
-                onChange={(organizerIds) =>
-                  void formik.setFieldValue('organizerIds', organizerIds)
-                }
-              />
-            )}
-          </Field>
+                {!isEditable &&
+                  meetup?.organizers?.map((organizer) => (
+                    <Badge variant="secondary" key={organizer.id}>
+                      {organizer.display_name}
+                    </Badge>
+                  ))}
+              </div>
+              {isEditable && (
+                <OrganizerCombobox
+                  id="organizers"
+                  disabled={
+                    !isEditable || currentUserId !== meetup?.lead_organizer?.id
+                  }
+                  excludeIds={
+                    meetup?.lead_organizer != null
+                      ? [meetup.lead_organizer.id]
+                      : []
+                  }
+                  value={formik.values.organizerIds}
+                  onChange={(organizerIds) =>
+                    void formik.setFieldValue('organizerIds', organizerIds)
+                  }
+                />
+              )}
+            </Field>
+            <Field className="max-w-sm min-w-0 py-2">
+              <FieldLabel htmlFor="groups">Groups</FieldLabel>
+              {/* Only the lead edits groups; everyone else sees them read-only.
+                  The combobox lists only the viewer's own groups, so it can't
+                  render a non-lead's chips anyway. */}
+              {!(isEditable && isLead) ? (
+                <div className="flex flex-wrap gap-2">
+                  {meetup?.groups != null && meetup.groups.length > 0 ? (
+                    meetup.groups.map((group) => (
+                      <Badge variant="secondary" key={group.id}>
+                        {group.name}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-foreground/70">No groups</p>
+                  )}
+                </div>
+              ) : (
+                <GroupCombobox
+                  id="groups"
+                  value={formik.values.groupIds}
+                  onChange={(groupIds) =>
+                    void formik.setFieldValue('groupIds', groupIds)
+                  }
+                />
+              )}
+            </Field>
+          </>
         )}
         <EditableFormField
           name={'Meetup Name'}
