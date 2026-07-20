@@ -32,7 +32,13 @@ import {
 } from '@/components/ui/tooltip';
 import { type DiscordServer, type GroupInfo } from '@keebmeet/shared';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { FiEdit2, FiInfo, FiPlus, FiTrash2 } from 'react-icons/fi';
+import {
+  FiAlertTriangle,
+  FiEdit2,
+  FiInfo,
+  FiPlus,
+  FiTrash2,
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 import { CopyButton } from '../components/CopyButton';
 import {
@@ -78,7 +84,10 @@ const DiscordServerCell = ({
     ) : isLoadingServers ? (
       <span className="text-muted-foreground italic">Loading…</span>
     ) : (
-      <span className="text-muted-foreground italic">Unknown server</span>
+      <span className="inline-flex items-center gap-1 text-amber-600">
+        <FiAlertTriangle className="size-3.5 shrink-0" />
+        Bot not in this server
+      </span>
     );
 
   return (
