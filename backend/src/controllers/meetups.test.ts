@@ -436,6 +436,32 @@ describe('getMeetup', () => {
     );
     expect((res.body as any).slug).toBe('tex-mechs');
   });
+
+  it('exposes groups to an organizer of the meetup', async () => {
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetupRow({ groups: [{ id: 'g1', name: 'Keeb Club' }] })
+    );
+    mockedTicket.count.mockResolvedValue(0);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead organizer
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect((res.body as any).groups).toEqual([{ id: 'g1', name: 'Keeb Club' }]);
+  });
+
+  it('hides groups from the public (non-organizer / anonymous)', async () => {
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetupRow({ groups: [{ id: 'g1', name: 'Keeb Club' }] })
+    );
+    mockedTicket.count.mockResolvedValue(0);
+    const res = mockResponse();
+    // No requestor: an anonymous public read.
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect((res.body as any).groups).toBeUndefined();
+  });
 });
 
 // ---- createMeetup ----------------------------------------------------------

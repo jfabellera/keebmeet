@@ -74,7 +74,8 @@ enum MeetupInfoDetailLevel {
 const mapMeetupInfo = async (
   meetup: Meetup,
   type: MeetupInfoDetailLevel,
-  hasPhotos?: boolean
+  hasPhotos?: boolean,
+  includeGroups = false
 ): Promise<MeetupInfo> => {
   const meetupInfo: MeetupInfo = {
     id: meetup.id,
@@ -122,7 +123,7 @@ const mapMeetupInfo = async (
       };
     }
 
-    if (meetup.groups != null) {
+    if (includeGroups && meetup.groups != null) {
       meetupInfo.groups = meetup.groups.map((group) => ({
         id: group.id,
         name: group.name,
@@ -329,7 +330,19 @@ export const getMeetup = async (
     return res.status(404).json({ message: 'Meetup not found.' });
   }
 
-  const meetupInfo = await mapMeetupInfo(meetup, detailLevel);
+  // Only include groups for organizers
+  const requestor = res.locals.requestor as User | undefined;
+  const isOrganizer =
+    requestor != null &&
+    (meetup.lead_organizer?.id === requestor.id ||
+      meetup.organizers.some((organizer) => organizer.id === requestor.id));
+
+  const meetupInfo = await mapMeetupInfo(
+    meetup,
+    detailLevel,
+    undefined,
+    isOrganizer
+  );
 
   return res.json(meetupInfo);
 };
@@ -995,7 +1008,9 @@ export const updateMeetup = async (
       where: { id: meetup.id },
     });
     const currentIds = (withGroups?.groups ?? []).map((g) => g.id);
-    const toAddGroups = [...desiredIds].filter((id) => !currentIds.includes(id));
+    const toAddGroups = [...desiredIds].filter(
+      (id) => !currentIds.includes(id)
+    );
     // Only remove groups the requestor is a member of; leave others' groups.
     const toRemoveGroups = currentIds.filter(
       (id) => memberIds.has(id) && !desiredIds.has(id)
