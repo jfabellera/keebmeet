@@ -20,6 +20,7 @@ import {
   getDiscordDerivedGroups,
   getEffectiveGroupIds,
   getEffectiveGroups,
+  invalidateMemberServers,
 } from './groupMembership';
 
 const mockedGroup = jest.mocked(Group);
@@ -118,6 +119,16 @@ describe('membership cache', () => {
 
     jest.setSystemTime(Date.now() + 5 * 60 * 1000 + 1);
     await getDiscordDerivedGroups('d-ttl');
+
+    expect(mockedIsGuildMember).toHaveBeenCalledTimes(4);
+  });
+
+  it('re-checks Discord after the entry is invalidated', async () => {
+    await getDiscordDerivedGroups('d-inv');
+    expect(mockedIsGuildMember).toHaveBeenCalledTimes(2);
+
+    invalidateMemberServers('d-inv');
+    await getDiscordDerivedGroups('d-inv');
 
     expect(mockedIsGuildMember).toHaveBeenCalledTimes(4);
   });

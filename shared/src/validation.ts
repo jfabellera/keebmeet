@@ -147,6 +147,13 @@ export const discordRsvpSchema = z.object({
 
 export type DiscordRsvpPayload = z.infer<typeof discordRsvpSchema>;
 
+export const membershipChangedSchema = z.object({
+  discord_id: z.string(),
+  guild_id: z.string(),
+});
+
+export type MembershipChangedPayload = z.infer<typeof membershipChangedSchema>;
+
 // Shared by create and edit: when a ticket holder is provided, every field is
 // required so we never persist a half-populated holder.
 const ticketHolderSchema = z.object({
