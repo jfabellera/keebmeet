@@ -63,8 +63,10 @@ const GroupCombobox = ({
         </ComboboxValue>
       </ComboboxChips>
       <ComboboxContent anchor={anchor}>
-        <ComboboxEmpty>
-          You're not in any groups. Join one from your account page.
+        <ComboboxEmpty className="px-2">
+          {options.length === 0
+            ? "You're not in any groups. Join one from your account page."
+            : 'No matching groups found.'}
         </ComboboxEmpty>
         <ComboboxList>
           {(group: GroupInfo) => (
