@@ -2,9 +2,12 @@ import {
   BaseEntity,
   Column,
   Entity,
+  JoinTable,
+  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Group } from './Group';
 import { Ticket } from './Ticket';
 
 @Entity({ name: 'users' })
@@ -48,7 +51,7 @@ export class User extends BaseEntity {
   password_hash?: string;
 
   @Column({ type: 'varchar', length: 30, nullable: true, unique: true })
-  discord_id?: string;
+  discord_id?: string | null;
 
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;
@@ -61,4 +64,12 @@ export class User extends BaseEntity {
 
   @Column({ type: 'boolean', default: false })
   is_verified: boolean;
+
+  @ManyToMany(() => Group)
+  @JoinTable({
+    name: 'users_groups',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' },
+  })
+  groups: Group[];
 }

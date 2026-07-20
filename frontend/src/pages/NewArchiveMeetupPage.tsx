@@ -1,7 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -17,7 +24,12 @@ import { useFormik } from 'formik';
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import GroupCombobox from '../components/Meetups/GroupCombobox';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
+import {
+  UNLISTED_GROUPS_DESCRIPTION,
+  UNLISTED_SLUG_NOTE,
+} from '../components/Meetups/unlistedCopy';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import { usePendingUploads } from '../hooks/usePendingUploads';
@@ -45,6 +57,8 @@ const NewArchiveMeetupPage = (): ReactNode => {
       // required organizer-name field (see the schema).
       organizerType: '' as 'me' | 'other' | '',
       organizerName: '',
+      groupIds: [] as string[],
+      isUnlisted: false,
     },
     onSubmit: async (values) => {
       const result = await createArchiveMeetup({
@@ -60,6 +74,8 @@ const NewArchiveMeetupPage = (): ReactNode => {
         // themselves ('me') or the typed name ('other').
         organizer_name:
           values.organizerType === 'other' ? values.organizerName : undefined,
+        group_ids: values.groupIds,
+        is_unlisted: values.isUnlisted,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -172,6 +188,47 @@ const NewArchiveMeetupPage = (): ReactNode => {
                     <FieldError>{slugError}</FieldError>
                   ) : null}
                 </Field>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="isUnlisted" className="pr-4">
+                      Hide this meetup from public listings?
+                    </Label>
+                    <Checkbox
+                      id="isUnlisted"
+                      name="isUnlisted"
+                      checked={formik.values.isUnlisted}
+                      onCheckedChange={(checked) => {
+                        const isUnlisted = checked === true;
+                        void formik.setFieldValue('isUnlisted', isUnlisted);
+                        if (!isUnlisted) {
+                          void formik.setFieldValue('groupIds', []);
+                        }
+                      }}
+                    />
+                    <span>Yes</span>
+                  </div>
+                  {formik.values.isUnlisted ? (
+                    <p className="text-sm text-amber-600">
+                      {UNLISTED_SLUG_NOTE}
+                    </p>
+                  ) : null}
+                  {formik.values.isUnlisted ? (
+                    <Field>
+                      <FieldLabel htmlFor="groups">Groups</FieldLabel>
+                      <FieldDescription>
+                        {UNLISTED_GROUPS_DESCRIPTION}
+                      </FieldDescription>
+                      <GroupCombobox
+                        id="groups"
+                        value={formik.values.groupIds}
+                        onChange={(groupIds) =>
+                          void formik.setFieldValue('groupIds', groupIds)
+                        }
+                      />
+                    </Field>
+                  ) : null}
+                </div>
 
                 <FormField
                   formik={formik}

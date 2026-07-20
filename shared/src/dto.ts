@@ -19,6 +19,7 @@ export interface MeetupInfo {
   };
   organizers?: { id: string; username: string; display_name: string }[];
   lead_organizer?: { id: string; username: string; display_name: string };
+  groups?: { id: string; name: string }[];
   tickets?: {
     total: number;
     available: number;
@@ -34,6 +35,7 @@ export interface MeetupInfo {
   organizer_name?: string;
   // Hidden from public listings; reachable only via direct link.
   is_unlisted?: boolean;
+  unlisted_reason?: 'organizer' | 'attendee' | 'group';
 }
 
 export interface TicketInfo {
@@ -81,4 +83,12 @@ export interface TokenData {
   is_organizer: boolean;
   is_admin: boolean;
   is_owner: boolean;
+}
+
+export interface GroupInfo {
+  id: string;
+  name: string;
+  code: string;
+  discord_server_id: string | null;
+  membership_source?: 'explicit' | 'discord' | 'both';
 }

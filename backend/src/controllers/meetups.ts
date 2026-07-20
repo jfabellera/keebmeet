@@ -25,6 +25,7 @@ import config from '../config';
 import { AppDataSource } from '../datasource';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { GalleryRecord } from '../entity/GalleryRecord';
+import { Group } from '../entity/Group';
 import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
@@ -32,6 +33,10 @@ import { RaffleWinner } from '../entity/RaffleWinner';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
+import {
+  getEffectiveGroupIds,
+  getEffectiveGroups,
+} from '../util/groupMembership';
 import { sendMeetupTransferredEmail } from '../util/email';
 import {
   createEventbriteWebhook,
@@ -73,7 +78,8 @@ enum MeetupInfoDetailLevel {
 const mapMeetupInfo = async (
   meetup: Meetup,
   type: MeetupInfoDetailLevel,
-  hasPhotos?: boolean
+  hasPhotos?: boolean,
+  includeGroups = false
 ): Promise<MeetupInfo> => {
   const meetupInfo: MeetupInfo = {
     id: meetup.id,
@@ -121,6 +127,13 @@ const mapMeetupInfo = async (
       };
     }
 
+    if (includeGroups && meetup.groups != null) {
+      meetupInfo.groups = meetup.groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+      }));
+    }
+
     // Get ticket details
     const ticketCount = await Ticket.count({
       where: {
@@ -137,6 +150,25 @@ const mapMeetupInfo = async (
   }
 
   return meetupInfo;
+};
+
+// The subset of the requested group ids the user actually belongs to, as Group
+// entities. Membership is effective (explicit joins plus Discord-derived), so an
+// organizer can assign a meetup to a group they're only in via Discord; any
+// requested id the user isn't in is silently dropped.
+const resolveOwnedGroups = async (
+  userId: string,
+  requestedGroupIds: string[]
+): Promise<Group[]> => {
+  if (requestedGroupIds.length === 0) return [];
+  const user = await User.findOne({
+    where: { id: userId },
+    relations: { groups: true },
+  });
+  if (user == null) return [];
+  const requested = new Set(requestedGroupIds);
+  const effective = await getEffectiveGroups(user);
+  return effective.filter((group) => requested.has(group.id));
 };
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
@@ -217,14 +249,20 @@ export const getAllMeetups = async (
       : MeetupInfoDetailLevel.Simple;
 
   // Unlisted meetups stay out of listings for the public, but interested
-  // parties — the organizers and the attendees — still see them (badged).
+  // parties — the organizers, the attendees, and members of a group the meetup
+  // is assigned to — still see them (badged).
   const requestor = res.locals.requestor as User | undefined;
+  const organizedIds = new Set<string>();
+  const attendedIds = new Set<string>();
+  const groupMeetupIds = new Set<string>();
   let visibleUnlistedIds: string[] = [];
   if (requestor != null) {
     const attended = await Ticket.createQueryBuilder('ticket')
       .select('ticket.meetup_id', 'meetup_id')
       .where('ticket.user_id = :userId', { userId: requestor.id })
       .getRawMany<{ meetup_id: string }>();
+    for (const row of attended) attendedIds.add(String(row.meetup_id));
+
     const organized = await Meetup.find({
       select: { id: true },
       where: [
@@ -232,10 +270,26 @@ export const getAllMeetups = async (
         { organizers: { id: requestor.id } },
       ],
     });
-    visibleUnlistedIds = [
-      ...attended.map((row) => String(row.meetup_id)),
-      ...organized.map((meetup) => meetup.id),
-    ];
+    for (const meetup of organized) organizedIds.add(meetup.id);
+
+    // Meetups assigned to any group the requestor belongs to (explicitly or via
+    // a linked Discord server).
+    const membership = await User.findOne({
+      where: { id: requestor.id },
+      relations: { groups: true },
+    });
+    const groupIds =
+      membership != null ? await getEffectiveGroupIds(membership) : [];
+    const groupMeetups =
+      groupIds.length > 0
+        ? await Meetup.find({
+            select: { id: true },
+            where: { groups: { id: In(groupIds) } },
+          })
+        : [];
+    for (const meetup of groupMeetups) groupMeetupIds.add(meetup.id);
+
+    visibleUnlistedIds = [...attendedIds, ...organizedIds, ...groupMeetupIds];
   }
 
   // Build filters and sorting
@@ -269,8 +323,21 @@ export const getAllMeetups = async (
   }
 
   const meetups = meetupEntities.map(
-    async (meetup: Meetup): Promise<MeetupInfo> =>
-      mapMeetupInfo(meetup, detailLevel, meetupIdsWithPhotos.has(meetup.id))
+    async (meetup: Meetup): Promise<MeetupInfo> => {
+      const info = await mapMeetupInfo(
+        meetup,
+        detailLevel,
+        meetupIdsWithPhotos.has(meetup.id)
+      );
+      if (info.is_unlisted === true) {
+        // Organizer outranks attendee outranks group as the explanation shown.
+        if (organizedIds.has(meetup.id)) info.unlisted_reason = 'organizer';
+        else if (attendedIds.has(meetup.id)) info.unlisted_reason = 'attendee';
+        else if (groupMeetupIds.has(meetup.id))
+          info.unlisted_reason = 'group';
+      }
+      return info;
+    }
   );
 
   return res.json(await Promise.all(meetups));
@@ -294,6 +361,7 @@ export const getMeetup = async (
       organizers: true,
       lead_organizer: true,
       eventbriteRecord: true,
+      groups: true,
     },
     where: {
       slug,
@@ -304,7 +372,19 @@ export const getMeetup = async (
     return res.status(404).json({ message: 'Meetup not found.' });
   }
 
-  const meetupInfo = await mapMeetupInfo(meetup, detailLevel);
+  // Only include groups for organizers
+  const requestor = res.locals.requestor as User | undefined;
+  const isOrganizer =
+    requestor != null &&
+    (meetup.lead_organizer?.id === requestor.id ||
+      meetup.organizers.some((organizer) => organizer.id === requestor.id));
+
+  const meetupInfo = await mapMeetupInfo(
+    meetup,
+    detailLevel,
+    undefined,
+    isOrganizer
+  );
 
   return res.json(meetupInfo);
 };
@@ -461,6 +541,13 @@ export const createMeetup = async (
     return res.status(500).json({ message: 'Failed to store meetup image.' });
   }
 
+  // Assign the meetup to the requestor's own groups. As a fresh entity, saving
+  // with the relation set inserts the join rows (safe here, unlike on edit).
+  newMeetup.groups = await resolveOwnedGroups(
+    requestor.id,
+    result.data.group_ids ?? []
+  );
+
   await newMeetup.save();
 
   return res.status(201).json(newMeetup);
@@ -506,6 +593,7 @@ export const createArchiveMeetup = async (
     duration_hours: 0,
     has_raffle: false,
     is_archive: true,
+    is_unlisted: result.data.is_unlisted,
     // organizer_name is a display-only credit; who actually ran the meetup.
     // Omitted (null) when the submitter ran it themselves.
     organizer_name: result.data.organizer_name,
@@ -546,6 +634,11 @@ export const createArchiveMeetup = async (
   } catch (error) {
     return res.status(500).json({ message: 'Failed to store meetup image.' });
   }
+
+  newMeetup.groups = await resolveOwnedGroups(
+    requestor.id,
+    result.data.group_ids ?? []
+  );
 
   await newMeetup.save();
 
@@ -799,12 +892,16 @@ export const updateMeetup = async (
   // edit every other field, but altering who runs the meetup is reserved to the
   // lead. Checked before any mutation so a forbidden request changes nothing.
   const requestor = res.locals.requestor as User;
-  if (
-    result.data.organizer_ids != null &&
-    meetup.lead_organizer?.id !== requestor.id
-  ) {
+  const isLead = meetup.lead_organizer?.id === requestor?.id;
+  if (result.data.organizer_ids != null && !isLead) {
     return res.status(403).json({
       message: 'Only the lead organizer can update the organizers list.',
+    });
+  }
+  // Likewise, only the lead organizer may change the meetup's groups.
+  if (result.data.group_ids != null && !isLead) {
+    return res.status(403).json({
+      message: "Only the lead organizer can update the meetup's groups.",
     });
   }
 
@@ -938,6 +1035,42 @@ export const updateMeetup = async (
       meetup.name,
       meetup.lead_organizer?.nick_name ?? 'A lead organizer'
     );
+  }
+
+  // Sync the meetup's groups to the requestor's selection, but only within the
+  // groups the requestor belongs to: they can add/remove their own groups while
+  // leaving groups assigned by other organizers untouched. Updated via the
+  // relation builder for the same reason organizers are (see above).
+  if (result.data.group_ids != null) {
+    const membership = await User.findOne({
+      where: { id: requestor.id },
+      relations: { groups: true },
+    });
+    const memberIds = new Set(
+      membership != null ? await getEffectiveGroupIds(membership) : []
+    );
+    // The requestor can only set groups they're in; ignore any others.
+    const desiredIds = new Set(
+      result.data.group_ids.filter((id) => memberIds.has(id))
+    );
+    const withGroups = await Meetup.findOne({
+      relations: { groups: true },
+      where: { id: meetup.id },
+    });
+    const currentIds = (withGroups?.groups ?? []).map((g) => g.id);
+    const toAddGroups = [...desiredIds].filter(
+      (id) => !currentIds.includes(id)
+    );
+    // Only remove groups the requestor is a member of; leave others' groups.
+    const toRemoveGroups = currentIds.filter(
+      (id) => memberIds.has(id) && !desiredIds.has(id)
+    );
+    if (toAddGroups.length > 0 || toRemoveGroups.length > 0) {
+      await AppDataSource.createQueryBuilder()
+        .relation(Meetup, 'groups')
+        .of(meetup.id)
+        .addAndRemove(toAddGroups, toRemoveGroups);
+    }
   }
 
   // Best-effort cleanup of the replaced image, after a successful save.

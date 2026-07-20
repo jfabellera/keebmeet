@@ -7,6 +7,7 @@ import { MeetupDiscordMessage } from './entity/MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './entity/MeetupDisplayRecord';
 import { OrganizerRequest } from './entity/OrganizerRequest';
 import { GalleryRecord } from './entity/GalleryRecord';
+import { Group } from './entity/Group';
 import { RaffleRecord } from './entity/RaffleRecord';
 import { RaffleWinner } from './entity/RaffleWinner';
 import { Ticket } from './entity/Ticket';
@@ -30,6 +31,7 @@ export const AppDataSource = new DataSource({
     RaffleRecord,
     RaffleWinner,
     GalleryRecord,
+    Group,
   ],
   synchronize: false,
   migrations: [__dirname + '/migrations/*.{ts,js}'],

@@ -78,6 +78,26 @@ const postRsvp = async (
   }
 };
 
+// Notifies the backend so it can bust the user's cached group membership.
+// Best-effort; the backend ignores guilds that don't back a group.
+const postMembershipChanged = async (
+  discordId: string,
+  guildId: string
+): Promise<void> => {
+  try {
+    await fetch(`${backendUrl}/discord/membership-changed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': internalApiSecret,
+      },
+      body: JSON.stringify({ discord_id: discordId, guild_id: guildId }),
+    });
+  } catch (error) {
+    console.error('Failed to notify Discord membership change:', error);
+  }
+};
+
 // The red "Cancel RSVP" button we attach to confirmation replies/DMs. Its
 // custom_id is handled by the same interaction listener (action `rsvp-cancel`).
 const cancelRow = (meetupId: string): ActionRowBuilder<ButtonBuilder> =>
@@ -121,14 +141,25 @@ const sendQrDm = async (
   await dm.send({ content, files: qrAttachment(qrCode) });
 };
 
-// Create a new client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// Create a new client instance. GuildMembers is privileged — enable Server
+// Members Intent in the Discord dev portal.
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+});
 
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.
 // It makes some properties non-nullable.
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+});
+
+client.on(Events.GuildMemberAdd, (member) => {
+  void postMembershipChanged(member.id, member.guild.id);
+});
+
+client.on(Events.GuildMemberRemove, (member) => {
+  void postMembershipChanged(member.id, member.guild.id);
 });
 
 // Handle RSVP button clicks on meetup announcement embeds. The embed's primary

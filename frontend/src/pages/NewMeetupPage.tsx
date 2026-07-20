@@ -1,7 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +19,12 @@ import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
+import GroupCombobox from '../components/Meetups/GroupCombobox';
 import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
+import {
+  UNLISTED_GROUPS_DESCRIPTION,
+  UNLISTED_SLUG_NOTE,
+} from '../components/Meetups/unlistedCopy';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import { usePendingUploads } from '../hooks/usePendingUploads';
@@ -47,6 +57,7 @@ const NewMeetupPage = (): ReactNode => {
       defaultRaffleEntries: 1,
       isUnlisted: false,
       organizerIds: [] as string[],
+      groupIds: [] as string[],
     },
     onSubmit: async (values) => {
       const result = await createMeetup({
@@ -66,6 +77,7 @@ const NewMeetupPage = (): ReactNode => {
           : formik.initialValues.defaultRaffleEntries,
         is_unlisted: formik.values.isUnlisted,
         organizer_ids: formik.values.organizerIds,
+        group_ids: formik.values.groupIds,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -171,6 +183,47 @@ const NewMeetupPage = (): ReactNode => {
                   ) : null}
                 </Field>
 
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="isUnlisted" className="pr-4">
+                      Hide this meetup from public listings?
+                    </Label>
+                    <Checkbox
+                      id="isUnlisted"
+                      name="isUnlisted"
+                      checked={formik.values.isUnlisted}
+                      onCheckedChange={(checked) => {
+                        const isUnlisted = checked === true;
+                        void formik.setFieldValue('isUnlisted', isUnlisted);
+                        if (!isUnlisted) {
+                          void formik.setFieldValue('groupIds', []);
+                        }
+                      }}
+                    />
+                    <span>Yes</span>
+                  </div>
+                  {formik.values.isUnlisted ? (
+                    <p className="text-sm text-amber-600">
+                      {UNLISTED_SLUG_NOTE}
+                    </p>
+                  ) : null}
+                  {formik.values.isUnlisted ? (
+                    <Field>
+                      <FieldLabel htmlFor="groups">Groups</FieldLabel>
+                      <FieldDescription>
+                        {UNLISTED_GROUPS_DESCRIPTION}
+                      </FieldDescription>
+                      <GroupCombobox
+                        id="groups"
+                        value={formik.values.groupIds}
+                        onChange={(groupIds) =>
+                          void formik.setFieldValue('groupIds', groupIds)
+                        }
+                      />
+                    </Field>
+                  ) : null}
+                </div>
+
                 <div className="flex gap-2">
                   <FormField
                     formik={formik}
@@ -260,21 +313,6 @@ const NewMeetupPage = (): ReactNode => {
                   disabled={!formik.values.hasRaffle}
                   value={formik.values.defaultRaffleEntries}
                 />
-
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="isUnlisted" className="pr-4">
-                    Hide this meetup from public listings?
-                  </Label>
-                  <Checkbox
-                    id="isUnlisted"
-                    name="isUnlisted"
-                    checked={formik.values.isUnlisted}
-                    onCheckedChange={(checked) => {
-                      void formik.setFieldValue('isUnlisted', checked === true);
-                    }}
-                  />
-                  <span>Yes</span>
-                </div>
 
                 <Button
                   type="submit"

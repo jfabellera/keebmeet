@@ -17,12 +17,13 @@ import { type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings } from 'lucide-react';
+import { ArchiveIcon, EyeOffIcon, Settings } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   FiCalendar,
   FiClock,
   FiExternalLink,
+  FiLink,
   FiMapPin,
   FiUser,
   FiUserCheck,
@@ -35,7 +36,8 @@ import { meetupSlice, useGetMeetupQuery } from '../../store/meetupSlice';
 import { hasMeetupEnded, isMeetupHappeningNow } from '../../util/timeUtil';
 import { isNotFoundError } from '../Guards/Guards';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { CopyLinkButton } from './CopyLinkButton';
+import { CopyButton } from '../CopyButton';
+import { UNLISTED_REASON_TEXT } from './MeetupCard';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
 import { MeetupGallery } from './MeetupGallery';
 import { MeetupRsvpForm } from './MeetupRsvpForm';
@@ -263,23 +265,52 @@ export const MeetupModal = ({
               ) : null}
               <div className="flex flex-col p-4 pb-0">
                 <DialogHeader className="space-y-0 text-left">
-                  <DialogTitle className="flex flex-row justify-between pb-2 text-2xl font-bold">
-                    <div>
-                      {meetup.name}
+                  {isHappeningNow ||
+                  hasEnded ||
+                  meetup.is_archive ||
+                  meetup.is_unlisted === true ? (
+                    <div className="flex flex-wrap items-center gap-2 pb-2">
                       {isHappeningNow ? (
-                        <Badge className="ml-3 -translate-y-0.5 bg-green-600 align-middle text-white">
+                        <Badge className="bg-green-600 text-white">
                           <span className="size-1.5 animate-pulse rounded-full bg-white" />
                           Happening now
                         </Badge>
                       ) : hasEnded ? (
-                        <Badge
-                          variant="secondary"
-                          className="ml-3 -translate-y-0.5 align-middle"
-                        >
-                          Ended
-                        </Badge>
+                        <Badge variant="secondary">Ended</Badge>
+                      ) : null}
+                      {meetup.is_archive ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary">
+                              <ArchiveIcon className="size-3.5" />
+                              Archived
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This is an archived meetup
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                      {meetup.is_unlisted === true ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary">
+                              <EyeOffIcon className="size-3.5" />
+                              Unlisted
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This meetup is unlisted
+                            {meetup.unlisted_reason != null
+                              ? `. You can see it because ${UNLISTED_REASON_TEXT[meetup.unlisted_reason]}.`
+                              : ''}
+                          </TooltipContent>
+                        </Tooltip>
                       ) : null}
                     </div>
+                  ) : null}
+                  <DialogTitle className="pb-2 text-2xl font-bold">
+                    {meetup.name}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-1 pb-4 font-semibold">
@@ -375,7 +406,13 @@ export const MeetupModal = ({
                 <span />
               )}
               <div className="ml-auto flex flex-wrap items-center gap-3">
-                <CopyLinkButton slug={meetupId} className="ml-auto" />
+                <CopyButton
+                  value={`${window.location.origin}/meetup/${meetupId}`}
+                  icon={FiLink}
+                  label="Copy link"
+                  toastMessage="Link copied to clipboard"
+                  className="ml-auto"
+                />
                 {isUserOrganizer && (
                   <Button
                     variant="outline"

@@ -47,7 +47,11 @@ router.get(
   slugAvailable as RequestHandler
 );
 
-router.get('/:meetup_id', getMeetup as RequestHandler);
+router.get(
+  '/:meetup_id',
+  optionalAuth() as RequestHandler,
+  getMeetup as RequestHandler
+);
 
 router.post(
   '/',

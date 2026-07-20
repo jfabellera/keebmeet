@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -27,7 +27,12 @@ import {
 import EditableFormCard from '../Forms/EditableFormCard';
 import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
+import GroupCombobox from './GroupCombobox';
 import OrganizerCombobox from './OrganizerCombobox';
+import {
+  UNLISTED_GROUPS_DESCRIPTION,
+  UNLISTED_SLUG_NOTE,
+} from './unlistedCopy';
 
 dayjs.extend(customParseFormat);
 
@@ -38,6 +43,8 @@ interface Props {
 const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
   const { data: meetup } = useGetMeetupQuery(meetupId);
   const currentUserId = useAppSelector((state) => state.user.user?.id);
+  // Only the lead organizer may change the organizers and groups.
+  const isLead = currentUserId === meetup?.lead_organizer?.id;
   const [isEditable, setIsEditable] = useBoolean(false);
   const [editMeetup, { isLoading: isSaving }] = useEditMeetupMutation();
   const { isUploading, onUploadingChange } = usePendingUploads();
@@ -56,6 +63,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       description: '',
       isUnlisted: false,
       organizerIds: [] as string[],
+      groupIds: [] as string[],
       organizerType: 'me' as 'me' | 'other',
       organizerName: '',
     },
@@ -94,6 +102,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         JSON.stringify(values.organizerIds)
       )
         payload.organizer_ids = values.organizerIds;
+      if (
+        JSON.stringify(formik.initialValues.groupIds) !==
+        JSON.stringify(values.groupIds)
+      )
+        payload.group_ids = values.groupIds;
       const organizerName =
         values.organizerType === 'other' ? values.organizerName : '';
       const initialOrganizerName =
@@ -151,6 +164,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         isUnlisted: meetup?.is_unlisted ?? false,
         organizerIds:
           meetup?.organizers?.map((organizer) => organizer.id) ?? [],
+        groupIds: meetup?.groups?.map((group) => group.id) ?? [],
         organizerType: meetup?.organizer_name != null ? 'other' : 'me',
         organizerName: meetup?.organizer_name ?? '',
       },
@@ -279,6 +293,61 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={slugError}
         />
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor="isUnlisted">Visibility</FieldLabel>
+          {isEditable ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="isUnlisted"
+                name="isUnlisted"
+                checked={formik.values.isUnlisted}
+                onCheckedChange={(checked) => {
+                  const isUnlisted = checked === true;
+                  void formik.setFieldValue('isUnlisted', isUnlisted);
+                  if (!isUnlisted) void formik.setFieldValue('groupIds', []);
+                }}
+              />
+              <Label htmlFor="isUnlisted">
+                Hide from public listings (reachable only by direct link)
+              </Label>
+            </div>
+          ) : (
+            <p className="text-foreground/70">
+              {meetup?.is_unlisted === true ? 'Unlisted' : 'Public'}
+            </p>
+          )}
+        </Field>
+        {isEditable && formik.values.isUnlisted ? (
+          <p className="text-sm text-amber-600">{UNLISTED_SLUG_NOTE}</p>
+        ) : null}
+        {formik.values.isUnlisted ? (
+          <Field className="max-w-sm min-w-0 py-2">
+            <FieldLabel htmlFor="groups">Groups</FieldLabel>
+            <FieldDescription>{UNLISTED_GROUPS_DESCRIPTION}</FieldDescription>
+            {/* Only the lead edits groups; everyone else sees them read-only. */}
+            {!(isEditable && isLead) ? (
+              <div className="flex flex-wrap gap-2">
+                {meetup?.groups != null && meetup.groups.length > 0 ? (
+                  meetup.groups.map((group) => (
+                    <Badge variant="secondary" key={group.id}>
+                      {group.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-foreground/70">No groups</p>
+                )}
+              </div>
+            ) : (
+              <GroupCombobox
+                id="groups"
+                value={formik.values.groupIds}
+                onChange={(groupIds) =>
+                  void formik.setFieldValue('groupIds', groupIds)
+                }
+              />
+            )}
+          </Field>
+        ) : null}
         <EditableFormField
           name={'Date'}
           value={dayjs(meetup?.date, 'YYYY-MM-DDTHH:mm:ss').format(
@@ -377,28 +446,6 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
           onBlur={formik.handleBlur}
           errorMessage={formik.errors.description}
         />
-        <Field className="max-w-sm min-w-0 py-2">
-          <FieldLabel htmlFor="isUnlisted">Visibility</FieldLabel>
-          {isEditable ? (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="isUnlisted"
-                name="isUnlisted"
-                checked={formik.values.isUnlisted}
-                onCheckedChange={(checked) => {
-                  void formik.setFieldValue('isUnlisted', checked === true);
-                }}
-              />
-              <Label htmlFor="isUnlisted">
-                Hide from public listings (reachable only by direct link)
-              </Label>
-            </div>
-          ) : (
-            <p className="text-foreground/70">
-              {meetup?.is_unlisted === true ? 'Unlisted' : 'Public'}
-            </p>
-          )}
-        </Field>
       </form>
     </EditableFormCard>
   );

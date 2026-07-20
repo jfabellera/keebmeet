@@ -3,6 +3,7 @@ import { getUserTickets } from '../controllers/tickets';
 import {
   getUserDiscordServerChannels,
   getUserDiscordServers,
+  unlinkDiscordAccount,
 } from '../controllers/userDiscord';
 import {
   getAllUsers,
@@ -58,6 +59,11 @@ router.get(
   '/:user_id/discord/servers/:server_id/channels',
   authChecker([Rule.overrideAdmin]) as RequestHandler,
   getUserDiscordServerChannels as RequestHandler
+);
+router.delete(
+  '/:user_id/discord',
+  authChecker() as RequestHandler,
+  unlinkDiscordAccount as RequestHandler
 );
 
 export default router;

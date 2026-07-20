@@ -99,6 +99,7 @@ jest.mock('../datasource', () => {
 jest.mock('../entity/User', () => ({
   User: {
     findBy: jest.fn(),
+    findOne: jest.fn(),
     findOneBy: jest.fn(),
   },
 }));
@@ -120,6 +121,12 @@ jest.mock('../util/objectStorage', () => {
 jest.mock('../util/imageProcessing', () => ({
   __esModule: true,
   normalizeImage: jest.fn(async (buffer: Buffer) => buffer),
+}));
+
+jest.mock('../util/groupMembership', () => ({
+  __esModule: true,
+  getEffectiveGroups: jest.fn().mockResolvedValue([]),
+  getEffectiveGroupIds: jest.fn().mockResolvedValue([]),
 }));
 
 import {
@@ -159,7 +166,13 @@ import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
 import { sendMeetupTransferredEmail } from '../util/email';
 import { deleteObject, promoteImage, upload } from '../util/objectStorage';
 import { normalizeImage } from '../util/imageProcessing';
+import {
+  getEffectiveGroupIds,
+  getEffectiveGroups,
+} from '../util/groupMembership';
 
+const mockedGetEffectiveGroups = jest.mocked(getEffectiveGroups);
+const mockedGetEffectiveGroupIds = jest.mocked(getEffectiveGroupIds);
 const mockedMeetup = jest.mocked(Meetup);
 const mockedUser = jest.mocked(User);
 const mockedDataSource = jest.mocked(AppDataSource);
@@ -276,6 +289,8 @@ beforeEach(() => {
     ...attrs,
     save: jest.fn().mockResolvedValue(undefined),
   }));
+  mockedGetEffectiveGroups.mockResolvedValue([]);
+  mockedGetEffectiveGroupIds.mockResolvedValue([]);
 });
 
 // ---- getAllMeetups ---------------------------------------------------------
@@ -386,6 +401,87 @@ describe('getAllMeetups', () => {
       { lead_organizer: { id: '1' }, id: In(['40']) },
     ]);
   });
+
+  it('includes unlisted meetups assigned to the requestor\'s groups', async () => {
+    // No attended/organized meetups; the requestor is only in group g1, which
+    // is assigned to (unlisted) meetup 50.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1'] as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([] as never) // organized lookup
+      .mockResolvedValueOnce([{ id: '50' }] as never) // group-meetups lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    // The group-meetups lookup filters by the requestor's group ids.
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual({
+      groups: { id: In(['g1']) },
+    });
+    // The group's meetup (50) becomes visible in the listing.
+    expect((mockedMeetup.find.mock.calls[2][0] as any).where).toEqual([
+      { is_unlisted: false },
+      { id: In(['50']) },
+    ]);
+  });
+
+  it('skips the group lookup when the requestor is in no groups', async () => {
+    ticketQueryBuilder.getRawMany.mockResolvedValue([]);
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([] as never) // organized lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query (no group find)
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    // Only two finds: organized + listing (no group-meetups query).
+    expect(mockedMeetup.find).toHaveBeenCalledTimes(2);
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual([
+      { is_unlisted: false },
+    ]);
+  });
+
+  it('tags each unlisted meetup with why the requestor can see it', async () => {
+    // Attends 30 & 60; organizes 40 & 60; group-assigned 50 & 60.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([
+      { meetup_id: '30' },
+      { meetup_id: '60' },
+    ]);
+    mockedUser.findOne.mockResolvedValue({
+      id: '1',
+      groups: [{ id: 'g1' }],
+    } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1'] as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([{ id: '40' }, { id: '60' }] as never) // organized
+      .mockResolvedValueOnce([{ id: '50' }, { id: '60' }] as never) // group
+      .mockResolvedValueOnce([
+        fakeMeetupRow({ id: '30', slug: 's30', is_unlisted: true }),
+        fakeMeetupRow({ id: '40', slug: 's40', is_unlisted: true }),
+        fakeMeetupRow({ id: '50', slug: 's50', is_unlisted: true }),
+        fakeMeetupRow({ id: '60', slug: 's60', is_unlisted: true }),
+      ]);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    const reasonById = Object.fromEntries(
+      (res.body as any[]).map((m) => [m.id, m.unlisted_reason])
+    );
+    // Priority is organizer > attendee > group (60 is all three -> organizer).
+    expect(reasonById).toEqual({
+      '30': 'attendee',
+      '40': 'organizer',
+      '50': 'group',
+      '60': 'organizer',
+    });
+  });
 });
 
 // ---- getMeetup -------------------------------------------------------------
@@ -434,6 +530,32 @@ describe('getMeetup', () => {
       expect.objectContaining({ where: { slug: 'tex-mechs' } })
     );
     expect((res.body as any).slug).toBe('tex-mechs');
+  });
+
+  it('exposes groups to an organizer of the meetup', async () => {
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetupRow({ groups: [{ id: 'g1', name: 'Keeb Club' }] })
+    );
+    mockedTicket.count.mockResolvedValue(0);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' }; // the lead organizer
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect((res.body as any).groups).toEqual([{ id: 'g1', name: 'Keeb Club' }]);
+  });
+
+  it('hides groups from the public (non-organizer / anonymous)', async () => {
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetupRow({ groups: [{ id: 'g1', name: 'Keeb Club' }] })
+    );
+    mockedTicket.count.mockResolvedValue(0);
+    const res = mockResponse();
+    // No requestor: an anonymous public read.
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect((res.body as any).groups).toBeUndefined();
   });
 });
 
@@ -511,6 +633,30 @@ describe('createMeetup', () => {
     expect(created.organizers).toEqual([]);
     expect(created.city).toBe('Austin');
     expect(created.save).toHaveBeenCalled();
+  });
+
+  it('assigns only the groups the requestor belongs to', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    // The requestor's effective membership is g1 and g2, but not g3.
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroups.mockResolvedValue([
+      { id: 'g1' },
+      { id: 'g2' },
+    ] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ group_ids: ['g1', 'g3'] })),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    // g3 is dropped (not a member); g1 is kept.
+    expect(created.groups).toEqual([{ id: 'g1' }]);
   });
 
   it('passes is_unlisted through to the created meetup', async () => {
@@ -709,6 +855,28 @@ describe('createArchiveMeetup', () => {
     expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
   });
 
+  it('applies is_unlisted and assigns the requestor-owned groups', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedGetEffectiveGroups.mockResolvedValue([{ id: 'g1' }] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_unlisted: true, group_ids: ['g1', 'g3'] })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.is_unlisted).toBe(true);
+    // g3 is dropped (not a member); g1 is kept.
+    expect(created.groups).toEqual([{ id: 'g1' }]);
+  });
+
   it('returns 409 when the name is taken', async () => {
     mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
     const res = mockResponse();
@@ -872,6 +1040,34 @@ describe('updateMeetup', () => {
     expect(res.statusCode).toBe(201);
   });
 
+  it('syncs only the requestor-owned groups, leaving others untouched', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null) // name-collision lookup
+      .mockResolvedValueOnce({
+        groups: [{ id: 'g1' }, { id: 'g4' }],
+      } as never); // current groups lookup
+    // The requestor's effective membership is g1 and g2 (not g4, which another
+    // organizer added).
+    mockedUser.findOne.mockResolvedValue({ id: '1', groups: [] } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1', 'g2'] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await updateMeetup(
+      mockRequest({ group_ids: ['g2'] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Add g2; remove g1 (owned, deselected); g4 is left alone (not the
+    // requestor's group).
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['g2'], ['g1']);
+    expect(res.statusCode).toBe(201);
+  });
+
   it('never adds the lead to the co-organizer list', async () => {
     // fakeMeetupRow's lead is user 1; a client that includes it is ignored.
     const meetup = fakeMeetupRow({
@@ -968,6 +1164,25 @@ describe('updateMeetup', () => {
     );
 
     // Forbidden, and nothing is mutated: no save, no join-table write.
+    expect(res.statusCode).toBe(403);
+    expect(meetup.save).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-lead organizer changing group_ids', async () => {
+    // fakeMeetupRow's lead is user 1; user 2 is a co-organizer, not the lead.
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne.mockResolvedValueOnce(meetup); // target lookup
+    const res = mockResponse();
+    res.locals.requestor = { id: '2' }; // a co-organizer, not the lead
+
+    await updateMeetup(
+      mockRequest({ group_ids: ['g1'] }, { meetup_id: '10' }),
+      res
+    );
+
     expect(res.statusCode).toBe(403);
     expect(meetup.save).not.toHaveBeenCalled();
     expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();

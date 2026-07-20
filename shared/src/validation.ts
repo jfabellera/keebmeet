@@ -38,6 +38,7 @@ export const createMeetupSchema = z.object({
   capacity: z.number().gt(0),
   image_key: z.string(),
   organizer_ids: z.array(z.string()).optional(),
+  group_ids: z.array(z.string()).optional(),
   description: z.string().optional().default(''),
   has_raffle: z.boolean().optional().default(true),
   default_raffle_entries: z.number().gte(0).optional().default(1),
@@ -59,6 +60,8 @@ export const createArchiveMeetupSchema = z.object({
   // Display-only credit for who ran the meetup. The submitter is always the
   // archive's lead organizer (and owner); omit this when they ran it themselves.
   organizer_name: z.string().max(30).optional(),
+  group_ids: z.array(z.string()).optional(),
+  is_unlisted: z.boolean().optional().default(false),
 });
 
 export type CreateArchiveMeetupPayload = z.infer<
@@ -93,6 +96,7 @@ export const editMeetupSchema = z.object({
   image_key: z.string().optional(),
   description: z.string().optional(),
   organizer_ids: z.array(z.string()).optional(),
+  group_ids: z.array(z.string()).optional(),
   organizer_name: z.string().max(30).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
@@ -144,6 +148,13 @@ export const discordRsvpSchema = z.object({
 });
 
 export type DiscordRsvpPayload = z.infer<typeof discordRsvpSchema>;
+
+export const membershipChangedSchema = z.object({
+  discord_id: z.string(),
+  guild_id: z.string(),
+});
+
+export type MembershipChangedPayload = z.infer<typeof membershipChangedSchema>;
 
 // Shared by create and edit: when a ticket holder is provided, every field is
 // required so we never persist a half-populated holder.
@@ -237,3 +248,35 @@ export const unclaimRaffleWinnerSchema = z.object({
 export type UnclaimRaffleWinnerPayload = z.input<
   typeof unclaimRaffleWinnerSchema
 >;
+
+export const createGroupSchema = z.object({
+  name: z.string().min(3).max(100),
+  code: z.string().min(1).max(30),
+  // Empty string means no association; normalized to null like editGroupSchema.
+  discord_server_id: z
+    .string()
+    .max(32)
+    .transform((value) => (value === '' ? null : value))
+    .optional(),
+});
+
+export type CreateGroupPayload = z.input<typeof createGroupSchema>;
+
+export const editGroupSchema = z.object({
+  name: z.string().min(3).max(100).optional(),
+  code: z.string().min(1).max(30).optional(),
+  // Empty string clears the association; otherwise it's the Discord server id.
+  discord_server_id: z
+    .string()
+    .max(32)
+    .transform((value) => (value === '' ? null : value))
+    .optional(),
+});
+
+export type EditGroupPayload = z.input<typeof editGroupSchema>;
+
+export const joinGroupSchema = z.object({
+  code: z.string().min(1).max(30),
+});
+
+export type JoinGroupPayload = z.infer<typeof joinGroupSchema>;

@@ -77,6 +77,24 @@ export const fetchBotGuilds = async (): Promise<BotGuild[]> => {
 };
 
 /**
+ * Lists every server the bot is in as a public {@link DiscordServer} (name +
+ * resolved icon URL). Thin mapping over {@link fetchBotGuilds}; degrades to an
+ * empty array when the bot token is unset or the lookup fails.
+ */
+export const fetchBotServers = async (): Promise<DiscordServer[]> => {
+  const botGuilds = await fetchBotGuilds();
+
+  return botGuilds.map((guild) => ({
+    id: guild.id,
+    name: guild.name,
+    icon_url:
+      guild.icon != null
+        ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
+        : null,
+  }));
+};
+
+/**
  * Checks whether a Discord user is a member of a guild the bot is in. Uses the
  * single-member "Get Guild Member" endpoint, which returns 404 for non-members.
  * Treats any error as "not a member" so a single failed lookup doesn't drop the

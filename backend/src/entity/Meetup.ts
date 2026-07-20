@@ -11,6 +11,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { EventbriteRecord } from './EventbriteRecord';
+import { Group } from './Group';
 import { MeetupDiscordMessage } from './MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './MeetupDisplayRecord';
 import { RaffleRecord } from './RaffleRecord';
@@ -102,4 +103,12 @@ export class Meetup extends BaseEntity {
 
   @Column({ type: 'boolean', default: false })
   is_unlisted: boolean;
+
+  @ManyToMany(() => Group)
+  @JoinTable({
+    name: 'meetups_groups',
+    joinColumn: { name: 'meetup_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' },
+  })
+  groups: Group[];
 }

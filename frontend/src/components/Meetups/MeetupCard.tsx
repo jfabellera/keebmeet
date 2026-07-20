@@ -8,12 +8,21 @@ import {
 import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { ArchiveIcon, EyeOffIcon } from 'lucide-react';
+import { EyeOffIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
 
 dayjs.extend(customParseFormat);
+
+export const UNLISTED_REASON_TEXT: Record<
+  NonNullable<MeetupInfo['unlisted_reason']>,
+  string
+> = {
+  organizer: "you're an organizer",
+  attendee: "you're attending",
+  group: "you're in an associated group",
+};
 
 export interface MeetupCardProps {
   meetup: MeetupInfo;
@@ -48,22 +57,6 @@ export const MeetupCard = ({
             {meetup.name}
           </h3>
           <div className="text-muted-foreground ml-auto flex shrink-0 items-center gap-2">
-            {meetup.is_archive ? (
-              <Tooltip>
-                <TooltipTrigger className="flex" aria-label="Archived">
-                  <ArchiveIcon className="size-4.5" />
-                </TooltipTrigger>
-                <TooltipContent>This is an archived meetup</TooltipContent>
-              </Tooltip>
-            ) : null}
-            {meetup.is_unlisted === true ? (
-              <Tooltip>
-                <TooltipTrigger className="flex" aria-label="Unlisted">
-                  <EyeOffIcon className="size-4.5" />
-                </TooltipTrigger>
-                <TooltipContent>This meetup is unlisted</TooltipContent>
-              </Tooltip>
-            ) : null}
             {attending === true ? (
               <Tooltip>
                 <TooltipTrigger
@@ -73,6 +66,19 @@ export const MeetupCard = ({
                   <FiCheck className="size-4.5" strokeWidth={2.5} />
                 </TooltipTrigger>
                 <TooltipContent>{attendedLabel}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {meetup.is_unlisted === true ? (
+              <Tooltip>
+                <TooltipTrigger className="flex" aria-label="Unlisted">
+                  <EyeOffIcon className="size-4.5" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  This meetup is unlisted
+                  {meetup.unlisted_reason != null
+                    ? `. You can see it because ${UNLISTED_REASON_TEXT[meetup.unlisted_reason]}.`
+                    : ''}
+                </TooltipContent>
               </Tooltip>
             ) : null}
             {meetup.has_photos === true ? (

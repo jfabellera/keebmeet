@@ -15,9 +15,21 @@ jest.mock('../util/discord', () => ({
   isGuildMember: jest.fn(),
 }));
 
+jest.mock('../util/groupMembership', () => ({
+  invalidateMemberServers: jest.fn(),
+}));
+
+jest.mock('../util/userResponse', () => ({
+  toUserResponse: jest.fn((user: any) => ({
+    id: user.id,
+    is_discord_linked: user.discord_id != null,
+  })),
+}));
+
 import {
   getUserDiscordServerChannels,
   getUserDiscordServers,
+  unlinkDiscordAccount,
 } from './userDiscord';
 import { User } from '../entity/User';
 import {
@@ -25,11 +37,13 @@ import {
   fetchUserMutualServers,
   isGuildMember,
 } from '../util/discord';
+import { invalidateMemberServers } from '../util/groupMembership';
 
 const mockedUser = jest.mocked(User);
 const mockedFetchUserMutualServers = jest.mocked(fetchUserMutualServers);
 const mockedFetchGuildTextChannels = jest.mocked(fetchGuildTextChannels);
 const mockedIsGuildMember = jest.mocked(isGuildMember);
+const mockedInvalidate = jest.mocked(invalidateMemberServers);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -45,6 +59,7 @@ const mockResponse = (): MockResponse => {
     res.body = body;
     return res;
   });
+  res.end = jest.fn().mockImplementation(() => res);
   res.locals = {};
   return res as MockResponse;
 };
@@ -184,5 +199,64 @@ describe('getUserDiscordServerChannels', () => {
 
     expect(mockedFetchGuildTextChannels).toHaveBeenCalledWith('g1');
     expect(res.body).toEqual(channels);
+  });
+});
+
+// ---- unlinkDiscordAccount --------------------------------------------------
+
+describe('unlinkDiscordAccount', () => {
+  it('returns 404 when the user does not exist', async () => {
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+
+    await unlinkDiscordAccount(mockRequest({ user_id: '99' }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(mockedInvalidate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when no Discord account is linked', async () => {
+    mockedUser.findOneBy.mockResolvedValue(
+      fakeUser({ discord_id: null, password_hash: 'hash' })
+    );
+    const res = mockResponse();
+
+    await unlinkDiscordAccount(mockRequest({ user_id: '1' }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockedInvalidate).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the account has no password (would be locked out)', async () => {
+    const user = fakeUser({
+      discord_id: '123',
+      password_hash: null,
+      save: jest.fn(),
+    });
+    mockedUser.findOneBy.mockResolvedValue(user);
+    const res = mockResponse();
+
+    await unlinkDiscordAccount(mockRequest({ user_id: '1' }), res);
+
+    expect(res.statusCode).toBe(400);
+    expect(user.save).not.toHaveBeenCalled();
+    expect(mockedInvalidate).not.toHaveBeenCalled();
+  });
+
+  it('clears the link, busts the cache, and returns the updated user', async () => {
+    const user = fakeUser({
+      discord_id: '123',
+      password_hash: 'hash',
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedUser.findOneBy.mockResolvedValue(user);
+    const res = mockResponse();
+
+    await unlinkDiscordAccount(mockRequest({ user_id: '1' }), res);
+
+    expect(user.discord_id).toBeNull();
+    expect(user.save).toHaveBeenCalled();
+    expect(mockedInvalidate).toHaveBeenCalledWith('123');
+    expect(res.body).toEqual({ id: '1', is_discord_linked: false });
   });
 });

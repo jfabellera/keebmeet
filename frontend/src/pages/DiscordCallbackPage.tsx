@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import Page from '../components/Page/Page';
 import { discordLogin, linkDiscord } from '../store/authSlice';
+import { groupSlice } from '../store/groupSlice';
 import { useAppDispatch } from '../store/hooks';
 import { userSlice } from '../store/userSlice';
 
@@ -40,6 +41,7 @@ const DiscordCallbackPage = (): ReactNode => {
 
         if (linkDiscord.fulfilled.match(action)) {
           dispatch(userSlice.util.invalidateTags(['User']));
+          dispatch(groupSlice.util.invalidateTags(['MyGroups']));
           toast.success('Success', {
             description: 'Your Discord account has been linked.',
           });

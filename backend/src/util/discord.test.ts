@@ -15,6 +15,7 @@ import {
   deleteEmbedMessage,
   editEmbedMessage,
   fetchBotGuilds,
+  fetchBotServers,
   fetchDiscordUsername,
   fetchGuildTextChannels,
   fetchUserMutualServers,
@@ -109,6 +110,37 @@ describe('fetchBotGuilds', () => {
     const result = await fetchBotGuilds();
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('fetchBotServers', () => {
+  it('maps every bot guild to a server with a resolved icon url', async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: [
+        { id: 'A', name: 'Server A', icon: 'abc' },
+        { id: 'B', name: 'Server B', icon: null },
+      ],
+    });
+
+    const result = await fetchBotServers();
+
+    expect(result).toEqual([
+      {
+        id: 'A',
+        name: 'Server A',
+        icon_url: 'https://cdn.discordapp.com/icons/A/abc.png',
+      },
+      { id: 'B', name: 'Server B', icon_url: null },
+    ]);
+  });
+
+  it('returns an empty array when no bot token is configured', async () => {
+    config.discordBotToken = '';
+
+    const result = await fetchBotServers();
+
+    expect(result).toEqual([]);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
   });
 });
 
