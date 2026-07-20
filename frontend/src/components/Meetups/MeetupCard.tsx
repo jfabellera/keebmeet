@@ -15,7 +15,7 @@ import { hasMeetupEnded } from '../../util/timeUtil';
 
 dayjs.extend(customParseFormat);
 
-const UNLISTED_REASON_TEXT: Record<
+export const UNLISTED_REASON_TEXT: Record<
   NonNullable<MeetupInfo['unlisted_reason']>,
   string
 > = {
