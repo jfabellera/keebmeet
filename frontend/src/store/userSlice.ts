@@ -87,6 +87,13 @@ export const userSlice = createApi({
       }),
       providesTags: ['User'],
     }),
+    unlinkDiscord: builder.mutation<User, string>({
+      query: (userId) => ({
+        url: `/users/${userId}/discord`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['User'],
+    }),
     authorizeEventbrite: builder.mutation<void, string>({
       query: (accessCode) => ({
         url: `/oauth2/eventbrite`,
@@ -137,6 +144,7 @@ export const {
   useGetOrganizersQuery,
   useGetUserDiscordServersQuery,
   useGetUserDiscordServerChannelsQuery,
+  useUnlinkDiscordMutation,
   useAuthorizeEventbriteMutation,
   useRequestOrganizerMutation,
   useGetOrganizerRequestsQuery,

@@ -51,7 +51,7 @@ export class User extends BaseEntity {
   password_hash?: string;
 
   @Column({ type: 'varchar', length: 30, nullable: true, unique: true })
-  discord_id?: string;
+  discord_id?: string | null;
 
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;

@@ -1,10 +1,18 @@
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form-field';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { USERNAME_REGEX } from '@keebmeet/shared';
 import { useFormik } from 'formik';
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 import { toast } from 'sonner';
 import * as Yup from 'yup';
@@ -16,11 +24,13 @@ import config from '../config';
 import { usePendingUploads } from '../hooks/usePendingUploads';
 import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { updateProfile } from '../store/authSlice';
+import { groupSlice } from '../store/groupSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   useCheckUsernameAvailableQuery,
   useGetUserQuery,
   useRequestOrganizerMutation,
+  useUnlinkDiscordMutation,
 } from '../store/userSlice';
 import { redirectToDiscordLink } from '../util/discord';
 
@@ -58,6 +68,9 @@ const AccountPage = (): ReactNode => {
   });
   const [requestOrganizer, { isLoading: isRequestingOrganizer }] =
     useRequestOrganizerMutation();
+  const [unlinkDiscord, { isLoading: isUnlinking }] =
+    useUnlinkDiscordMutation();
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
   const { isUploading, onUploadingChange } = usePendingUploads();
 
   const onRequestOrganizer = (): void => {
@@ -69,6 +82,21 @@ const AccountPage = (): ReactNode => {
         });
       } catch {
         toast.error('Could not submit your request. Please try again.');
+      }
+    })();
+  };
+
+  const onUnlinkDiscord = (): void => {
+    if (user == null) return;
+    void (async () => {
+      try {
+        await unlinkDiscord(user.id).unwrap();
+        dispatch(groupSlice.util.invalidateTags(['MyGroups']));
+        toast.success('Your Discord account has been unlinked.');
+        setShowUnlinkConfirm(false);
+      } catch (err) {
+        const message = (err as { data?: { message?: string } }).data?.message;
+        toast.error(message ?? 'Could not unlink Discord. Please try again.');
       }
     })();
   };
@@ -281,6 +309,13 @@ const AccountPage = (): ReactNode => {
                 <span className="text-sm font-medium text-green-600">
                   Linked
                 </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowUnlinkConfirm(true)}
+                >
+                  Unlink
+                </Button>
               </div>
             ) : (
               <Button
@@ -333,6 +368,39 @@ const AccountPage = (): ReactNode => {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={showUnlinkConfirm}
+        onOpenChange={(open) => {
+          if (!open) setShowUnlinkConfirm(false);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unlink Discord</DialogTitle>
+            <DialogDescription>
+              You'll lose access to any groups (and their meetups) you're in
+              only through this Discord server. You can relink at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setShowUnlinkConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={onUnlinkDiscord}
+              disabled={isUnlinking}
+            >
+              Unlink
+              {isUnlinking ? <Spinner /> : null}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Page>
   );
 };
