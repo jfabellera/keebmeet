@@ -234,68 +234,64 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
             )}
           </Field>
         ) : (
-          <>
-            <Field className="max-w-sm min-w-0 py-2">
-              <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
-              <div className="flex flex-wrap gap-2">
-                {meetup?.lead_organizer != null ? (
-                  <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
-                ) : null}
+          <Field className="max-w-sm min-w-0 py-2">
+            <FieldLabel htmlFor="organizers">Organizers</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {meetup?.lead_organizer != null ? (
+                <Badge>{meetup.lead_organizer.display_name} · Lead</Badge>
+              ) : null}
 
-                {!isEditable &&
-                  meetup?.organizers?.map((organizer) => (
-                    <Badge variant="secondary" key={organizer.id}>
-                      {organizer.display_name}
-                    </Badge>
-                  ))}
-              </div>
-              {isEditable && (
-                <OrganizerCombobox
-                  id="organizers"
-                  disabled={
-                    !isEditable || currentUserId !== meetup?.lead_organizer?.id
-                  }
-                  excludeIds={
-                    meetup?.lead_organizer != null
-                      ? [meetup.lead_organizer.id]
-                      : []
-                  }
-                  value={formik.values.organizerIds}
-                  onChange={(organizerIds) =>
-                    void formik.setFieldValue('organizerIds', organizerIds)
-                  }
-                />
-              )}
-            </Field>
-            <Field className="max-w-sm min-w-0 py-2">
-              <FieldLabel htmlFor="groups">Groups</FieldLabel>
-              {/* Only the lead edits groups; everyone else sees them read-only.
-                  The combobox lists only the viewer's own groups, so it can't
-                  render a non-lead's chips anyway. */}
-              {!(isEditable && isLead) ? (
-                <div className="flex flex-wrap gap-2">
-                  {meetup?.groups != null && meetup.groups.length > 0 ? (
-                    meetup.groups.map((group) => (
-                      <Badge variant="secondary" key={group.id}>
-                        {group.name}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-foreground/70">No groups</p>
-                  )}
-                </div>
-              ) : (
-                <GroupCombobox
-                  id="groups"
-                  value={formik.values.groupIds}
-                  onChange={(groupIds) =>
-                    void formik.setFieldValue('groupIds', groupIds)
-                  }
-                />
-              )}
-            </Field>
-          </>
+              {!isEditable &&
+                meetup?.organizers?.map((organizer) => (
+                  <Badge variant="secondary" key={organizer.id}>
+                    {organizer.display_name}
+                  </Badge>
+                ))}
+            </div>
+            {isEditable && (
+              <OrganizerCombobox
+                id="organizers"
+                disabled={
+                  !isEditable || currentUserId !== meetup?.lead_organizer?.id
+                }
+                excludeIds={
+                  meetup?.lead_organizer != null
+                    ? [meetup.lead_organizer.id]
+                    : []
+                }
+                value={formik.values.organizerIds}
+                onChange={(organizerIds) =>
+                  void formik.setFieldValue('organizerIds', organizerIds)
+                }
+              />
+            )}
+          </Field>
         )}
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor="groups">Groups</FieldLabel>
+          {/* Only the lead edits groups; everyone else sees them read-only. */}
+          {!(isEditable && isLead) ? (
+            <div className="flex flex-wrap gap-2">
+              {meetup?.groups != null && meetup.groups.length > 0 ? (
+                meetup.groups.map((group) => (
+                  <Badge variant="secondary" key={group.id}>
+                    {group.name}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-foreground/70">No groups</p>
+              )}
+            </div>
+          ) : (
+            <GroupCombobox
+              id="groups"
+              value={formik.values.groupIds}
+              onChange={(groupIds) =>
+                void formik.setFieldValue('groupIds', groupIds)
+              }
+            />
+          )}
+        </Field>
         <EditableFormField
           name={'Meetup Name'}
           value={meetup?.name}

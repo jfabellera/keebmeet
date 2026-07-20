@@ -855,6 +855,28 @@ describe('createArchiveMeetup', () => {
     expect(created.lead_organizer).toEqual({ id: '1', nick_name: 'jane' });
   });
 
+  it('applies is_unlisted and assigns the requestor-owned groups', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedGetEffectiveGroups.mockResolvedValue([{ id: 'g1' }] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createArchiveMeetup(
+      mockRequest(
+        validArchiveBody({ is_unlisted: true, group_ids: ['g1', 'g3'] })
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(201);
+    const created = res.body as any;
+    expect(created.is_unlisted).toBe(true);
+    // g3 is dropped (not a member); g1 is kept.
+    expect(created.groups).toEqual([{ id: 'g1' }]);
+  });
+
   it('returns 409 when the name is taken', async () => {
     mockedMeetup.findOne.mockResolvedValue(fakeMeetupRow());
     const res = mockResponse();

@@ -60,6 +60,8 @@ export const createArchiveMeetupSchema = z.object({
   // Display-only credit for who ran the meetup. The submitter is always the
   // archive's lead organizer (and owner); omit this when they ran it themselves.
   organizer_name: z.string().max(30).optional(),
+  group_ids: z.array(z.string()).optional(),
+  is_unlisted: z.boolean().optional().default(false),
 });
 
 export type CreateArchiveMeetupPayload = z.infer<

@@ -593,6 +593,7 @@ export const createArchiveMeetup = async (
     duration_hours: 0,
     has_raffle: false,
     is_archive: true,
+    is_unlisted: result.data.is_unlisted,
     // organizer_name is a display-only credit; who actually ran the meetup.
     // Omitted (null) when the submitter ran it themselves.
     organizer_name: result.data.organizer_name,
@@ -633,6 +634,11 @@ export const createArchiveMeetup = async (
   } catch (error) {
     return res.status(500).json({ message: 'Failed to store meetup image.' });
   }
+
+  newMeetup.groups = await resolveOwnedGroups(
+    requestor.id,
+    result.data.group_ids ?? []
+  );
 
   await newMeetup.save();
 
