@@ -252,12 +252,17 @@ export const getAllMeetups = async (
   // parties — the organizers, the attendees, and members of a group the meetup
   // is assigned to — still see them (badged).
   const requestor = res.locals.requestor as User | undefined;
+  const organizedIds = new Set<string>();
+  const attendedIds = new Set<string>();
+  const groupMeetupIds = new Set<string>();
   let visibleUnlistedIds: string[] = [];
   if (requestor != null) {
     const attended = await Ticket.createQueryBuilder('ticket')
       .select('ticket.meetup_id', 'meetup_id')
       .where('ticket.user_id = :userId', { userId: requestor.id })
       .getRawMany<{ meetup_id: string }>();
+    for (const row of attended) attendedIds.add(String(row.meetup_id));
+
     const organized = await Meetup.find({
       select: { id: true },
       where: [
@@ -265,6 +270,7 @@ export const getAllMeetups = async (
         { organizers: { id: requestor.id } },
       ],
     });
+    for (const meetup of organized) organizedIds.add(meetup.id);
 
     // Meetups assigned to any group the requestor belongs to (explicitly or via
     // a linked Discord server).
@@ -281,12 +287,9 @@ export const getAllMeetups = async (
             where: { groups: { id: In(groupIds) } },
           })
         : [];
+    for (const meetup of groupMeetups) groupMeetupIds.add(meetup.id);
 
-    visibleUnlistedIds = [
-      ...attended.map((row) => String(row.meetup_id)),
-      ...organized.map((meetup) => meetup.id),
-      ...groupMeetups.map((meetup) => meetup.id),
-    ];
+    visibleUnlistedIds = [...attendedIds, ...organizedIds, ...groupMeetupIds];
   }
 
   // Build filters and sorting
@@ -320,8 +323,21 @@ export const getAllMeetups = async (
   }
 
   const meetups = meetupEntities.map(
-    async (meetup: Meetup): Promise<MeetupInfo> =>
-      mapMeetupInfo(meetup, detailLevel, meetupIdsWithPhotos.has(meetup.id))
+    async (meetup: Meetup): Promise<MeetupInfo> => {
+      const info = await mapMeetupInfo(
+        meetup,
+        detailLevel,
+        meetupIdsWithPhotos.has(meetup.id)
+      );
+      if (info.is_unlisted === true) {
+        // Organizer outranks attendee outranks group as the explanation shown.
+        if (organizedIds.has(meetup.id)) info.unlisted_reason = 'organizer';
+        else if (attendedIds.has(meetup.id)) info.unlisted_reason = 'attendee';
+        else if (groupMeetupIds.has(meetup.id))
+          info.unlisted_reason = 'group';
+      }
+      return info;
+    }
   );
 
   return res.json(await Promise.all(meetups));

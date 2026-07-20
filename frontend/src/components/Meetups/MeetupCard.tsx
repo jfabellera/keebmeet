@@ -15,6 +15,15 @@ import { hasMeetupEnded } from '../../util/timeUtil';
 
 dayjs.extend(customParseFormat);
 
+const UNLISTED_REASON_TEXT: Record<
+  NonNullable<MeetupInfo['unlisted_reason']>,
+  string
+> = {
+  organizer: "you're an organizer",
+  attendee: "you're attending",
+  group: "you're in an associated group",
+};
+
 export interface MeetupCardProps {
   meetup: MeetupInfo;
   attending?: boolean;
@@ -61,7 +70,12 @@ export const MeetupCard = ({
                 <TooltipTrigger className="flex" aria-label="Unlisted">
                   <EyeOffIcon className="size-4.5" />
                 </TooltipTrigger>
-                <TooltipContent>This meetup is unlisted</TooltipContent>
+                <TooltipContent>
+                  This meetup is unlisted
+                  {meetup.unlisted_reason != null
+                    ? `. You can see it because ${UNLISTED_REASON_TEXT[meetup.unlisted_reason]}.`
+                    : ''}
+                </TooltipContent>
               </Tooltip>
             ) : null}
             {attending === true ? (

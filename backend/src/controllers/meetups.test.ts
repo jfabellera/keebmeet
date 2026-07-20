@@ -445,6 +445,43 @@ describe('getAllMeetups', () => {
       { is_unlisted: false },
     ]);
   });
+
+  it('tags each unlisted meetup with why the requestor can see it', async () => {
+    // Attends 30 & 60; organizes 40 & 60; group-assigned 50 & 60.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([
+      { meetup_id: '30' },
+      { meetup_id: '60' },
+    ]);
+    mockedUser.findOne.mockResolvedValue({
+      id: '1',
+      groups: [{ id: 'g1' }],
+    } as never);
+    mockedGetEffectiveGroupIds.mockResolvedValue(['g1'] as never);
+    mockedMeetup.find
+      .mockResolvedValueOnce([{ id: '40' }, { id: '60' }] as never) // organized
+      .mockResolvedValueOnce([{ id: '50' }, { id: '60' }] as never) // group
+      .mockResolvedValueOnce([
+        fakeMeetupRow({ id: '30', slug: 's30', is_unlisted: true }),
+        fakeMeetupRow({ id: '40', slug: 's40', is_unlisted: true }),
+        fakeMeetupRow({ id: '50', slug: 's50', is_unlisted: true }),
+        fakeMeetupRow({ id: '60', slug: 's60', is_unlisted: true }),
+      ]);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest(), res);
+
+    const reasonById = Object.fromEntries(
+      (res.body as any[]).map((m) => [m.id, m.unlisted_reason])
+    );
+    // Priority is organizer > attendee > group (60 is all three -> organizer).
+    expect(reasonById).toEqual({
+      '30': 'attendee',
+      '40': 'organizer',
+      '50': 'group',
+      '60': 'organizer',
+    });
+  });
 });
 
 // ---- getMeetup -------------------------------------------------------------
