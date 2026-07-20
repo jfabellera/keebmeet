@@ -8,7 +8,7 @@ import {
 import type { MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { ArchiveIcon, EyeOffIcon } from 'lucide-react';
+import { EyeOffIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
@@ -57,12 +57,15 @@ export const MeetupCard = ({
             {meetup.name}
           </h3>
           <div className="text-muted-foreground ml-auto flex shrink-0 items-center gap-2">
-            {meetup.is_archive ? (
+            {attending === true ? (
               <Tooltip>
-                <TooltipTrigger className="flex" aria-label="Archived">
-                  <ArchiveIcon className="size-4.5" />
+                <TooltipTrigger
+                  className="flex text-green-600"
+                  aria-label={attendedLabel}
+                >
+                  <FiCheck className="size-4.5" strokeWidth={2.5} />
                 </TooltipTrigger>
-                <TooltipContent>This is an archived meetup</TooltipContent>
+                <TooltipContent>{attendedLabel}</TooltipContent>
               </Tooltip>
             ) : null}
             {meetup.is_unlisted === true ? (
@@ -76,17 +79,6 @@ export const MeetupCard = ({
                     ? `. You can see it because ${UNLISTED_REASON_TEXT[meetup.unlisted_reason]}.`
                     : ''}
                 </TooltipContent>
-              </Tooltip>
-            ) : null}
-            {attending === true ? (
-              <Tooltip>
-                <TooltipTrigger
-                  className="flex text-green-600"
-                  aria-label={attendedLabel}
-                >
-                  <FiCheck className="size-4.5" strokeWidth={2.5} />
-                </TooltipTrigger>
-                <TooltipContent>{attendedLabel}</TooltipContent>
               </Tooltip>
             ) : null}
             {meetup.has_photos === true ? (
