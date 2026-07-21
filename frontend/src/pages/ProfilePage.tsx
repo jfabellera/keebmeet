@@ -10,6 +10,7 @@ import { ArrowLeftIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiAward, FiCalendar, FiImage, FiUser, FiUsers } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { GalleryActions } from '../components/Meetups/GalleryActions';
 import { GalleryCard } from '../components/Meetups/GalleryCard';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
@@ -67,6 +68,9 @@ const ProfilePage = (): ReactNode => {
   const { data: galleries = [] } = useGetUserGalleriesQuery(username ?? '', {
     skip: username == null,
   });
+
+  // Editing/deleting a gallery is gated to the profile's own owner.
+  const isOwnProfile = user != null && user.id === profileUser?.id;
 
   const getTicketForMeetup = (meetupId: string): SimpleTicketInfo | null => {
     if (user != null && tickets != null) {
@@ -180,6 +184,14 @@ const ProfilePage = (): ReactNode => {
           gallery={gallery.gallery}
           preview={gallery.preview}
           subtitle={gallery.meetup_title}
+          actions={
+            <GalleryActions
+              meetupId={gallery.meetup_id}
+              photo={gallery}
+              isOwn={isOwnProfile}
+              onOpenMeetup={() => setSelectedSlug(gallery.meetup_slug)}
+            />
+          }
         />
       ))}
     </div>

@@ -447,15 +447,15 @@ export const getUserGalleries = async (
   }
 
   const records = await GalleryRecord.find({
-    relations: { meetup: true },
+    relations: { meetup: true, user: true },
     where: { user_id: user.id },
     order: { meetup: { date: 'DESC' } },
   });
 
   const galleries = await Promise.all(
     records.map(async (record) => ({
-      id: record.id,
-      gallery: record.gallery,
+      ...toGalleryInfo(record),
+      meetup_id: record.meetup.id,
       meetup_slug: record.meetup.slug,
       meetup_title: record.meetup.name,
       preview: await toGalleryPreview(record),

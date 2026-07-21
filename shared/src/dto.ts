@@ -78,9 +78,8 @@ export interface GalleryPreview {
 }
 
 // A user's gallery with its meetup and folded-in preview, for their profile.
-export interface UserGalleryInfo {
-  id: string;
-  gallery: string;
+export interface UserGalleryInfo extends GalleryInfo {
+  meetup_id: string;
   meetup_slug: string;
   meetup_title: string;
   preview: GalleryPreview;

@@ -93,6 +93,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       // The "has photos" badge on meetup listings is derived from the meetups
       // list query, which lives in a separate API slice. Cross-slice tags can't
@@ -118,6 +119,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
     }),
     uploadGalleryImage: builder.mutation<
@@ -142,6 +144,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
     }),
     // Self-service delete: the backend keys off the requestor's token, so no
@@ -153,6 +156,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, meetupId) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       // Deleting may remove the last link, clearing the badge — refresh the list.
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
@@ -171,6 +175,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
@@ -188,6 +193,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
