@@ -1,6 +1,7 @@
 import {
   createGallerySchema,
   editGallerySchema,
+  transferGallerySchema,
   type GalleryInfo,
   type GalleryPreview,
 } from '@keebmeet/shared';
@@ -9,7 +10,7 @@ import { socket } from '../Server';
 import { type Meetup } from '../entity/Meetup';
 import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
-import { type User } from '../entity/User';
+import { User } from '../entity/User';
 import { fetchLinkPreview } from '../util/linkPreview';
 import { normalizeImage } from '../util/imageProcessing';
 import {
@@ -182,6 +183,60 @@ export const editGallery = async (
   ) {
     await deleteObject(previousKey).catch(() => {});
   }
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+
+  return res.status(200).json(toGalleryInfo(record));
+};
+
+export const transferGallery = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const meetup = res.locals.meetup as Meetup;
+  const { gallery_id } = req.params as Record<string, string>;
+
+  if (meetup == null) {
+    return res.status(400).end();
+  }
+
+  const result = transferGallerySchema.safeParse(req.body ?? {});
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const record = await GalleryRecord.findOne({
+    where: { id: gallery_id, meetup: { id: meetup.id } },
+  });
+
+  if (record == null) {
+    return res.status(404).json({ message: 'Gallery not found.' });
+  }
+
+  if (record.user_id != null) {
+    return res
+      .status(400)
+      .json({ message: 'This gallery already belongs to a user.' });
+  }
+
+  const target = await User.findOneBy({ username: result.data.username });
+  if (target == null) {
+    return res.status(404).json({ message: 'No user with that username.' });
+  }
+
+  const existing = await GalleryRecord.findOne({
+    where: { meetup: { id: meetup.id }, user: { id: target.id } },
+  });
+  if (existing != null) {
+    return res
+      .status(409)
+      .json({ message: 'That user already has a gallery for this meetup.' });
+  }
+
+  record.user = target;
+  record.user_id = target.id;
+  record.contributor_name = null;
+  await record.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
 

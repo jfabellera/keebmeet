@@ -11,6 +11,9 @@ jest.mock('../entity/GalleryRecord', () => ({
 jest.mock('../entity/Ticket', () => ({
   Ticket: { findOne: jest.fn() },
 }));
+jest.mock('../entity/User', () => ({
+  User: { findOneBy: jest.fn() },
+}));
 // Scraping is exercised in linkPreview.test.ts; here we only assert the
 // controller maps whatever the util returns onto the response.
 jest.mock('../util/linkPreview', () => ({ fetchLinkPreview: jest.fn() }));
@@ -37,15 +40,18 @@ import {
   editGallery,
   getMeetupGalleryPreviews,
   getMeetupGallery,
+  transferGallery,
 } from './gallery';
 import { socket } from '../Server';
 import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import { fetchLinkPreview } from '../util/linkPreview';
 import { deleteObject, promoteImage } from '../util/objectStorage';
+import { User } from '../entity/User';
 
 const mockedGalleryRecord = jest.mocked(GalleryRecord);
 const mockedTicket = jest.mocked(Ticket);
+const mockedUser = jest.mocked(User);
 const mockedSocket = jest.mocked(socket);
 const mockedFetchLinkPreview = jest.mocked(fetchLinkPreview);
 const mockedPromoteImage = jest.mocked(promoteImage);
@@ -803,5 +809,106 @@ describe('deleteGalleryById', () => {
       meetupId: '10',
     });
     expect(res.statusCode).toBe(204);
+  });
+});
+
+// ---- transferGallery -----------------------------------------------------
+
+describe('transferGallery', () => {
+  const credited = (): any => ({
+    id: 'p1',
+    user_id: null,
+    contributor_name: 'Old Timer',
+    gallery: 'https://c.example.com',
+    title: null,
+    cover_image_key: null,
+    save: jest.fn().mockResolvedValue(undefined),
+  });
+
+  it('returns 404 when no link with that id exists for the meetup', async () => {
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await transferGallery(
+      mockRequest({ username: 'jane' }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 400 when the link already belongs to a user', async () => {
+    mockedGalleryRecord.findOne.mockResolvedValue({
+      id: 'p1',
+      user_id: '2',
+    } as any);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await transferGallery(
+      mockRequest({ username: 'jane' }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('returns 404 when the username matches no user', async () => {
+    mockedGalleryRecord.findOne.mockResolvedValue(credited());
+    mockedUser.findOneBy.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await transferGallery(
+      mockRequest({ username: 'ghost' }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 409 when the target already has a gallery for the meetup', async () => {
+    mockedGalleryRecord.findOne
+      .mockResolvedValueOnce(credited())
+      .mockResolvedValueOnce({ id: 'p2' } as any);
+    mockedUser.findOneBy.mockResolvedValue({ id: '5', nick_name: 'jane' } as any);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await transferGallery(
+      mockRequest({ username: 'jane' }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('transfers the link (200), setting the user and clearing the credit', async () => {
+    const record = credited();
+    mockedGalleryRecord.findOne
+      .mockResolvedValueOnce(record)
+      .mockResolvedValueOnce(null);
+    mockedUser.findOneBy.mockResolvedValue({ id: '5', nick_name: 'jane' } as any);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10' };
+
+    await transferGallery(
+      mockRequest({ username: 'jane' }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(record.user_id).toBe('5');
+    expect(record.contributor_name).toBeNull();
+    expect(record.save).toHaveBeenCalled();
+    expect(res.body).toMatchObject({
+      id: 'p1',
+      user_id: '5',
+      display_name: 'jane',
+    });
+    expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
+      meetupId: '10',
+    });
   });
 });

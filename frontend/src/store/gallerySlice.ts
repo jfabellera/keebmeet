@@ -19,6 +19,12 @@ export interface EditGalleryOptions {
   coverImageKey?: string | null;
 }
 
+export interface TransferGalleryOptions {
+  meetupId: string;
+  galleryId: string;
+  username: string;
+}
+
 /** Organizer-moderation delete: removes another attendee's link. */
 export interface DeleteGalleryForUserOptions {
   meetupId: string;
@@ -115,6 +121,16 @@ export const gallerySlice = createApi({
         };
       },
     }),
+    transferGallery: builder.mutation<GalleryInfo, TransferGalleryOptions>({
+      query: ({ meetupId, galleryId, username }) => ({
+        url: `meetups/${meetupId}/galleries/${galleryId}/transfer`,
+        method: 'POST',
+        body: { username },
+      }),
+      invalidatesTags: (result, error, { meetupId }) => [
+        { type: 'Galleries', id: meetupId },
+      ],
+    }),
     // Self-service delete: the backend keys off the requestor's token, so no
     // user id is sent.
     deleteGallery: builder.mutation<void, string>({
@@ -181,6 +197,7 @@ export const {
   useCreateGalleryMutation,
   useEditGalleryMutation,
   useUploadGalleryImageMutation,
+  useTransferGalleryMutation,
   useDeleteGalleryMutation,
   useDeleteGalleryForUserMutation,
   useDeleteGalleryByIdMutation,
