@@ -27,6 +27,7 @@ import {
 } from '@keebmeet/shared';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { FiPlus } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   useCreateGalleryMutation,
@@ -131,21 +132,29 @@ const GalleryTile = ({
   preview,
   isOwn,
   canModerate,
-}: GalleryTileProps): ReactNode => (
-  <GalleryCard
-    gallery={photo.gallery}
-    preview={preview}
-    subtitle={`by ${photo.display_name}`}
-    actions={
-      <GalleryActions
-        meetupId={meetupId}
-        photo={photo}
-        isOwn={isOwn}
-        canModerate={canModerate}
-      />
-    }
-  />
-);
+}: GalleryTileProps): ReactNode => {
+  const navigate = useNavigate();
+  return (
+    <GalleryCard
+      gallery={photo.gallery}
+      preview={preview}
+      subtitle={`by ${photo.display_name}`}
+      actions={
+        <GalleryActions
+          meetupId={meetupId}
+          photo={photo}
+          isOwn={isOwn}
+          canModerate={canModerate}
+          onOpenProfile={
+            photo.username != null
+              ? () => void navigate(`/user/${photo.username}`)
+              : undefined
+          }
+        />
+      }
+    />
+  );
+};
 
 const AddGalleryTile = ({
   meetupId,

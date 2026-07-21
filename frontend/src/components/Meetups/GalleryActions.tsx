@@ -34,6 +34,7 @@ import {
   FiMoreVertical,
   FiTrash2,
   FiUpload,
+  FiUser,
   FiUserCheck,
   FiX,
 } from 'react-icons/fi';
@@ -62,6 +63,8 @@ interface GalleryActionsProps {
   canModerate?: boolean;
   /** When set, adds an item that opens the gallery's meetup. */
   onOpenMeetup?: () => void;
+  /** When set, adds an item that opens the contributor's profile. */
+  onOpenProfile?: () => void;
 }
 
 /** Kebab menu (copy / edit / transfer / delete) plus its dialogs for a gallery. */
@@ -71,6 +74,7 @@ export const GalleryActions = ({
   isOwn,
   canModerate = false,
   onOpenMeetup,
+  onOpenProfile,
 }: GalleryActionsProps): ReactNode => {
   const [deleteOwn, { isLoading: isDeletingOwn }] = useDeleteGalleryMutation();
   const [deleteForUser, { isLoading: isDeletingForUser }] =
@@ -145,6 +149,12 @@ export const GalleryActions = ({
             <DropdownMenuItem onSelect={() => onOpenMeetup()}>
               <FiCalendar />
               Open meetup
+            </DropdownMenuItem>
+          ) : null}
+          {onOpenProfile != null ? (
+            <DropdownMenuItem onSelect={() => onOpenProfile()}>
+              <FiUser />
+              View profile
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem onSelect={() => handleCopyUrl()}>

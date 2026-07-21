@@ -151,6 +151,7 @@ describe('createGallery', () => {
     expect(res.body).toEqual({
       id: 'p1',
       user_id: '1',
+      username: null,
       display_name: 'jane',
       gallery: VALID_LINK,
       title: null,
@@ -257,6 +258,7 @@ describe('createGallery', () => {
     expect(res.body).toEqual({
       id: 'p1',
       user_id: null,
+      username: null,
       display_name: 'Old Timer',
       gallery: VALID_LINK,
       title: null,
@@ -295,6 +297,7 @@ describe('createGallery', () => {
     expect(res.body).toEqual({
       id: 'p1',
       user_id: '1',
+      username: null,
       display_name: 'lead',
       gallery: VALID_LINK,
       title: null,
@@ -337,6 +340,7 @@ describe('createGallery', () => {
     expect(res.body).toEqual({
       id: 'p1',
       user_id: null,
+      username: null,
       display_name: 'Photog',
       gallery: VALID_LINK,
       title: null,
@@ -458,13 +462,13 @@ describe('getMeetupGallery', () => {
       {
         id: 'p1',
         user_id: '1',
-        user: { id: '1', nick_name: 'jane' },
+        user: { id: '1', nick_name: 'jane', username: 'jane' },
         gallery: 'https://a.example.com',
       },
       {
         id: 'p2',
         user_id: '2',
-        user: { id: '2', nick_name: 'bob' },
+        user: { id: '2', nick_name: 'bob', username: 'bob' },
         gallery: 'https://b.example.com',
       },
     ] as any);
@@ -477,6 +481,7 @@ describe('getMeetupGallery', () => {
       {
         id: 'p1',
         user_id: '1',
+        username: 'jane',
         display_name: 'jane',
         gallery: 'https://a.example.com',
         title: null,
@@ -485,6 +490,7 @@ describe('getMeetupGallery', () => {
       {
         id: 'p2',
         user_id: '2',
+        username: 'bob',
         display_name: 'bob',
         gallery: 'https://b.example.com',
         title: null,
@@ -512,6 +518,7 @@ describe('getMeetupGallery', () => {
       {
         id: 'p9',
         user_id: null,
+        username: null,
         display_name: 'Old Timer',
         gallery: 'https://c.example.com',
         title: null,

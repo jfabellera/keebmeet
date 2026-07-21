@@ -61,6 +61,7 @@ export interface SimpleTicketInfo {
 export interface GalleryInfo {
   id: string;
   user_id: string | null;
+  username: string | null;
   display_name: string;
   gallery: string;
   title: string | null;

@@ -32,6 +32,7 @@ const isMeetupOrganizer = (meetup: Meetup, user: User): boolean =>
 const toGalleryInfo = (record: GalleryRecord): GalleryInfo => ({
   id: record.id,
   user_id: record.user_id ?? null,
+  username: record.user?.username ?? null,
   display_name: record.contributor_name ?? record.user?.nick_name ?? '',
   gallery: record.gallery,
   title: record.title ?? null,
