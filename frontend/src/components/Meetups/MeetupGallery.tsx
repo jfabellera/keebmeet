@@ -1,5 +1,4 @@
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -63,9 +62,9 @@ import {
   useTransferGalleryMutation,
   useUploadGalleryImageMutation,
 } from '../../store/gallerySlice';
-import { useSearchUsersQuery } from '../../store/userSlice';
 import { useAppSelector } from '../../store/hooks';
 import { hasMeetupStarted } from '../../util/timeUtil';
+import { UserSearchInput } from '../shared/UserSearchInput';
 
 interface MeetupGalleryProps {
   meetup: MeetupInfo;
@@ -390,27 +389,11 @@ const TransferGalleryDialog = ({
   onOpenChange: (next: boolean) => void;
 }): ReactNode => {
   const [username, setUsername] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [showResults, setShowResults] = useState(false);
   const [transferGallery, { isLoading }] = useTransferGalleryMutation();
 
   useEffect(() => {
-    if (open) {
-      setUsername('');
-      setDebounced('');
-      setShowResults(false);
-    }
+    if (open) setUsername('');
   }, [open]);
-
-  useEffect(() => {
-    const query = username.trim().replace(/^@/, '');
-    const timer = setTimeout(() => setDebounced(query), 250);
-    return () => clearTimeout(timer);
-  }, [username]);
-
-  const { data: results = [] } = useSearchUsersQuery(debounced, {
-    skip: debounced.length < 2,
-  });
 
   const handleSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -442,56 +425,13 @@ const TransferGalleryDialog = ({
         <form onSubmit={(event) => void handleSubmit(event)}>
           <Field>
             <FieldLabel htmlFor="transfer-username">Username</FieldLabel>
-            <div className="relative">
-              <Input
-                id="transfer-username"
-                autoFocus
-                autoComplete="off"
-                maxLength={30}
-                placeholder="Start typing a username…"
-                value={username}
-                onChange={(event) => {
-                  setUsername(event.target.value);
-                  setShowResults(true);
-                }}
-                onFocus={() => setShowResults(true)}
-                disabled={isLoading}
-              />
-              {showResults && debounced.length >= 2 && results.length > 0 ? (
-                <ul className="bg-popover absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border p-1 shadow-md">
-                  {results.map((user) => (
-                    <li key={user.id}>
-                      <button
-                        type="button"
-                        className="hover:bg-accent flex w-full items-center gap-2 rounded-sm p-1.5 text-left text-sm"
-                        onClick={() => {
-                          setUsername(user.username);
-                          setShowResults(false);
-                        }}
-                      >
-                        <Avatar className="size-7">
-                          <AvatarImage
-                            src={user.photo_url}
-                            alt={user.display_name}
-                          />
-                          <AvatarFallback>
-                            {user.display_name[0]?.toUpperCase() ?? '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0 flex-1 truncate">
-                          <span className="font-medium">
-                            {user.display_name}
-                          </span>{' '}
-                          <span className="text-muted-foreground">
-                            @{user.username}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
+            <UserSearchInput
+              id="transfer-username"
+              autoFocus
+              value={username}
+              onChange={setUsername}
+              disabled={isLoading}
+            />
           </Field>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
