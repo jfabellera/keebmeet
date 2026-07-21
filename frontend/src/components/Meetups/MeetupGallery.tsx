@@ -47,6 +47,7 @@ import {
   FiPlus,
   FiTrash2,
   FiUpload,
+  FiUserCheck,
   FiX,
 } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -58,10 +59,12 @@ import {
   useEditGalleryMutation,
   useGetMeetupGalleryPreviewsQuery,
   useGetMeetupGalleryQuery,
+  useTransferGalleryMutation,
   useUploadGalleryImageMutation,
 } from '../../store/gallerySlice';
 import { useAppSelector } from '../../store/hooks';
 import { hasMeetupStarted } from '../../util/timeUtil';
+import { UserSearchInput } from '../shared/UserSearchInput';
 
 interface MeetupGalleryProps {
   meetup: MeetupInfo;
@@ -179,10 +182,12 @@ const GalleryTile = ({
     useDeleteGalleryByIdMutation();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const canDelete = isOwn || canModerate;
   const canEdit = isOwn || canModerate;
+  const canTransfer = canModerate && photo.user_id == null;
   const isLoading = isDeletingOwn || isDeletingForUser || isDeletingById;
 
   const handleOpenChange = (next: boolean): void => {
@@ -277,6 +282,17 @@ const GalleryTile = ({
                 Edit
               </DropdownMenuItem>
             ) : null}
+            {canTransfer ? (
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setTransferOpen(true);
+                }}
+              >
+                <FiUserCheck />
+                Transfer to user
+              </DropdownMenuItem>
+            ) : null}
             {canDelete ? (
               <DropdownMenuItem
                 variant="destructive"
@@ -348,8 +364,89 @@ const GalleryTile = ({
             onOpenChange={setEditOpen}
           />
         ) : null}
+        {canTransfer ? (
+          <TransferGalleryDialog
+            meetupId={meetupId}
+            photo={photo}
+            open={transferOpen}
+            onOpenChange={setTransferOpen}
+          />
+        ) : null}
       </div>
     </div>
+  );
+};
+
+const TransferGalleryDialog = ({
+  meetupId,
+  photo,
+  open,
+  onOpenChange,
+}: {
+  meetupId: string;
+  photo: GalleryInfo;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}): ReactNode => {
+  const [username, setUsername] = useState('');
+  const [transferGallery, { isLoading }] = useTransferGalleryMutation();
+
+  useEffect(() => {
+    if (open) setUsername('');
+  }, [open]);
+
+  const handleSubmit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    const handle = username.trim().replace(/^@/, '');
+    if (handle === '') return;
+    try {
+      await transferGallery({
+        meetupId,
+        galleryId: photo.id,
+        username: handle,
+      }).unwrap();
+      toast.success('Gallery transferred');
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(errorMessage(error, 'Failed to transfer gallery.'));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Transfer gallery</DialogTitle>
+          <DialogDescription>
+            Reassign {photo.display_name}'s credited gallery to a keebmeet
+            account by username. They'll then own and manage it themselves.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleSubmit(event)}>
+          <Field>
+            <FieldLabel htmlFor="transfer-username">Username</FieldLabel>
+            <UserSearchInput
+              id="transfer-username"
+              autoFocus
+              value={username}
+              onChange={setUsername}
+              disabled={isLoading}
+            />
+          </Field>
+          <DialogFooter className="mt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={isLoading || username.trim() === ''}>
+              Transfer
+              {isLoading && <Spinner />}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

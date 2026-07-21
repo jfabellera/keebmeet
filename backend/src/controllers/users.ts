@@ -5,6 +5,7 @@ import {
   USERNAME_REGEX,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
+import { ILike } from 'typeorm';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { fetchDiscordUsername } from '../util/discord';
@@ -87,6 +88,36 @@ export const getOrganizers = async (
   );
 
   return res.json(response);
+};
+
+export const searchUsers = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const q = String(req.query.q ?? '').trim();
+  if (q.length < 2) {
+    return res.json([]);
+  }
+
+  const escaped = q.replace(/[%_\\]/g, '\\$&');
+  const users = await User.find({
+    where: { username: ILike(`${escaped}%`) },
+    order: { username: 'ASC' },
+    take: 8,
+  });
+
+  return res.json(
+    users.map(
+      (user) =>
+        ({
+          id: user.id,
+          username: user.username,
+          display_name: user.nick_name,
+          photo_url: publicUrl(user.photo_key ?? ''),
+          is_organizer: user.is_organizer,
+        }) satisfies PublicUserInterface
+    )
+  );
 };
 
 // Public profiles resolve by username only; a numeric id 404s.

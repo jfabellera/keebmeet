@@ -28,6 +28,7 @@ import {
   editGallery,
   getMeetupGalleryPreviews,
   getMeetupGallery,
+  transferGallery,
   uploadGalleryImage,
 } from '../controllers/gallery';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
@@ -179,6 +180,12 @@ router.put(
   '/:meetup_id/galleries/:gallery_id',
   authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
   editGallery as RequestHandler
+);
+
+router.post(
+  '/:meetup_id/galleries/:gallery_id/transfer',
+  authChecker() as RequestHandler,
+  transferGallery as RequestHandler
 );
 
 router.delete(

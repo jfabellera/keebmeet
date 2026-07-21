@@ -39,6 +39,12 @@ export const userSlice = createApi({
       }),
       providesTags: (result, error, arg) => [{ type: 'User', id: arg }],
     }),
+    searchUsers: builder.query<PublicUser[], string>({
+      query: (q) => ({
+        url: `/users/search`,
+        params: { q },
+      }),
+    }),
     checkUsernameAvailable: builder.query<
       { available: boolean },
       { username: string; excludeId?: string }
@@ -138,6 +144,7 @@ export const userSlice = createApi({
 export const {
   useGetUserQuery,
   useGetPublicUserQuery,
+  useSearchUsersQuery,
   useCheckUsernameAvailableQuery,
   useUploadUserImageMutation,
   useGetAllUsersQuery,

@@ -10,6 +10,7 @@ import {
   getOrganizers,
   getPublicUser,
   getUser,
+  searchUsers,
   uploadUserImage,
   usernameAvailable,
 } from '../controllers/users';
@@ -39,6 +40,11 @@ router.get(
   getOrganizers as RequestHandler
 );
 router.get('/username-available', usernameAvailable as RequestHandler);
+router.get(
+  '/search',
+  authChecker([Rule.requireOrganizer]) as RequestHandler,
+  searchUsers as RequestHandler
+);
 router.get('/:user_id/public', getPublicUser as RequestHandler);
 router.get(
   '/:user_id',

@@ -195,6 +195,12 @@ export const editGallerySchema = z.object({
 
 export type EditGalleryPayload = z.infer<typeof editGallerySchema>;
 
+export const transferGallerySchema = z.object({
+  username: z.string().trim().min(1).max(30),
+});
+
+export type TransferGalleryPayload = z.infer<typeof transferGallerySchema>;
+
 export const createUserSchema = z.object({
   email: z.email(),
   first_name: z.string(),
