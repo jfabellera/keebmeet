@@ -26,7 +26,7 @@ jest.mock('../util/discord', () => ({
   fetchDiscordUsername: jest.fn(),
 }));
 
-import { getAllUsers, getOrganizers, getUser } from './users';
+import { getAllUsers, getOrganizers, getUser, searchUsers } from './users';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { fetchDiscordUsername } from '../util/discord';
@@ -254,5 +254,48 @@ describe('getUser', () => {
 
     const body = res.body as any;
     expect(body.has_organizer_request).toBe(true);
+  });
+});
+
+// ---- searchUsers ---------------------------------------------------------
+
+describe('searchUsers', () => {
+  const searchRequest = (q: string): Request =>
+    ({ query: { q }, params: {} }) as unknown as Request;
+
+  it('returns an empty list without querying for a short term', async () => {
+    const res = mockResponse();
+
+    await searchUsers(searchRequest('a'), res);
+
+    expect(res.body).toEqual([]);
+    expect(mockedUser.find).not.toHaveBeenCalled();
+  });
+
+  it('maps matches to the public shape, capped at 8', async () => {
+    mockedUser.find.mockResolvedValue([
+      {
+        id: '1',
+        username: 'janedoe',
+        nick_name: 'Jane',
+        photo_key: 'users/jane.jpg',
+        is_organizer: false,
+      },
+    ] as never);
+    const res = mockResponse();
+
+    await searchUsers(searchRequest('jane'), res);
+
+    const findArg = mockedUser.find.mock.calls[0][0] as any;
+    expect(findArg.take).toBe(8);
+    expect(res.body).toEqual([
+      {
+        id: '1',
+        username: 'janedoe',
+        display_name: 'Jane',
+        photo_url: 'https://cdn.test/users/jane.jpg',
+        is_organizer: false,
+      },
+    ]);
   });
 });
