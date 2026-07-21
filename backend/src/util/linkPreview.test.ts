@@ -15,12 +15,13 @@ const mockedFetch = jest.fn();
 
 const PUBLIC = [{ address: '93.184.216.34', family: 4 }];
 
-/** Minimal Response stand-in for the fields fetchValidatedPage reads. */
+/** Minimal Response stand-in for the fields the module reads. */
 const fakeResponse = (
   status: number,
   { headers = {}, body = '' }: { headers?: Record<string, string>; body?: string }
 ): unknown => ({
   status,
+  ok: status >= 200 && status < 300,
   headers: {
     get: (key: string) => headers[key.toLowerCase()] ?? null,
     forEach: (cb: (value: string, key: string) => void) => {
@@ -28,10 +29,8 @@ const fakeResponse = (
     },
   },
   text: async () => body,
+  json: async () => JSON.parse(body),
 });
-
-const htmlResponse = (body: string): unknown =>
-  fakeResponse(200, { headers: { 'content-type': 'text/html' }, body });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -108,14 +107,21 @@ describe('assertPublicHost', () => {
 // ---- fetchLinkPreview ------------------------------------------------------
 
 describe('fetchLinkPreview', () => {
-  it('fetches, parses, and maps OpenGraph fields', async () => {
+  // A grouped Iframely response (group=true): links keyed by rel.
+  const iframely = (body: unknown): void => {
     mockedFetch.mockResolvedValue(
-      htmlResponse(`<html><head>
-        <meta property="og:title" content="Meetup album" />
-        <meta property="og:site_name" content="Example Photos" />
-        <meta content="https://album.example.com/cover.jpg" property="og:image" />
-      </head></html>`)
+      fakeResponse(200, { body: JSON.stringify(body) })
     );
+  };
+
+  it('maps title, thumbnail image, and site from an Iframely response', async () => {
+    iframely({
+      meta: { title: 'Meetup album', site: 'Example Photos' },
+      links: {
+        thumbnail: [{ href: 'https://album.example.com/cover.jpg' }],
+        icon: [{ href: 'https://album.example.com/favicon.ico' }],
+      },
+    });
 
     await expect(fetchLinkPreview('https://album.example.com/ok')).resolves.toEqual(
       {
@@ -126,63 +132,50 @@ describe('fetchLinkPreview', () => {
     );
   });
 
-  // imgur emits bare attribute values.
-  it('parses unquoted attribute values', async () => {
-    mockedFetch.mockResolvedValue(
-      htmlResponse(
-        '<meta property=og:title content=Imgur data-react-helmet=true />' +
-          '<meta property=og:image content=https://i.example.com/a.jpeg?fb />'
-      )
-    );
-
-    await expect(fetchLinkPreview('https://imgur.example.com/a/x')).resolves.toEqual({
-      title: 'Imgur',
-      image: 'https://i.example.com/a.jpeg?fb',
-      siteName: null,
+  it('falls back to the image rel when there is no thumbnail', async () => {
+    iframely({
+      meta: { title: 'Photo' },
+      links: { image: [{ href: 'https://cdn.example.com/full.jpg' }] },
     });
-  });
-
-  it('falls back to twitter tags and <title>, decoding entities', async () => {
-    mockedFetch.mockResolvedValue(
-      htmlResponse(`<html><head>
-        <title>Tom &amp; Jerry&#39;s page</title>
-        <meta name="twitter:image" content="/img/cover.jpg" />
-      </head></html>`)
-    );
-
-    await expect(fetchLinkPreview('https://blog.example.com/post')).resolves.toEqual(
-      {
-        title: "Tom & Jerry's page",
-        image: 'https://blog.example.com/img/cover.jpg',
-        siteName: null,
-      }
-    );
-  });
-
-  it('uses the URL itself as the image for direct image links', async () => {
-    mockedFetch.mockResolvedValue(
-      fakeResponse(200, { headers: { 'content-type': 'image/jpeg' } })
-    );
 
     await expect(
-      fetchLinkPreview('https://cdn.example.com/photo.jpg')
+      fetchLinkPreview('https://photos.example.com/p')
     ).resolves.toEqual({
-      title: null,
-      image: 'https://cdn.example.com/photo.jpg',
+      title: 'Photo',
+      image: 'https://cdn.example.com/full.jpg',
       siteName: null,
     });
   });
 
-  it('returns empty fields for an error-status page', async () => {
-    mockedFetch.mockResolvedValue(
-      fakeResponse(403, {
-        headers: { 'content-type': 'text/html' },
-        body: '<title>Just a moment...</title>',
-      })
+  it('requests the Iframely endpoint with group=true and the encoded url', async () => {
+    iframely({ meta: {}, links: {} });
+    const target = 'https://site.example.com/a?x=1&y=2';
+
+    await fetchLinkPreview(target);
+
+    expect(mockedFetch).toHaveBeenCalledWith(
+      `http://iframely:8061/iframely?url=${encodeURIComponent(target)}&group=true`,
+      expect.anything()
     );
+  });
+
+  it('DNS-validates the target host before calling Iframely', async () => {
+    iframely({ meta: { title: 'ok' }, links: {} });
+
+    await fetchLinkPreview('https://validated.example.com/x');
+
+    // The original host is resolved, not the internal Iframely host.
+    expect(mockedLookup).toHaveBeenCalledWith(
+      'validated.example.com',
+      expect.anything()
+    );
+  });
+
+  it('returns empty fields when Iframely responds non-2xx', async () => {
+    mockedFetch.mockResolvedValue(fakeResponse(422, { body: '{}' }));
 
     await expect(
-      fetchLinkPreview('https://walled.example.com/gallery')
+      fetchLinkPreview('https://unsupported.example.com/x')
     ).resolves.toEqual({ title: null, image: null, siteName: null });
   });
 
@@ -194,32 +187,13 @@ describe('fetchLinkPreview', () => {
     expect(mockedLookup).not.toHaveBeenCalled();
   });
 
-  it('does not fetch when the host resolves to a private address', async () => {
+  it('does not call Iframely when the host resolves to a private address', async () => {
     mockedLookup.mockResolvedValue([{ address: '10.0.0.9', family: 4 }] as never);
 
     await expect(
       fetchLinkPreview('https://rebind.example.com/x')
     ).resolves.toEqual({ title: null, image: null, siteName: null });
     expect(mockedFetch).not.toHaveBeenCalled();
-  });
-
-  it('follows a redirect and validates the new host', async () => {
-    mockedFetch
-      .mockResolvedValueOnce(
-        fakeResponse(302, {
-          headers: { location: 'https://dest.example.com/final' },
-        })
-      )
-      .mockResolvedValueOnce(
-        htmlResponse('<meta property="og:title" content="Redirected" />')
-      );
-
-    const result = await fetchLinkPreview('https://short.example.com/r');
-
-    expect(result.title).toBe('Redirected');
-    expect(mockedFetch).toHaveBeenCalledTimes(2);
-    // The redirect target host was DNS-validated too (once per hop).
-    expect(mockedLookup).toHaveBeenCalledTimes(2);
   });
 
   it('resolves to empty fields when the fetch throws', async () => {

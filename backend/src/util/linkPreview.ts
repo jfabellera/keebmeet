@@ -12,12 +12,10 @@ const EMPTY: LinkPreview = { title: null, image: null, siteName: null };
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const cache = new Map<string, { value: LinkPreview; expires: number }>();
 
-const TIMEOUT_MS = 5000;
-const MAX_REDIRECTS = 5;
-// Sites like imgur serve OpenGraph tags only to recognized crawler UAs, so
-// lead with a known unfurler token.
-const USER_AGENT =
-  'Discordbot/2.0 (compatible; keebmeet-link-preview/1.0; +https://keebmeet)';
+// Longer than Iframely's own request timeout so we surface its result, not abort.
+const REQUEST_TIMEOUT_MS = 10000;
+
+const IFRAMELY_BASE_URL = process.env.IFRAMELY_URL ?? 'http://iframely:8061';
 
 /**
  * Cheap first-pass SSRF guard on the literal host: reject non-http(s) and
@@ -111,131 +109,50 @@ export const assertPublicHost = async (url: string): Promise<void> => {
   }
 };
 
-interface FetchedPage {
-  url: string;
-  status: number;
-  headers: Record<string, string>;
-  data: string;
+interface IframelyResponse {
+  meta?: { title?: unknown; site?: unknown };
+  // With group=true, links is keyed by rel (thumbnail/image/icon/…).
+  links?: Record<string, Array<{ href?: unknown }> | undefined>;
 }
 
-/**
- * Fetch a URL following redirects manually, DNS-validating the host on EVERY hop
- * so a public URL can't 302 the server onto an internal address. Reads the body
- * only for non-image responses (direct images need no body).
- */
-const fetchValidatedPage = async (startUrl: string): Promise<FetchedPage> => {
-  let url = startUrl;
-
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (!isFetchablePreviewUrl(url)) {
-      throw new Error(`Refusing to fetch ${url}`);
-    }
-    await assertPublicHost(url);
-
-    const response = await fetch(url, {
-      redirect: 'manual',
-      headers: { 'user-agent': USER_AGENT },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
-      if (location == null || location === '') {
-        throw new Error('Redirect without a location');
-      }
-      url = new URL(location, url).href;
-      continue;
-    }
-
-    const headers: Record<string, string> = {};
-    response.headers.forEach((headerValue, key) => {
-      headers[key] = headerValue;
-    });
-    const isImage = (headers['content-type'] ?? '').startsWith('image/');
-    const data = isImage ? '' : await response.text();
-
-    return { url, status: response.status, headers, data };
+/** First usable href in a rel group, or null. */
+const firstHref = (
+  links: IframelyResponse['links'],
+  rel: string
+): string | null => {
+  const group = links?.[rel];
+  if (!Array.isArray(group)) return null;
+  for (const link of group) {
+    if (typeof link?.href === 'string' && link.href !== '') return link.href;
   }
-
-  throw new Error('Too many redirects');
+  return null;
 };
 
-const decodeEntities = (text: string): string =>
-  text
-    .replace(/&#x([0-9a-f]+);/gi, (match, hex: string) => {
-      const codePoint = parseInt(hex, 16);
-      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
-    })
-    .replace(/&#(\d+);/g, (match, dec: string) => {
-      const codePoint = Number(dec);
-      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
-    })
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
+// group=true forces the grouped `links` shape regardless of container config.
+const fetchFromIframely = async (url: string): Promise<LinkPreview> => {
+  const endpoint = `${IFRAMELY_BASE_URL}/iframely?url=${encodeURIComponent(url)}&group=true`;
+  const response = await fetch(endpoint, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) return EMPTY;
 
-// One attribute; the value may be double-quoted, single-quoted, or bare.
-const ATTR_RE = /([a-zA-Z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  const data = (await response.json()) as IframelyResponse;
+  const title = typeof data.meta?.title === 'string' ? data.meta.title : null;
+  const siteName = typeof data.meta?.site === 'string' ? data.meta.site : null;
+  const image =
+    firstHref(data.links, 'thumbnail') ?? firstHref(data.links, 'image');
 
-/** property/name → decoded content for every <meta> tag, first wins. */
-const metaContents = (html: string): Map<string, string> => {
-  const tags = new Map<string, string>();
-  for (const tag of html.matchAll(/<meta\s[^>]*>/gi)) {
-    let key: string | null = null;
-    let content: string | null = null;
-    for (const attr of tag[0].matchAll(ATTR_RE)) {
-      const name = attr[1].toLowerCase();
-      const value = attr[2] ?? attr[3] ?? attr[4] ?? '';
-      if (name === 'property' || name === 'name') key ??= value.toLowerCase();
-      if (name === 'content') content ??= value;
-    }
-    if (key != null && content != null && !tags.has(key)) {
-      tags.set(key, decodeEntities(content));
-    }
-  }
-  return tags;
-};
-
-/** OpenGraph fields with Twitter Card and <title> fallbacks. */
-const parsePreviewHtml = (html: string, pageUrl: string): LinkPreview => {
-  const meta = metaContents(html);
-
-  const title =
-    meta.get('og:title') ??
-    meta.get('twitter:title') ??
-    decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? '').trim();
-
-  const rawImage =
-    meta.get('og:image') ??
-    meta.get('og:image:url') ??
-    meta.get('og:image:secure_url') ??
-    meta.get('twitter:image') ??
-    meta.get('twitter:image:src') ??
-    '';
-
-  let image: string | null = null;
-  if (rawImage !== '') {
-    try {
-      image = new URL(rawImage, pageUrl).href;
-    } catch {
-      image = null;
-    }
-  }
-
-  return {
-    title: title === '' ? null : title,
-    image,
-    siteName: meta.get('og:site_name') ?? null,
-  };
+  return { title, image, siteName };
 };
 
 /**
- * Fetch OpenGraph-style metadata for a URL, server-side (browsers can't, due to
- * CORS). Cached with a TTL and resilient: any failure resolves to empty fields
- * so the caller/UI simply falls back to a plain link.
+ * Fetch link metadata via self-hosted Iframely. Cached with a TTL; any failure
+ * resolves to empty fields so the UI falls back to a plain link.
+ *
+ * We DNS-validate the target host before calling: Iframely does the outbound
+ * fetch and sits on the internal network, so this stops an organizer-supplied
+ * URL from pointing it at a private address (which its URL-pattern filter can't
+ * catch when a hostname resolves to a private IP).
  */
 export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
   const cached = cache.get(url);
@@ -243,16 +160,9 @@ export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
 
   let value = EMPTY;
   try {
-    const page = await fetchValidatedPage(url);
-    const contentType = page.headers['content-type'] ?? '';
-
-    if (page.status >= 400) {
-      // Don't parse bot-wall/error pages ("Just a moment...").
-      value = EMPTY;
-    } else if (contentType.startsWith('image/')) {
-      value = { title: null, image: page.url, siteName: null };
-    } else {
-      value = parsePreviewHtml(page.data, page.url);
+    if (isFetchablePreviewUrl(url)) {
+      await assertPublicHost(url);
+      value = await fetchFromIframely(url);
     }
   } catch {
     value = EMPTY;

@@ -26,6 +26,7 @@ x-backend-env: &backend-env
   DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
   INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
   QR_CODE_KEY: ${QR_CODE_KEY}
+  IFRAMELY_URL: http://iframely:8061
 
 services:
   db:
@@ -47,6 +48,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # Link-preview unfurler — internal only, called by the API process.
+  iframely:
+    image: ghcr.io/jfabellera/keebmeet-iframely:latest
+    restart: unless-stopped
+    expose:
+      - '8061'
+
   api:
     image: ghcr.io/jfabellera/keebmeet-backend:latest
     restart: unless-stopped
@@ -58,6 +66,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      iframely:
+        condition: service_started
 
   auth:
     image: ghcr.io/jfabellera/keebmeet-backend:latest

@@ -3,10 +3,12 @@
 Images are built by GitHub Actions and pushed to the GitHub Container Registry
 (GHCR); the server pulls those pre-built images and never builds from source.
 The whole stack runs on a single host — frontend, the three backend processes,
-the bot, and PostgreSQL. Everything is served from one domain (the backends live
-under `/api`, so there's no CORS), [Caddy](frontend/Caddyfile) provides HTTPS
-automatically, and PostgreSQL data lives in a named volume that survives
-redeploys.
+the bot, a self-hosted [Iframely](iframely/Dockerfile) link-preview service, and
+PostgreSQL. Everything is served from one domain (the backends live under `/api`,
+so there's no CORS), [Caddy](frontend/Caddyfile) provides HTTPS automatically,
+and PostgreSQL data lives in a named volume that survives redeploys. Iframely is
+internal-only (no published ports); the API reaches it at `http://iframely:8061`
+and it needs no configuration or secrets.
 
 ## One-time GitHub setup
 
@@ -18,9 +20,9 @@ The frontend bakes its public URLs in at build time, so the
 `DISCORD_REDIRECT_URI`.
 
 Push to `main` (or run the workflow manually) to build and publish the images.
-Then either make the three GHCR packages **public** so the server can pull
-without credentials, or run `docker login ghcr.io` on the server with a
-read-only token.
+Then either make the four GHCR packages (`keebmeet-backend`, `keebmeet-web`,
+`keebmeet-bot`, `keebmeet-iframely`) **public** so the server can pull without
+credentials, or run `docker login ghcr.io` on the server with a read-only token.
 
 ## On the server
 

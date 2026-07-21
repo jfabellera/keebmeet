@@ -57,6 +57,19 @@ jobs:
           cache-from: type=gha,scope=bot
           cache-to: type=gha,mode=max,scope=bot
 
+      # Self-hosted Iframely, built from a pinned upstream commit.
+      - name: Build & push iframely
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./iframely/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER }}/keebmeet-iframely:latest
+            ghcr.io/${{ env.OWNER }}/keebmeet-iframely:${{ github.sha }}
+          cache-from: type=gha,scope=iframely
+          cache-to: type=gha,mode=max,scope=iframely
+
       # Vite inlines these PUBLIC URLs into the bundle at build time, so they must
       # be supplied here. Set them as repository Variables (Settings → Secrets and
       # variables → Actions → Variables). They are NOT secret — public URLs and a
