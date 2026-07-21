@@ -1,5 +1,6 @@
 import {
   createGallerySchema,
+  editGallerySchema,
   type GalleryInfo,
   type GalleryPreview,
 } from '@keebmeet/shared';
@@ -10,10 +11,32 @@ import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import { type User } from '../entity/User';
 import { fetchLinkPreview } from '../util/linkPreview';
+import { normalizeImage } from '../util/imageProcessing';
+import {
+  IMAGE_EXT_BY_MIME,
+  buildTempImageKey,
+  deleteObject,
+  isManagedKey,
+  promoteImage,
+  publicUrl,
+  toStoredKey,
+  upload,
+} from '../util/objectStorage';
 
 const isMeetupOrganizer = (meetup: Meetup, user: User): boolean =>
   meetup.lead_organizer?.id === user.id ||
   (meetup.organizers?.some((organizer) => organizer.id === user.id) ?? false);
+
+const toGalleryInfo = (record: GalleryRecord): GalleryInfo => ({
+  id: record.id,
+  user_id: record.user_id ?? null,
+  display_name: record.contributor_name ?? record.user?.nick_name ?? '',
+  gallery: record.gallery,
+  title: record.title ?? null,
+  cover_image_url: record.cover_image_key
+    ? publicUrl(record.cover_image_key)
+    : null,
+});
 
 // Two kinds of gallery:
 //  - A self link is keyed by (meetup_id, user_id): an attendee or organizer may
@@ -61,12 +84,7 @@ export const createGallery = async (
 
     socket.emit('meetup:update', { meetupId: meetup.id });
 
-    return res.status(201).json({
-      id: record.id,
-      user_id: null,
-      display_name: contributorName,
-      gallery: record.gallery,
-    } satisfies GalleryInfo);
+    return res.status(201).json(toGalleryInfo(record));
   }
 
   if (!isOrganizer) {
@@ -98,18 +116,109 @@ export const createGallery = async (
   const record = GalleryRecord.create({
     meetup,
     user,
+    user_id: user.id,
     gallery: result.data.gallery,
   });
   await record.save();
 
   socket.emit('meetup:update', { meetupId: meetup.id });
 
-  return res.status(201).json({
-    id: record.id,
-    user_id: user.id,
-    display_name: user.nick_name,
-    gallery: record.gallery,
-  } satisfies GalleryInfo);
+  return res.status(201).json(toGalleryInfo(record));
+};
+
+export const editGallery = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const meetup = res.locals.meetup as Meetup;
+  const user = res.locals.requestor as User;
+  const { gallery_id } = req.params as Record<string, string>;
+
+  if (meetup == null || user == null) {
+    return res.status(400).end();
+  }
+
+  const result = editGallerySchema.safeParse(req.body ?? {});
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const record = await GalleryRecord.findOne({
+    relations: { user: true },
+    where: { id: gallery_id, meetup: { id: meetup.id } },
+  });
+
+  if (record == null) {
+    return res.status(404).json({ message: 'Gallery not found.' });
+  }
+
+  const isOwner = record.user_id != null && record.user_id === user.id;
+  if (!isOwner && !isMeetupOrganizer(meetup, user)) {
+    return res
+      .status(403)
+      .json({ message: 'Not allowed to edit this gallery.' });
+  }
+
+  const previousKey = record.cover_image_key ?? null;
+  const coverInput = result.data.cover_image_key;
+  let coverKey: string | null = previousKey;
+  if (coverInput !== undefined) {
+    coverKey =
+      coverInput === null || coverInput === ''
+        ? null
+        : await promoteImage(toStoredKey(coverInput));
+  }
+
+  const title = result.data.title?.trim();
+  record.gallery = result.data.gallery;
+  record.title = title != null && title !== '' ? title : null;
+  record.cover_image_key = coverKey;
+  await record.save();
+
+  if (
+    previousKey != null &&
+    previousKey !== coverKey &&
+    isManagedKey(previousKey)
+  ) {
+    await deleteObject(previousKey).catch(() => {});
+  }
+
+  socket.emit('meetup:update', { meetupId: meetup.id });
+
+  return res.status(200).json(toGalleryInfo(record));
+};
+
+export const uploadGalleryImage = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const file = req.file;
+  if (file == null) {
+    return res.status(400).json({ message: 'No image file provided.' });
+  }
+
+  const ext = IMAGE_EXT_BY_MIME[file.mimetype];
+  if (ext === undefined) {
+    return res
+      .status(400)
+      .json({ message: 'Unsupported image type. Use PNG, JPEG, or WebP.' });
+  }
+
+  let processed: Buffer;
+  try {
+    processed = await normalizeImage(file.buffer, file.mimetype, {
+      maxDimension: 1600,
+    });
+  } catch {
+    return res
+      .status(400)
+      .json({ message: 'Could not process the uploaded image.' });
+  }
+
+  const key = buildTempImageKey('galleries', ext);
+  await upload(key, processed, file.mimetype);
+
+  return res.status(201).json({ image_key: key, image_url: publicUrl(key) });
 };
 
 // Self-service: the requestor removes their own gallery for the meetup.
@@ -214,17 +323,7 @@ export const getMeetupGallery = async (
     },
   });
 
-  const response = records.map(
-    (record) =>
-      ({
-        id: record.id,
-        user_id: record.user_id,
-        display_name: record.contributor_name ?? record.user?.nick_name ?? '',
-        gallery: record.gallery,
-      }) satisfies GalleryInfo
-  );
-
-  return res.status(200).json(response);
+  return res.status(200).json(records.map(toGalleryInfo));
 };
 
 // OpenGraph-style previews for the meetup's galleries, scraped server-side
@@ -249,11 +348,25 @@ export const getMeetupGalleryPreviews = async (
 
   const previews = await Promise.all(
     records.map(async (record) => {
+      const overrideTitle = record.title ?? null;
+      const overrideImage = record.cover_image_key
+        ? publicUrl(record.cover_image_key)
+        : null;
+
+      if (overrideTitle != null && overrideImage != null) {
+        return {
+          id: record.id,
+          title: overrideTitle,
+          image: overrideImage,
+          siteName: null,
+        } satisfies GalleryPreview;
+      }
+
       const preview = await fetchLinkPreview(record.gallery);
       return {
         id: record.id,
-        title: preview.title,
-        image: preview.image,
+        title: overrideTitle ?? preview.title,
+        image: overrideImage ?? preview.image,
         siteName: preview.siteName,
       } satisfies GalleryPreview;
     })

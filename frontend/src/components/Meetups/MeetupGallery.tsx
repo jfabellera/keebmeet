@@ -32,13 +32,22 @@ import {
   type GalleryPreview,
   type MeetupInfo,
 } from '@keebmeet/shared';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import {
   FiAlertTriangle,
   FiCopy,
+  FiEdit2,
   FiMoreVertical,
   FiPlus,
   FiTrash2,
+  FiUpload,
+  FiX,
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import {
@@ -46,8 +55,10 @@ import {
   useDeleteGalleryByIdMutation,
   useDeleteGalleryForUserMutation,
   useDeleteGalleryMutation,
+  useEditGalleryMutation,
   useGetMeetupGalleryPreviewsQuery,
   useGetMeetupGalleryQuery,
+  useUploadGalleryImageMutation,
 } from '../../store/gallerySlice';
 import { useAppSelector } from '../../store/hooks';
 import { hasMeetupStarted } from '../../util/timeUtil';
@@ -167,9 +178,11 @@ const GalleryTile = ({
   const [deleteById, { isLoading: isDeletingById }] =
     useDeleteGalleryByIdMutation();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   const canDelete = isOwn || canModerate;
+  const canEdit = isOwn || canModerate;
   const isLoading = isDeletingOwn || isDeletingForUser || isDeletingById;
 
   const handleOpenChange = (next: boolean): void => {
@@ -253,6 +266,17 @@ const GalleryTile = ({
               <FiCopy />
               Copy URL
             </DropdownMenuItem>
+            {canEdit ? (
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setEditOpen(true);
+                }}
+              >
+                <FiEdit2 />
+                Edit
+              </DropdownMenuItem>
+            ) : null}
             {canDelete ? (
               <DropdownMenuItem
                 variant="destructive"
@@ -316,8 +340,186 @@ const GalleryTile = ({
             </DialogContent>
           </Dialog>
         ) : null}
+        {canEdit ? (
+          <EditGalleryDialog
+            meetupId={meetupId}
+            photo={photo}
+            open={editOpen}
+            onOpenChange={setEditOpen}
+          />
+        ) : null}
       </div>
     </div>
+  );
+};
+
+const EditGalleryDialog = ({
+  meetupId,
+  photo,
+  open,
+  onOpenChange,
+}: {
+  meetupId: string;
+  photo: GalleryInfo;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}): ReactNode => {
+  const [url, setUrl] = useState(photo.gallery);
+  const [title, setTitle] = useState(photo.title ?? '');
+  const [coverKey, setCoverKey] = useState(photo.cover_image_url ?? '');
+  const [coverPreview, setCoverPreview] = useState(photo.cover_image_url ?? '');
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const [editGallery, { isLoading }] = useEditGalleryMutation();
+  const [uploadImage, { isLoading: isUploading }] =
+    useUploadGalleryImageMutation();
+
+  useEffect(() => {
+    if (open) {
+      setUrl(photo.gallery);
+      setTitle(photo.title ?? '');
+      setCoverKey(photo.cover_image_url ?? '');
+      setCoverPreview(photo.cover_image_url ?? '');
+    }
+  }, [open, photo]);
+
+  const handleFile = async (file: File | undefined): Promise<void> => {
+    if (file == null) return;
+    try {
+      const { image_key, image_url } = await uploadImage({
+        meetupId,
+        file,
+      }).unwrap();
+      setCoverKey(image_key);
+      setCoverPreview(image_url);
+    } catch (error) {
+      toast.error(errorMessage(error, 'Failed to upload image.'));
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    if (url.trim() === '') return;
+    try {
+      await editGallery({
+        meetupId,
+        galleryId: photo.id,
+        gallery: url.trim(),
+        title: title.trim() === '' ? null : title.trim(),
+        coverImageKey: coverKey,
+      }).unwrap();
+      toast.success('Gallery updated');
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(errorMessage(error, 'Failed to update gallery.'));
+    }
+  };
+
+  const busy = isLoading || isUploading;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit gallery</DialogTitle>
+          <DialogDescription>
+            Change the link, or set a title and cover image to show instead of
+            the auto-generated preview.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleSubmit(event)}>
+          <Field>
+            <FieldLabel htmlFor="edit-gallery-url">Gallery link</FieldLabel>
+            <Input
+              id="edit-gallery-url"
+              type="url"
+              inputMode="url"
+              placeholder="https://photos.example.com/…"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              disabled={busy}
+            />
+          </Field>
+          <Field className="mt-4">
+            <FieldLabel htmlFor="edit-gallery-title">Title</FieldLabel>
+            <Input
+              id="edit-gallery-title"
+              maxLength={200}
+              placeholder="Leave blank to use the auto-fetched title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              disabled={busy}
+            />
+          </Field>
+          <Field className="mt-4">
+            <FieldLabel>Cover image</FieldLabel>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                void handleFile(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+            {coverPreview !== '' ? (
+              <div className="flex items-center justify-between gap-2">
+                <img
+                  src={coverPreview}
+                  alt=""
+                  className="size-16 rounded-md border object-cover"
+                />
+                <div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    {isUploading ? <Spinner /> : <FiUpload />}
+                    Replace
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => {
+                      setCoverKey('');
+                      setCoverPreview('');
+                    }}
+                  >
+                    <FiX />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                {isUploading ? <Spinner /> : <FiUpload />}
+                Upload cover image
+              </Button>
+            )}
+          </Field>
+          <DialogFooter className="mt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={busy || url.trim() === ''}>
+              Save
+              {isLoading && <Spinner />}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

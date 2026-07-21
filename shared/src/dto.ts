@@ -63,6 +63,8 @@ export interface GalleryInfo {
   user_id: string | null;
   display_name: string;
   gallery: string;
+  title: string | null;
+  cover_image_url: string | null;
 }
 
 // OpenGraph-style preview for a stored gallery, scraped server-side (the

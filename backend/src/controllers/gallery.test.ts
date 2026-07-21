@@ -15,11 +15,26 @@ jest.mock('../entity/Ticket', () => ({
 // controller maps whatever the util returns onto the response.
 jest.mock('../util/linkPreview', () => ({ fetchLinkPreview: jest.fn() }));
 
+jest.mock('../util/objectStorage', () => ({
+  IMAGE_EXT_BY_MIME: { 'image/jpeg': 'jpg', 'image/png': 'png' },
+  buildTempImageKey: (category: string) => `${category}/tmp/new.jpg`,
+  deleteObject: jest.fn().mockResolvedValue(undefined),
+  isManagedKey: (v: string) => v !== '' && !/^https?:\/\//.test(v),
+  promoteImage: jest.fn(async (k: string) => k.replace('tmp/', '')),
+  publicUrl: (k: string) => `https://cdn.test/${k}`,
+  toStoredKey: (v: string) => v,
+  upload: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../util/imageProcessing', () => ({
+  normalizeImage: jest.fn(async (buf: Buffer) => buf),
+}));
+
 import {
   createGallery,
   deleteGallery,
   deleteGalleryById,
   deleteGalleryForUser,
+  editGallery,
   getMeetupGalleryPreviews,
   getMeetupGallery,
 } from './gallery';
@@ -27,11 +42,14 @@ import { socket } from '../Server';
 import { GalleryRecord } from '../entity/GalleryRecord';
 import { Ticket } from '../entity/Ticket';
 import { fetchLinkPreview } from '../util/linkPreview';
+import { deleteObject, promoteImage } from '../util/objectStorage';
 
 const mockedGalleryRecord = jest.mocked(GalleryRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedSocket = jest.mocked(socket);
 const mockedFetchLinkPreview = jest.mocked(fetchLinkPreview);
+const mockedPromoteImage = jest.mocked(promoteImage);
+const mockedDeleteObject = jest.mocked(deleteObject);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -129,6 +147,8 @@ describe('createGallery', () => {
       user_id: '1',
       display_name: 'jane',
       gallery: VALID_LINK,
+      title: null,
+      cover_image_url: null,
     });
     expect(mockedSocket.emit).toHaveBeenCalledWith('meetup:update', {
       meetupId: '10',
@@ -233,6 +253,8 @@ describe('createGallery', () => {
       user_id: null,
       display_name: 'Old Timer',
       gallery: VALID_LINK,
+      title: null,
+      cover_image_url: null,
     });
     // No ticket check and no per-person duplicate lookup for archives.
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
@@ -269,6 +291,8 @@ describe('createGallery', () => {
       user_id: '1',
       display_name: 'lead',
       gallery: VALID_LINK,
+      title: null,
+      cover_image_url: null,
     });
   });
 
@@ -309,6 +333,8 @@ describe('createGallery', () => {
       user_id: null,
       display_name: 'Photog',
       gallery: VALID_LINK,
+      title: null,
+      cover_image_url: null,
     });
     // Credited links are account-less: no ticket gate, no per-person lookup.
     expect(mockedTicket.findOne).not.toHaveBeenCalled();
@@ -447,12 +473,16 @@ describe('getMeetupGallery', () => {
         user_id: '1',
         display_name: 'jane',
         gallery: 'https://a.example.com',
+        title: null,
+        cover_image_url: null,
       },
       {
         id: 'p2',
         user_id: '2',
         display_name: 'bob',
         gallery: 'https://b.example.com',
+        title: null,
+        cover_image_url: null,
       },
     ]);
   });
@@ -478,6 +508,8 @@ describe('getMeetupGallery', () => {
         user_id: null,
         display_name: 'Old Timer',
         gallery: 'https://c.example.com',
+        title: null,
+        cover_image_url: null,
       },
     ]);
   });
@@ -559,6 +591,176 @@ describe('getMeetupGalleryPreviews', () => {
     expect(res.body).toEqual([
       { id: 'p3', title: null, image: null, siteName: null },
     ]);
+  });
+
+  it('uses stored overrides and skips the fetch when both are set', async () => {
+    mockedGalleryRecord.find.mockResolvedValue([
+      {
+        id: 'p1',
+        gallery: 'https://imgur.com/a/x',
+        title: 'My album',
+        cover_image_key: 'galleries/cover.jpg',
+      },
+    ] as any);
+    const res = mockResponse();
+
+    await getMeetupGalleryPreviews(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(mockedFetchLinkPreview).not.toHaveBeenCalled();
+    expect(res.body).toEqual([
+      {
+        id: 'p1',
+        title: 'My album',
+        image: 'https://cdn.test/galleries/cover.jpg',
+        siteName: null,
+      },
+    ]);
+  });
+
+  it('falls back to the fetched field the override is missing', async () => {
+    mockedGalleryRecord.find.mockResolvedValue([
+      { id: 'p1', gallery: 'https://imgur.com/a/x', title: 'My album' },
+    ] as any);
+    mockedFetchLinkPreview.mockResolvedValue({
+      title: 'ignored',
+      image: 'https://fetched.example.com/i.jpg',
+      siteName: 'Imgur',
+    });
+    const res = mockResponse();
+
+    await getMeetupGalleryPreviews(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(res.body).toEqual([
+      {
+        id: 'p1',
+        title: 'My album',
+        image: 'https://fetched.example.com/i.jpg',
+        siteName: 'Imgur',
+      },
+    ]);
+  });
+});
+
+// ---- editGallery ---------------------------------------------------------
+
+describe('editGallery', () => {
+  const editable = (): any => ({
+    id: 'p1',
+    user_id: '1',
+    user: { id: '1', nick_name: 'jane' },
+    gallery: 'https://old.example.com',
+    title: null,
+    cover_image_key: null,
+    save: jest.fn().mockResolvedValue(undefined),
+  });
+
+  it('returns 404 when no link with that id exists for the meetup', async () => {
+    mockedGalleryRecord.findOne.mockResolvedValue(null);
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser();
+    res.locals.requestor = { id: '1' };
+
+    await editGallery(
+      mockRequest({ gallery: VALID_LINK }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns 403 when requestor is neither the owner nor an organizer', async () => {
+    mockedGalleryRecord.findOne.mockResolvedValue(editable());
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser(); // organizers 98/99
+    res.locals.requestor = { id: '2' }; // not owner (1), not organizer
+
+    await editGallery(
+      mockRequest({ gallery: VALID_LINK }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('lets the owner edit their own link (200) and sets title + gallery', async () => {
+    const record = editable();
+    mockedGalleryRecord.findOne.mockResolvedValue(record);
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser();
+    res.locals.requestor = { id: '1' }; // owner
+
+    await editGallery(
+      mockRequest(
+        { gallery: VALID_LINK, title: '  My album  ' },
+        { gallery_id: 'p1' }
+      ),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(record.gallery).toBe(VALID_LINK);
+    expect(record.title).toBe('My album');
+    expect(record.save).toHaveBeenCalled();
+    expect(res.body).toMatchObject({ id: 'p1', title: 'My album' });
+  });
+
+  it('lets an organizer edit a link they do not own', async () => {
+    const record = editable();
+    record.user_id = '2'; // owned by someone else
+    mockedGalleryRecord.findOne.mockResolvedValue(record);
+    const res = mockResponse();
+    res.locals.meetup = { id: '10', lead_organizer: { id: '1' }, organizers: [] };
+    res.locals.requestor = { id: '1' }; // organizer, not owner
+
+    await editGallery(
+      mockRequest({ gallery: VALID_LINK }, { gallery_id: 'p1' }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('promotes a new cover and deletes the previous one', async () => {
+    const record = editable();
+    record.cover_image_key = 'galleries/old.jpg';
+    mockedGalleryRecord.findOne.mockResolvedValue(record);
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser();
+    res.locals.requestor = { id: '1' };
+
+    await editGallery(
+      mockRequest(
+        { gallery: VALID_LINK, cover_image_key: 'galleries/tmp/new.jpg' },
+        { gallery_id: 'p1' }
+      ),
+      res
+    );
+
+    expect(mockedPromoteImage).toHaveBeenCalledWith('galleries/tmp/new.jpg');
+    expect(record.cover_image_key).toBe('galleries/new.jpg');
+    expect(mockedDeleteObject).toHaveBeenCalledWith('galleries/old.jpg');
+    expect((res.body as any).cover_image_url).toBe('https://cdn.test/galleries/new.jpg');
+  });
+
+  it('clears the cover when an empty string is sent', async () => {
+    const record = editable();
+    record.cover_image_key = 'galleries/old.jpg';
+    mockedGalleryRecord.findOne.mockResolvedValue(record);
+    const res = mockResponse();
+    res.locals.meetup = meetupWithoutUser();
+    res.locals.requestor = { id: '1' };
+
+    await editGallery(
+      mockRequest(
+        { gallery: VALID_LINK, cover_image_key: '' },
+        { gallery_id: 'p1' }
+      ),
+      res
+    );
+
+    expect(record.cover_image_key).toBeNull();
+    expect(mockedDeleteObject).toHaveBeenCalledWith('galleries/old.jpg');
+    expect((res.body as any).cover_image_url).toBeNull();
   });
 });
 
