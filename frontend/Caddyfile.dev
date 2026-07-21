@@ -1,0 +1,31 @@
+# Local link-preview testing. Runs Caddy in front of the Vite dev server so
+# crawlers get the same Open Graph handling as production, without building the
+# SPA. Point the tunnel at THIS (:8088), not Vite:
+#   caddy run --config Caddyfile.dev
+#   cloudflared tunnel --url http://localhost:8088
+# Keep the @ogCrawler block in sync with Caddyfile.
+:8088 {
+	@ogCrawler {
+		path /meetup/*
+		header_regexp User-Agent "(?i)(facebookexternalhit|facebot|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|redditbot|embedly|quora link preview|showyoubot|outbrain|vkshare|w3c_validator|applebot|skypeuripreview|googlebot|bingbot|iframely|mastodon|bluesky)"
+	}
+	handle @ogCrawler {
+		rewrite * /og{path}
+		reverse_proxy localhost:3000
+	}
+
+	handle_path /api/auth/* {
+		reverse_proxy localhost:3001
+	}
+	handle_path /api/* {
+		reverse_proxy localhost:3000
+	}
+	handle /socket.io/* {
+		reverse_proxy localhost:3002
+	}
+
+	# Everything else to the Vite dev server (HMR included).
+	handle {
+		reverse_proxy localhost:5173
+	}
+}

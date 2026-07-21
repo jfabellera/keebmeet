@@ -94,6 +94,13 @@ export const publicUrl = (keyOrUrl: string): string =>
     ? `${config.r2PublicBaseUrl.replace(/\/+$/, '')}/${keyOrUrl}`
     : keyOrUrl;
 
+// Wraps an image URL in a wsrv.nl proxy that crops it to a 2:1 aspect ratio,
+// matching the Discord embed and social-share preview cards. Empty in, empty out.
+export const cropImageUrl = (url: string): string =>
+  url
+    ? `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=600&fit=cover`
+    : url;
+
 /**
  * Inverse of {@link publicUrl}: recovers the stored object key from a value that
  * may be a public URL for an object we own. Values not under our public base
