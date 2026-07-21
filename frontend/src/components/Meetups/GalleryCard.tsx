@@ -29,7 +29,7 @@ export const GalleryCard = ({
   const title = preview?.title ?? preview?.siteName ?? linkLabel(gallery);
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="bg-card overflow-hidden rounded-md border">
       <a href={gallery} target="_blank" rel="noopener noreferrer">
         <AspectRatio ratio={1}>
           <ImageWithFallback
