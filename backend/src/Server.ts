@@ -7,6 +7,7 @@ import eventbriteRoutes from './routes/eventbrite';
 import groupRoutes from './routes/groups';
 import meetupRoutes from './routes/meetups';
 import oauth2Routes from './routes/oauth2';
+import ogRoutes from './routes/og';
 import organizerRequestRoutes from './routes/organizerRequests';
 import raffleRoutes from './routes/raffles';
 import ticketRoutes from './routes/tickets';
@@ -54,6 +55,7 @@ class Server {
     this.express.use('/raffles', raffleRoutes);
     this.express.use('/discord', discordRoutes);
     this.express.use('/groups', groupRoutes);
+    this.express.use('/og', ogRoutes);
 
     this.express.use((req, res, next) => {
       res.send('Not a valid endpoint.');

@@ -25,6 +25,18 @@
 		reverse_proxy socket:3002
 	}
 
+	# Link-preview crawlers can't run the SPA's JS, so route known social-share
+	# bots to the backend for per-meetup Open Graph tags. Browsers fall through
+	# to the SPA below.
+	@ogCrawler {
+		path /meetup/*
+		header_regexp User-Agent "(?i)(facebookexternalhit|facebot|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|redditbot|embedly|quora link preview|showyoubot|outbrain|vkshare|w3c_validator|applebot|skypeuripreview|googlebot|bingbot|iframely|mastodon|bluesky)"
+	}
+	handle @ogCrawler {
+		rewrite * /og{path}
+		reverse_proxy api:3000
+	}
+
 	# Everything else: serve the SPA, falling back to index.html for client
 	# routes like /auth/discord/callback.
 	handle {

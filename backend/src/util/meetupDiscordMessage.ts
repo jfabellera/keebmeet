@@ -1,7 +1,7 @@
 import config from '../config';
 import { Meetup } from '../entity/Meetup';
 import { Ticket } from '../entity/Ticket';
-import { publicUrl } from './objectStorage';
+import { cropImageUrl, publicUrl } from './objectStorage';
 import {
   editEmbedMessage,
   type DiscordComponent,
@@ -128,15 +128,6 @@ const buildOrganizersFooter = (
         : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 
   return { text: `Organized by ${list}` };
-};
-
-/**
- * Returns a wsrv.nl proxy URL that crops the image to a 2:1 aspect ratio
- * suitable for Discord embeds
- */
-const cropImageUrl = (url: string): string => {
-  if (!url) return url;
-  return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=600&fit=cover`;
 };
 
 const buildDateValue = (meetup: Meetup): string => {
