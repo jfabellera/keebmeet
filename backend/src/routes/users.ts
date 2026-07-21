@@ -1,4 +1,5 @@
 import express, { type RequestHandler } from 'express';
+import { getUserGalleries } from '../controllers/gallery';
 import { getUserTickets } from '../controllers/tickets';
 import {
   getUserDiscordServerChannels,
@@ -14,7 +15,7 @@ import {
   uploadUserImage,
   usernameAvailable,
 } from '../controllers/users';
-import { authChecker, Rule } from '../middleware/authChecker';
+import { authChecker, optionalAuth, Rule } from '../middleware/authChecker';
 import { uploadImageFile } from '../middleware/imageUpload';
 import { loginLimiter } from '../middleware/rateLimiter';
 
@@ -46,6 +47,11 @@ router.get(
   searchUsers as RequestHandler
 );
 router.get('/:user_id/public', getPublicUser as RequestHandler);
+router.get(
+  '/:user_id/galleries',
+  optionalAuth() as RequestHandler,
+  getUserGalleries as RequestHandler
+);
 router.get(
   '/:user_id',
   authChecker([Rule.overrideAdmin]) as RequestHandler,

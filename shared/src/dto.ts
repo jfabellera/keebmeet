@@ -61,6 +61,7 @@ export interface SimpleTicketInfo {
 export interface GalleryInfo {
   id: string;
   user_id: string | null;
+  username: string | null;
   display_name: string;
   gallery: string;
   title: string | null;
@@ -75,6 +76,15 @@ export interface GalleryPreview {
   title: string | null;
   image: string | null;
   siteName: string | null;
+}
+
+// A user's gallery with its meetup and folded-in preview, for their profile.
+export interface UserGalleryInfo extends GalleryInfo {
+  meetup_id: string;
+  meetup_slug: string;
+  meetup_title: string;
+  meetup_is_unlisted: boolean;
+  preview: GalleryPreview;
 }
 
 export interface TokenData {

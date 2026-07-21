@@ -1,4 +1,8 @@
-import { type GalleryInfo, type GalleryPreview } from '@keebmeet/shared';
+import {
+  type GalleryInfo,
+  type GalleryPreview,
+  type UserGalleryInfo,
+} from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { apiCacheDefaults } from './apiCacheDefaults';
@@ -40,7 +44,7 @@ export interface DeleteGalleryByIdOptions {
 export const gallerySlice = createApi({
   reducerPath: 'gallerySlice',
   ...apiCacheDefaults,
-  tagTypes: ['Galleries'],
+  tagTypes: ['Galleries', 'UserGalleries'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -72,6 +76,15 @@ export const gallerySlice = createApi({
         { type: 'Galleries', id: meetupId },
       ],
     }),
+    // Every account-linked gallery a user has, across meetups, for their profile.
+    getUserGalleries: builder.query<UserGalleryInfo[], string>({
+      query: (username) => ({
+        url: `users/${username}/galleries`,
+      }),
+      providesTags: (result, error, username) => [
+        { type: 'UserGalleries', id: username },
+      ],
+    }),
     createGallery: builder.mutation<GalleryInfo, CreateGalleryOptions>({
       query: ({ meetupId, gallery, contributorName }) => ({
         url: `meetups/${meetupId}/gallery`,
@@ -80,6 +93,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       // The "has photos" badge on meetup listings is derived from the meetups
       // list query, which lives in a separate API slice. Cross-slice tags can't
@@ -105,6 +119,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
     }),
     uploadGalleryImage: builder.mutation<
@@ -129,6 +144,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
     }),
     // Self-service delete: the backend keys off the requestor's token, so no
@@ -140,6 +156,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, meetupId) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       // Deleting may remove the last link, clearing the badge — refresh the list.
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
@@ -151,16 +168,14 @@ export const gallerySlice = createApi({
         }
       },
     }),
-    deleteGalleryForUser: builder.mutation<
-      void,
-      DeleteGalleryForUserOptions
-    >({
+    deleteGalleryForUser: builder.mutation<void, DeleteGalleryForUserOptions>({
       query: ({ meetupId, targetUserId }) => ({
         url: `meetups/${meetupId}/gallery/${targetUserId}`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
@@ -178,6 +193,7 @@ export const gallerySlice = createApi({
       }),
       invalidatesTags: (result, error, { meetupId }) => [
         { type: 'Galleries', id: meetupId },
+        'UserGalleries',
       ],
       onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
         try {
@@ -194,6 +210,7 @@ export const gallerySlice = createApi({
 export const {
   useGetMeetupGalleryQuery,
   useGetMeetupGalleryPreviewsQuery,
+  useGetUserGalleriesQuery,
   useCreateGalleryMutation,
   useEditGalleryMutation,
   useUploadGalleryImageMutation,

@@ -63,6 +63,7 @@ import {
   upload,
 } from '../util/objectStorage';
 import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 import { hmacTicket } from '../util/qrCode';
 import { decrypt } from '../util/security';
 import { slugify, uniqueMeetupSlug } from '../util/slug';
@@ -252,45 +253,12 @@ export const getAllMeetups = async (
   // parties — the organizers, the attendees, and members of a group the meetup
   // is assigned to — still see them (badged).
   const requestor = res.locals.requestor as User | undefined;
-  const organizedIds = new Set<string>();
-  const attendedIds = new Set<string>();
-  const groupMeetupIds = new Set<string>();
-  let visibleUnlistedIds: string[] = [];
-  if (requestor != null) {
-    const attended = await Ticket.createQueryBuilder('ticket')
-      .select('ticket.meetup_id', 'meetup_id')
-      .where('ticket.user_id = :userId', { userId: requestor.id })
-      .getRawMany<{ meetup_id: string }>();
-    for (const row of attended) attendedIds.add(String(row.meetup_id));
-
-    const organized = await Meetup.find({
-      select: { id: true },
-      where: [
-        { lead_organizer: { id: requestor.id } },
-        { organizers: { id: requestor.id } },
-      ],
-    });
-    for (const meetup of organized) organizedIds.add(meetup.id);
-
-    // Meetups assigned to any group the requestor belongs to (explicitly or via
-    // a linked Discord server).
-    const membership = await User.findOne({
-      where: { id: requestor.id },
-      relations: { groups: true },
-    });
-    const groupIds =
-      membership != null ? await getEffectiveGroupIds(membership) : [];
-    const groupMeetups =
-      groupIds.length > 0
-        ? await Meetup.find({
-            select: { id: true },
-            where: { groups: { id: In(groupIds) } },
-          })
-        : [];
-    for (const meetup of groupMeetups) groupMeetupIds.add(meetup.id);
-
-    visibleUnlistedIds = [...attendedIds, ...organizedIds, ...groupMeetupIds];
-  }
+  const {
+    organizedIds,
+    attendedIds,
+    groupMeetupIds,
+    all: visibleUnlistedIds,
+  } = await getVisibleUnlistedMeetups(requestor);
 
   // Build filters and sorting
   const findOptionsWhere = createMeetupsFilter(req.query, visibleUnlistedIds);
@@ -333,8 +301,7 @@ export const getAllMeetups = async (
         // Organizer outranks attendee outranks group as the explanation shown.
         if (organizedIds.has(meetup.id)) info.unlisted_reason = 'organizer';
         else if (attendedIds.has(meetup.id)) info.unlisted_reason = 'attendee';
-        else if (groupMeetupIds.has(meetup.id))
-          info.unlisted_reason = 'group';
+        else if (groupMeetupIds.has(meetup.id)) info.unlisted_reason = 'group';
       }
       return info;
     }

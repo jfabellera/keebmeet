@@ -3,22 +3,26 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, EyeOffIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import { FiAward, FiCalendar, FiUser, FiUsers } from 'react-icons/fi';
+import { FiAward, FiCalendar, FiImage, FiUser, FiUsers } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { GalleryActions } from '../components/Meetups/GalleryActions';
+import { GalleryCard } from '../components/Meetups/GalleryCard';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
 import Page from '../components/Page/Page';
+import { useGetUserGalleriesQuery } from '../store/gallerySlice';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
 import { useGetPublicUserQuery } from '../store/userSlice';
 import { hasMeetupEnded } from '../util/timeUtil';
 
-const OrganizerMeetupsPage = (): ReactNode => {
+const ProfilePage = (): ReactNode => {
   const { username } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
@@ -59,6 +63,14 @@ const OrganizerMeetupsPage = (): ReactNode => {
   const { data: tickets } = useGetTicketsQuery(user != null ? user.id : '', {
     skip: user == null,
   });
+
+  // Galleries aren't organizer-gated.
+  const { data: galleries = [] } = useGetUserGalleriesQuery(username ?? '', {
+    skip: username == null,
+  });
+
+  // Editing/deleting a gallery is gated to the profile's own owner.
+  const isOwnProfile = user != null && user.id === profileUser?.id;
 
   const getTicketForMeetup = (meetupId: string): SimpleTicketInfo | null => {
     if (user != null && tickets != null) {
@@ -155,6 +167,49 @@ const OrganizerMeetupsPage = (): ReactNode => {
 
   const total = organizerMeetups.length;
 
+  const meetupsContent = (
+    <div className="flex flex-col gap-8">
+      {upcomingMeetups.length > 0
+        ? meetupSection('Upcoming', upcomingMeetups)
+        : null}
+      {pastMeetups.length > 0 ? meetupSection('Past', pastMeetups) : null}
+    </div>
+  );
+
+  const galleriesContent = (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {galleries.map((gallery) => (
+        <GalleryCard
+          key={gallery.id}
+          gallery={gallery.gallery}
+          preview={gallery.preview}
+          subtitle={
+            gallery.meetup_is_unlisted ? (
+              <span title="Unlisted — only shown to people who can see this meetup">
+                <EyeOffIcon className="mr-1 inline size-[1em] align-[-0.15em]" />
+                {gallery.meetup_title}
+              </span>
+            ) : (
+              gallery.meetup_title
+            )
+          }
+          actions={
+            <GalleryActions
+              meetupId={gallery.meetup_id}
+              photo={gallery}
+              isOwn={isOwnProfile}
+              onOpenMeetup={() => setSelectedSlug(gallery.meetup_slug)}
+            />
+          }
+        />
+      ))}
+    </div>
+  );
+
+  // A tab shows only when it has content; a lone tab acts as the label.
+  const hasMeetups = isOrganizer && total > 0;
+  const hasGalleries = galleries.length > 0;
+
   return (
     <Page>
       {isLoading ? (
@@ -178,7 +233,7 @@ const OrganizerMeetupsPage = (): ReactNode => {
           </Button>
         </div>
       ) : (
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
           <Button
             variant="ghost"
             size="sm"
@@ -238,23 +293,41 @@ const OrganizerMeetupsPage = (): ReactNode => {
             </div>
           </div>
 
-          {isOrganizer ? (
-            <>
-              {upcomingMeetups.length > 0
-                ? meetupSection('Upcoming', upcomingMeetups)
-                : null}
-
-              {pastMeetups.length > 0
-                ? meetupSection('Past', pastMeetups)
-                : null}
-
-              {total === 0 ? (
-                <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
-                  <FiCalendar className="size-8 opacity-60" />
-                  <p>No meetups organized yet.</p>
-                </div>
+          {hasMeetups || hasGalleries ? (
+            <Tabs
+              defaultValue={hasMeetups ? 'meetups' : 'galleries'}
+              className="gap-0"
+            >
+              <TabsList>
+                {hasMeetups ? (
+                  <TabsTrigger value="meetups">
+                    <FiCalendar />
+                    Meetups
+                  </TabsTrigger>
+                ) : null}
+                {hasGalleries ? (
+                  <TabsTrigger value="galleries">
+                    <FiImage />
+                    Galleries
+                  </TabsTrigger>
+                ) : null}
+              </TabsList>
+              {hasMeetups ? (
+                <TabsContent value="meetups" className="mt-4">
+                  {meetupsContent}
+                </TabsContent>
               ) : null}
-            </>
+              {hasGalleries ? (
+                <TabsContent value="galleries" className="mt-4">
+                  {galleriesContent}
+                </TabsContent>
+              ) : null}
+            </Tabs>
+          ) : isOrganizer ? (
+            <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
+              <FiCalendar className="size-8 opacity-60" />
+              <p>No meetups organized yet.</p>
+            </div>
           ) : null}
 
           <MeetupModal
@@ -276,4 +349,4 @@ const OrganizerMeetupsPage = (): ReactNode => {
   );
 };
 
-export default OrganizerMeetupsPage;
+export default ProfilePage;
