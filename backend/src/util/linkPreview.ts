@@ -1,5 +1,4 @@
 import { lookup } from 'dns/promises';
-import { getPreviewFromContent } from 'link-preview-js';
 import { isIP } from 'net';
 
 export interface LinkPreview {
@@ -15,9 +14,10 @@ const cache = new Map<string, { value: LinkPreview; expires: number }>();
 
 const TIMEOUT_MS = 5000;
 const MAX_REDIRECTS = 5;
-// A real browser UA — some hosts serve no OpenGraph tags (or 403) to bots.
+// Sites like imgur serve OpenGraph tags only to recognized crawler UAs, so
+// lead with a known unfurler token.
 const USER_AGENT =
-  'Mozilla/5.0 (compatible; keebmeet-link-preview/1.0; +https://keebmeet)';
+  'Discordbot/2.0 (compatible; keebmeet-link-preview/1.0; +https://keebmeet)';
 
 /**
  * Cheap first-pass SSRF guard on the literal host: reject non-http(s) and
@@ -121,8 +121,7 @@ interface FetchedPage {
 /**
  * Fetch a URL following redirects manually, DNS-validating the host on EVERY hop
  * so a public URL can't 302 the server onto an internal address. Reads the body
- * only for non-image responses (link-preview-js parses the HTML; direct images
- * need no body). Returns null-body pages for images so the caller uses the URL.
+ * only for non-image responses (direct images need no body).
  */
 const fetchValidatedPage = async (startUrl: string): Promise<FetchedPage> => {
   let url = startUrl;
@@ -152,8 +151,6 @@ const fetchValidatedPage = async (startUrl: string): Promise<FetchedPage> => {
     response.headers.forEach((headerValue, key) => {
       headers[key] = headerValue;
     });
-    // Skip reading the body for images — getPreviewFromContent keys off the
-    // content-type header and we'd otherwise pull down the whole image.
     const isImage = (headers['content-type'] ?? '').startsWith('image/');
     const data = isImage ? '' : await response.text();
 
@@ -161,6 +158,78 @@ const fetchValidatedPage = async (startUrl: string): Promise<FetchedPage> => {
   }
 
   throw new Error('Too many redirects');
+};
+
+const decodeEntities = (text: string): string =>
+  text
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex: string) => {
+      const codePoint = parseInt(hex, 16);
+      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+    })
+    .replace(/&#(\d+);/g, (match, dec: string) => {
+      const codePoint = Number(dec);
+      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+    })
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+// One attribute; the value may be double-quoted, single-quoted, or bare.
+const ATTR_RE = /([a-zA-Z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+
+/** property/name → decoded content for every <meta> tag, first wins. */
+const metaContents = (html: string): Map<string, string> => {
+  const tags = new Map<string, string>();
+  for (const tag of html.matchAll(/<meta\s[^>]*>/gi)) {
+    let key: string | null = null;
+    let content: string | null = null;
+    for (const attr of tag[0].matchAll(ATTR_RE)) {
+      const name = attr[1].toLowerCase();
+      const value = attr[2] ?? attr[3] ?? attr[4] ?? '';
+      if (name === 'property' || name === 'name') key ??= value.toLowerCase();
+      if (name === 'content') content ??= value;
+    }
+    if (key != null && content != null && !tags.has(key)) {
+      tags.set(key, decodeEntities(content));
+    }
+  }
+  return tags;
+};
+
+/** OpenGraph fields with Twitter Card and <title> fallbacks. */
+const parsePreviewHtml = (html: string, pageUrl: string): LinkPreview => {
+  const meta = metaContents(html);
+
+  const title =
+    meta.get('og:title') ??
+    meta.get('twitter:title') ??
+    decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? '').trim();
+
+  const rawImage =
+    meta.get('og:image') ??
+    meta.get('og:image:url') ??
+    meta.get('og:image:secure_url') ??
+    meta.get('twitter:image') ??
+    meta.get('twitter:image:src') ??
+    '';
+
+  let image: string | null = null;
+  if (rawImage !== '') {
+    try {
+      image = new URL(rawImage, pageUrl).href;
+    } catch {
+      image = null;
+    }
+  }
+
+  return {
+    title: title === '' ? null : title,
+    image,
+    siteName: meta.get('og:site_name') ?? null,
+  };
 };
 
 /**
@@ -175,21 +244,16 @@ export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
   let value = EMPTY;
   try {
     const page = await fetchValidatedPage(url);
-    const preview = await getPreviewFromContent({
-      url: page.url,
-      status: page.status,
-      headers: page.headers,
-      data: page.data,
-    });
+    const contentType = page.headers['content-type'] ?? '';
 
-    const images = 'images' in preview ? preview.images : [];
-    const title =
-      'title' in preview && preview.title !== '' ? preview.title : null;
-    const siteName = 'siteName' in preview ? (preview.siteName ?? null) : null;
-    const image =
-      images[0] ?? (preview.mediaType === 'image' ? preview.url : null);
-
-    value = { title, image: image ?? null, siteName };
+    if (page.status >= 400) {
+      // Don't parse bot-wall/error pages ("Just a moment...").
+      value = EMPTY;
+    } else if (contentType.startsWith('image/')) {
+      value = { title: null, image: page.url, siteName: null };
+    } else {
+      value = parsePreviewHtml(page.data, page.url);
+    }
   } catch {
     value = EMPTY;
   }

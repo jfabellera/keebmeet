@@ -1,10 +1,8 @@
 /// <reference types="jest" />
 
-jest.mock('link-preview-js', () => ({ getPreviewFromContent: jest.fn() }));
 jest.mock('dns/promises', () => ({ lookup: jest.fn() }));
 
 import { lookup } from 'dns/promises';
-import { getPreviewFromContent } from 'link-preview-js';
 import {
   assertPublicHost,
   fetchLinkPreview,
@@ -12,7 +10,6 @@ import {
 } from './linkPreview';
 
 const mockedLookup = jest.mocked(lookup);
-const mockedGetPreview = jest.mocked(getPreviewFromContent);
 const mockedFetch = jest.fn();
 (global as unknown as { fetch: unknown }).fetch = mockedFetch;
 
@@ -32,6 +29,9 @@ const fakeResponse = (
   },
   text: async () => body,
 });
+
+const htmlResponse = (body: string): unknown =>
+  fakeResponse(200, { headers: { 'content-type': 'text/html' }, body });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -110,15 +110,12 @@ describe('assertPublicHost', () => {
 describe('fetchLinkPreview', () => {
   it('fetches, parses, and maps OpenGraph fields', async () => {
     mockedFetch.mockResolvedValue(
-      fakeResponse(200, { headers: { 'content-type': 'text/html' }, body: '<html/>' })
+      htmlResponse(`<html><head>
+        <meta property="og:title" content="Meetup album" />
+        <meta property="og:site_name" content="Example Photos" />
+        <meta content="https://album.example.com/cover.jpg" property="og:image" />
+      </head></html>`)
     );
-    mockedGetPreview.mockResolvedValue({
-      url: 'https://album.example.com/ok',
-      mediaType: 'text/html',
-      title: 'Meetup album',
-      siteName: 'Example Photos',
-      images: ['https://album.example.com/cover.jpg'],
-    } as never);
 
     await expect(fetchLinkPreview('https://album.example.com/ok')).resolves.toEqual(
       {
@@ -127,6 +124,66 @@ describe('fetchLinkPreview', () => {
         siteName: 'Example Photos',
       }
     );
+  });
+
+  // imgur emits bare attribute values.
+  it('parses unquoted attribute values', async () => {
+    mockedFetch.mockResolvedValue(
+      htmlResponse(
+        '<meta property=og:title content=Imgur data-react-helmet=true />' +
+          '<meta property=og:image content=https://i.example.com/a.jpeg?fb />'
+      )
+    );
+
+    await expect(fetchLinkPreview('https://imgur.example.com/a/x')).resolves.toEqual({
+      title: 'Imgur',
+      image: 'https://i.example.com/a.jpeg?fb',
+      siteName: null,
+    });
+  });
+
+  it('falls back to twitter tags and <title>, decoding entities', async () => {
+    mockedFetch.mockResolvedValue(
+      htmlResponse(`<html><head>
+        <title>Tom &amp; Jerry&#39;s page</title>
+        <meta name="twitter:image" content="/img/cover.jpg" />
+      </head></html>`)
+    );
+
+    await expect(fetchLinkPreview('https://blog.example.com/post')).resolves.toEqual(
+      {
+        title: "Tom & Jerry's page",
+        image: 'https://blog.example.com/img/cover.jpg',
+        siteName: null,
+      }
+    );
+  });
+
+  it('uses the URL itself as the image for direct image links', async () => {
+    mockedFetch.mockResolvedValue(
+      fakeResponse(200, { headers: { 'content-type': 'image/jpeg' } })
+    );
+
+    await expect(
+      fetchLinkPreview('https://cdn.example.com/photo.jpg')
+    ).resolves.toEqual({
+      title: null,
+      image: 'https://cdn.example.com/photo.jpg',
+      siteName: null,
+    });
+  });
+
+  it('returns empty fields for an error-status page', async () => {
+    mockedFetch.mockResolvedValue(
+      fakeResponse(403, {
+        headers: { 'content-type': 'text/html' },
+        body: '<title>Just a moment...</title>',
+      })
+    );
+
+    await expect(
+      fetchLinkPreview('https://walled.example.com/gallery')
+    ).resolves.toEqual({ title: null, image: null, siteName: null });
   });
 
   it('does not fetch a literal internal host', async () => {
@@ -154,17 +211,8 @@ describe('fetchLinkPreview', () => {
         })
       )
       .mockResolvedValueOnce(
-        fakeResponse(200, {
-          headers: { 'content-type': 'text/html' },
-          body: '<html/>',
-        })
+        htmlResponse('<meta property="og:title" content="Redirected" />')
       );
-    mockedGetPreview.mockResolvedValue({
-      url: 'https://dest.example.com/final',
-      mediaType: 'text/html',
-      title: 'Redirected',
-      images: [],
-    } as never);
 
     const result = await fetchLinkPreview('https://short.example.com/r');
 

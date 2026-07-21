@@ -43,7 +43,6 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
-    "link-preview-js": "^4.0.4",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
