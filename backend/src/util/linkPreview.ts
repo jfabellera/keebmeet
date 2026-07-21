@@ -232,10 +232,73 @@ const parsePreviewHtml = (html: string, pageUrl: string): LinkPreview => {
   };
 };
 
+const IMGUR_HOSTS = new Set(['imgur.com', 'www.imgur.com', 'm.imgur.com']);
+
+const fetchJson = async (url: string): Promise<unknown> => {
+  try {
+    const response = await fetch(url, {
+      headers: { 'user-agent': USER_AGENT },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
+// imgur serves datacenter IPs an empty shell, so resolve albums via its keyless
+// JSON endpoints (oEmbed = title, ajaxalbums = cover). null for non-album URLs
+// and on any failure, so those fall through to the generic scrape.
+const fetchImgurPreview = async (url: string): Promise<LinkPreview | null> => {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (!IMGUR_HOSTS.has(parsed.hostname.toLowerCase())) return null;
+
+  const match = parsed.pathname.match(/^\/(?:a|gallery)\/([^/]+)/);
+  if (match == null) return null;
+  // A slug path is `title-words-HASH`; take the last segment.
+  const slug = match[1];
+  const hash = slug.includes('-') ? slug.slice(slug.lastIndexOf('-') + 1) : slug;
+  if (!/^[A-Za-z0-9]+$/.test(hash)) return null;
+
+  const [oembed, album] = await Promise.all([
+    fetchJson(`https://api.imgur.com/oembed.json?url=${encodeURIComponent(url)}`),
+    fetchJson(`https://imgur.com/ajaxalbums/getimages/${hash}/hit.json`),
+  ]);
+
+  // oEmbed puts the title only in the embed's <a> text.
+  const embedHtml =
+    typeof (oembed as { html?: unknown })?.html === 'string'
+      ? (oembed as { html: string }).html
+      : '';
+  const title = decodeEntities(
+    embedHtml.match(/<a[^>]*>([^<]*)<\/a>/i)?.[1] ?? ''
+  ).trim();
+
+  const images = (album as { data?: { images?: unknown } })?.data?.images;
+  const cover =
+    Array.isArray(images) && typeof images[0]?.hash === 'string'
+      ? images[0].hash
+      : null;
+  // .jpg yields a static thumbnail for any imgur media type.
+  const image =
+    cover != null && /^[A-Za-z0-9]+$/.test(cover)
+      ? `https://i.imgur.com/${cover}.jpg`
+      : null;
+
+  if (title === '' && image == null) return null;
+  return { title: title === '' ? null : title, image, siteName: 'Imgur' };
+};
+
 /**
- * Fetch OpenGraph-style metadata for a URL, server-side (browsers can't, due to
- * CORS). Cached with a TTL and resilient: any failure resolves to empty fields
- * so the caller/UI simply falls back to a plain link.
+ * Fetch preview metadata for a URL, server-side (browsers can't, due to CORS).
+ * imgur albums go through imgur's JSON endpoints; everything else is scraped.
+ * Cached with a TTL; any failure resolves to empty fields for a plain-link UI.
  */
 export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
   const cached = cache.get(url);
@@ -243,6 +306,12 @@ export const fetchLinkPreview = async (url: string): Promise<LinkPreview> => {
 
   let value = EMPTY;
   try {
+    const imgur = await fetchImgurPreview(url);
+    if (imgur != null) {
+      cache.set(url, { value: imgur, expires: Date.now() + CACHE_TTL_MS });
+      return imgur;
+    }
+
     const page = await fetchValidatedPage(url);
     const contentType = page.headers['content-type'] ?? '';
 

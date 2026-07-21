@@ -15,12 +15,13 @@ const mockedFetch = jest.fn();
 
 const PUBLIC = [{ address: '93.184.216.34', family: 4 }];
 
-/** Minimal Response stand-in for the fields fetchValidatedPage reads. */
+/** Minimal Response stand-in for the fields the module reads. */
 const fakeResponse = (
   status: number,
   { headers = {}, body = '' }: { headers?: Record<string, string>; body?: string }
 ): unknown => ({
   status,
+  ok: status >= 200 && status < 300,
   headers: {
     get: (key: string) => headers[key.toLowerCase()] ?? null,
     forEach: (cb: (value: string, key: string) => void) => {
@@ -28,6 +29,7 @@ const fakeResponse = (
     },
   },
   text: async () => body,
+  json: async () => JSON.parse(body),
 });
 
 const htmlResponse = (body: string): unknown =>
@@ -140,6 +142,72 @@ describe('fetchLinkPreview', () => {
       image: 'https://i.example.com/a.jpeg?fb',
       siteName: null,
     });
+  });
+
+  // imgur serves bots an empty shell, so album/gallery links resolve via its
+  // unauthenticated oEmbed (title) and ajaxalbums (cover image) JSON endpoints.
+  const imgurJson = (): void => {
+    mockedFetch.mockImplementation((url: string) => {
+      if (url.includes('oembed')) {
+        return Promise.resolve(
+          fakeResponse(200, {
+            body: JSON.stringify({
+              html: '<blockquote><a href="x">Saguaro Keeb 23</a></blockquote>',
+            }),
+          })
+        );
+      }
+      if (url.includes('ajaxalbums')) {
+        return Promise.resolve(
+          fakeResponse(200, {
+            body: JSON.stringify({ data: { images: [{ hash: 'jBg0ZBa' }] } }),
+          })
+        );
+      }
+      return Promise.resolve(fakeResponse(404, {}));
+    });
+  };
+
+  it('resolves an imgur album via its JSON endpoints', async () => {
+    imgurJson();
+
+    await expect(fetchLinkPreview('https://imgur.com/a/YLdgady')).resolves.toEqual({
+      title: 'Saguaro Keeb 23',
+      image: 'https://i.imgur.com/jBg0ZBa.jpg',
+      siteName: 'Imgur',
+    });
+    // The HTML page (empty shell) is never fetched for a matched album.
+    expect(mockedLookup).not.toHaveBeenCalled();
+  });
+
+  it('extracts the imgur hash from a slug-prefixed gallery path', async () => {
+    imgurJson();
+
+    const result = await fetchLinkPreview(
+      'https://imgur.com/gallery/dallas-keyboard-meetup-2018-WJkq95F'
+    );
+
+    expect(result.siteName).toBe('Imgur');
+    expect(mockedFetch).toHaveBeenCalledWith(
+      'https://imgur.com/ajaxalbums/getimages/WJkq95F/hit.json',
+      expect.anything()
+    );
+  });
+
+  it('falls through to the generic scrape for a direct imgur image', async () => {
+    mockedFetch.mockResolvedValue(
+      fakeResponse(200, { headers: { 'content-type': 'image/jpeg' } })
+    );
+
+    await expect(
+      fetchLinkPreview('https://i.imgur.com/jBg0ZBa.jpg')
+    ).resolves.toEqual({
+      title: null,
+      image: 'https://i.imgur.com/jBg0ZBa.jpg',
+      siteName: null,
+    });
+    // Not an album/gallery URL, so the SSRF-guarded generic path runs.
+    expect(mockedLookup).toHaveBeenCalled();
   });
 
   it('falls back to twitter tags and <title>, decoding entities', async () => {
