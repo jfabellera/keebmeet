@@ -14,6 +14,7 @@ import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { fetchLinkPreview } from '../util/linkPreview';
 import { normalizeImage } from '../util/imageProcessing';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 import {
   IMAGE_EXT_BY_MIME,
   buildTempImageKey,
@@ -453,12 +454,23 @@ export const getUserGalleries = async (
     order: { meetup: { date: 'DESC' } },
   });
 
+  // Hide galleries on unlisted meetups unless the viewer is allowed to see them.
+  const requestor = res.locals.requestor as User | undefined;
+  const visibleUnlisted = new Set(
+    (await getVisibleUnlistedMeetups(requestor)).all
+  );
+  const visible = records.filter(
+    (record) =>
+      !record.meetup.is_unlisted || visibleUnlisted.has(record.meetup.id)
+  );
+
   const galleries = await Promise.all(
-    records.map(async (record) => ({
+    visible.map(async (record) => ({
       ...toGalleryInfo(record),
       meetup_id: record.meetup.id,
       meetup_slug: record.meetup.slug,
       meetup_title: record.meetup.name,
+      meetup_is_unlisted: record.meetup.is_unlisted,
       preview: await toGalleryPreview(record),
     })) satisfies Promise<UserGalleryInfo>[]
   );

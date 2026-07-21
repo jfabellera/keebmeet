@@ -83,6 +83,7 @@ export interface UserGalleryInfo extends GalleryInfo {
   meetup_id: string;
   meetup_slug: string;
   meetup_title: string;
+  meetup_is_unlisted: boolean;
   preview: GalleryPreview;
 }
 

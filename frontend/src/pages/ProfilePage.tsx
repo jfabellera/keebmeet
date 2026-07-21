@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, EyeOffIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { FiAward, FiCalendar, FiImage, FiUser, FiUsers } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -183,7 +183,16 @@ const ProfilePage = (): ReactNode => {
           key={gallery.id}
           gallery={gallery.gallery}
           preview={gallery.preview}
-          subtitle={gallery.meetup_title}
+          subtitle={
+            gallery.meetup_is_unlisted ? (
+              <span title="Unlisted — only shown to people who can see this meetup">
+                <EyeOffIcon className="mr-1 inline size-[1em] align-[-0.15em]" />
+                {gallery.meetup_title}
+              </span>
+            ) : (
+              gallery.meetup_title
+            )
+          }
           actions={
             <GalleryActions
               meetupId={gallery.meetup_id}
