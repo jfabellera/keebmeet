@@ -11,6 +11,14 @@ export interface CreateGalleryOptions {
   contributorName?: string;
 }
 
+export interface EditGalleryOptions {
+  meetupId: string;
+  galleryId: string;
+  gallery: string;
+  title?: string | null;
+  coverImageKey?: string | null;
+}
+
 /** Organizer-moderation delete: removes another attendee's link. */
 export interface DeleteGalleryForUserOptions {
   meetupId: string;
@@ -79,6 +87,34 @@ export const gallerySlice = createApi({
         }
       },
     }),
+    editGallery: builder.mutation<GalleryInfo, EditGalleryOptions>({
+      query: ({ meetupId, galleryId, gallery, title, coverImageKey }) => ({
+        url: `meetups/${meetupId}/galleries/${galleryId}`,
+        method: 'PUT',
+        body: {
+          gallery,
+          title: title ?? null,
+          cover_image_key: coverImageKey ?? null,
+        },
+      }),
+      invalidatesTags: (result, error, { meetupId }) => [
+        { type: 'Galleries', id: meetupId },
+      ],
+    }),
+    uploadGalleryImage: builder.mutation<
+      { image_key: string; image_url: string },
+      { meetupId: string; file: File }
+    >({
+      query: ({ meetupId, file }) => {
+        const body = new FormData();
+        body.append('image', file);
+        return {
+          url: `meetups/${meetupId}/gallery/image`,
+          method: 'POST',
+          body,
+        };
+      },
+    }),
     // Self-service delete: the backend keys off the requestor's token, so no
     // user id is sent.
     deleteGallery: builder.mutation<void, string>({
@@ -143,6 +179,8 @@ export const {
   useGetMeetupGalleryQuery,
   useGetMeetupGalleryPreviewsQuery,
   useCreateGalleryMutation,
+  useEditGalleryMutation,
+  useUploadGalleryImageMutation,
   useDeleteGalleryMutation,
   useDeleteGalleryForUserMutation,
   useDeleteGalleryByIdMutation,

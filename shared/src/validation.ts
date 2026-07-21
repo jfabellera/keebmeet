@@ -187,6 +187,14 @@ export const createGallerySchema = z.object({
 
 export type CreateGalleryPayload = z.infer<typeof createGallerySchema>;
 
+export const editGallerySchema = z.object({
+  gallery: z.url().max(1024),
+  title: z.string().max(200).nullish(),
+  cover_image_key: z.string().max(1024).nullish(),
+});
+
+export type EditGalleryPayload = z.infer<typeof editGallerySchema>;
+
 export const createUserSchema = z.object({
   email: z.email(),
   first_name: z.string(),

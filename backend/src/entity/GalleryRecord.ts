@@ -34,6 +34,12 @@ export class GalleryRecord extends BaseEntity {
   @Column({ type: 'varchar', length: 1024, nullable: false })
   gallery: string;
 
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  title?: string | null;
+
+  @Column({ type: 'varchar', length: 1024, nullable: true })
+  cover_image_key?: string | null;
+
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at: Date;
 }

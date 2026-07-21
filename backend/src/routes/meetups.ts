@@ -25,8 +25,10 @@ import {
   deleteGallery,
   deleteGalleryById,
   deleteGalleryForUser,
+  editGallery,
   getMeetupGalleryPreviews,
   getMeetupGallery,
+  uploadGalleryImage,
 } from '../controllers/gallery';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
@@ -164,6 +166,19 @@ router.post(
   '/:meetup_id/gallery',
   authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
   createGallery as RequestHandler
+);
+
+router.post(
+  '/:meetup_id/gallery/image',
+  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
+  uploadImageFile,
+  uploadGalleryImage as RequestHandler
+);
+
+router.put(
+  '/:meetup_id/galleries/:gallery_id',
+  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
+  editGallery as RequestHandler
 );
 
 router.delete(
