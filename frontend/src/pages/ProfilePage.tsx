@@ -31,7 +31,7 @@ import { useGetPublicUserQuery } from '../store/userSlice';
 import { hasMeetupEnded } from '../util/timeUtil';
 
 const ProfilePage = (): ReactNode => {
-  const { username } = useParams();
+  const { username, tab } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
 
@@ -218,6 +218,14 @@ const ProfilePage = (): ReactNode => {
   const hasMeetups = isOrganizer && total > 0;
   const hasGalleries = galleries.length > 0;
 
+  // The active tab lives in the URL (/user/:username/:tab) so it's shareable;
+  // an unknown or missing segment falls back to the first available tab.
+  const tabs = [
+    ...(hasMeetups ? ['meetups'] : []),
+    ...(hasGalleries ? ['galleries'] : []),
+  ];
+  const activeTab = tab != null && tabs.includes(tab) ? tab : tabs[0];
+
   return (
     <Page>
       {isLoading ? (
@@ -310,7 +318,10 @@ const ProfilePage = (): ReactNode => {
 
           {hasMeetups || hasGalleries ? (
             <Tabs
-              defaultValue={hasMeetups ? 'meetups' : 'galleries'}
+              value={activeTab}
+              onValueChange={(value) =>
+                void navigate(`/user/${username}/${value}`, { replace: true })
+              }
               className="gap-0"
             >
               <TabsList>
