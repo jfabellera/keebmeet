@@ -1,4 +1,8 @@
-import { type GalleryInfo, type GalleryPreview } from '@keebmeet/shared';
+import {
+  type GalleryInfo,
+  type GalleryPreview,
+  type UserGalleryInfo,
+} from '@keebmeet/shared';
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import config from '../config';
 import { apiCacheDefaults } from './apiCacheDefaults';
@@ -40,7 +44,7 @@ export interface DeleteGalleryByIdOptions {
 export const gallerySlice = createApi({
   reducerPath: 'gallerySlice',
   ...apiCacheDefaults,
-  tagTypes: ['Galleries'],
+  tagTypes: ['Galleries', 'UserGalleries'],
   baseQuery: fetchBaseQuery({
     baseUrl: `${config.apiUrl}/`,
     prepareHeaders: (headers, { getState }) => {
@@ -70,6 +74,15 @@ export const gallerySlice = createApi({
       }),
       providesTags: (result, error, meetupId) => [
         { type: 'Galleries', id: meetupId },
+      ],
+    }),
+    // Every account-linked gallery a user has, across meetups, for their profile.
+    getUserGalleries: builder.query<UserGalleryInfo[], string>({
+      query: (username) => ({
+        url: `users/${username}/galleries`,
+      }),
+      providesTags: (result, error, username) => [
+        { type: 'UserGalleries', id: username },
       ],
     }),
     createGallery: builder.mutation<GalleryInfo, CreateGalleryOptions>({
@@ -151,10 +164,7 @@ export const gallerySlice = createApi({
         }
       },
     }),
-    deleteGalleryForUser: builder.mutation<
-      void,
-      DeleteGalleryForUserOptions
-    >({
+    deleteGalleryForUser: builder.mutation<void, DeleteGalleryForUserOptions>({
       query: ({ meetupId, targetUserId }) => ({
         url: `meetups/${meetupId}/gallery/${targetUserId}`,
         method: 'DELETE',
@@ -194,6 +204,7 @@ export const gallerySlice = createApi({
 export const {
   useGetMeetupGalleryQuery,
   useGetMeetupGalleryPreviewsQuery,
+  useGetUserGalleriesQuery,
   useCreateGalleryMutation,
   useEditGalleryMutation,
   useUploadGalleryImageMutation,

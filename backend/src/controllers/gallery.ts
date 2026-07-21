@@ -4,6 +4,7 @@ import {
   transferGallerySchema,
   type GalleryInfo,
   type GalleryPreview,
+  type UserGalleryInfo,
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { socket } from '../Server';
@@ -381,11 +382,37 @@ export const getMeetupGallery = async (
   return res.status(200).json(records.map(toGalleryInfo));
 };
 
+// Prefer the stored title/cover overrides; scrape only when one is missing.
+const toGalleryPreview = async (
+  record: GalleryRecord
+): Promise<GalleryPreview> => {
+  const overrideTitle = record.title ?? null;
+  const overrideImage = record.cover_image_key
+    ? publicUrl(record.cover_image_key)
+    : null;
+
+  if (overrideTitle != null && overrideImage != null) {
+    return {
+      id: record.id,
+      title: overrideTitle,
+      image: overrideImage,
+      siteName: null,
+    };
+  }
+
+  const preview = await fetchLinkPreview(record.gallery);
+  return {
+    id: record.id,
+    title: overrideTitle ?? preview.title,
+    image: overrideImage ?? preview.image,
+    siteName: preview.siteName,
+  };
+};
+
 // OpenGraph-style previews for the meetup's galleries, scraped server-side
 // (the browser can't fetch cross-origin). Only the meetup's own stored links are
 // ever fetched — the client never supplies a URL — so there's no open SSRF
-// surface. fetchLinkPreview caches and never throws, so one bad link can't fail
-// the batch.
+// surface.
 export const getMeetupGalleryPreviews = async (
   req: Request,
   res: Response
@@ -401,31 +428,39 @@ export const getMeetupGalleryPreviews = async (
     },
   });
 
-  const previews = await Promise.all(
-    records.map(async (record) => {
-      const overrideTitle = record.title ?? null;
-      const overrideImage = record.cover_image_key
-        ? publicUrl(record.cover_image_key)
-        : null;
-
-      if (overrideTitle != null && overrideImage != null) {
-        return {
-          id: record.id,
-          title: overrideTitle,
-          image: overrideImage,
-          siteName: null,
-        } satisfies GalleryPreview;
-      }
-
-      const preview = await fetchLinkPreview(record.gallery);
-      return {
-        id: record.id,
-        title: overrideTitle ?? preview.title,
-        image: overrideImage ?? preview.image,
-        siteName: preview.siteName,
-      } satisfies GalleryPreview;
-    })
-  );
+  const previews = await Promise.all(records.map(toGalleryPreview));
 
   return res.status(200).json(previews);
+};
+
+// A user's own galleries across all meetups; credited (account-less) links are
+// excluded. Resolved by username, matching getPublicUser.
+export const getUserGalleries = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { user_id: username } = req.params as Record<string, string>;
+
+  const user = await User.findOneBy({ username });
+  if (user == null) {
+    return res.status(404).json({ message: 'User not found.' });
+  }
+
+  const records = await GalleryRecord.find({
+    relations: { meetup: true },
+    where: { user_id: user.id },
+    order: { meetup: { date: 'DESC' } },
+  });
+
+  const galleries = await Promise.all(
+    records.map(async (record) => ({
+      id: record.id,
+      gallery: record.gallery,
+      meetup_slug: record.meetup.slug,
+      meetup_title: record.meetup.name,
+      preview: await toGalleryPreview(record),
+    })) satisfies Promise<UserGalleryInfo>[]
+  );
+
+  return res.status(200).json(galleries);
 };

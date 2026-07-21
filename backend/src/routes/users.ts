@@ -1,4 +1,5 @@
 import express, { type RequestHandler } from 'express';
+import { getUserGalleries } from '../controllers/gallery';
 import { getUserTickets } from '../controllers/tickets';
 import {
   getUserDiscordServerChannels,
@@ -46,6 +47,7 @@ router.get(
   searchUsers as RequestHandler
 );
 router.get('/:user_id/public', getPublicUser as RequestHandler);
+router.get('/:user_id/galleries', getUserGalleries as RequestHandler);
 router.get(
   '/:user_id',
   authChecker([Rule.overrideAdmin]) as RequestHandler,

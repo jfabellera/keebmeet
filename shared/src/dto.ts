@@ -77,6 +77,15 @@ export interface GalleryPreview {
   siteName: string | null;
 }
 
+// A user's gallery with its meetup and folded-in preview, for their profile.
+export interface UserGalleryInfo {
+  id: string;
+  gallery: string;
+  meetup_slug: string;
+  meetup_title: string;
+  preview: GalleryPreview;
+}
+
 export interface TokenData {
   // The user id is a bigint, carried as a string in the JWT (consumers coerce
   // to a number if they need one).
