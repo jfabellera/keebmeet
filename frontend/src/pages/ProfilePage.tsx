@@ -8,8 +8,16 @@ import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { ArrowLeftIcon, EyeOffIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import { FiAward, FiCalendar, FiImage, FiUser, FiUsers } from 'react-icons/fi';
+import {
+  FiAward,
+  FiCalendar,
+  FiImage,
+  FiLink,
+  FiUser,
+  FiUsers,
+} from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CopyButton } from '../components/CopyButton';
 import { GalleryActions } from '../components/Meetups/GalleryActions';
 import { GalleryCard } from '../components/Meetups/GalleryCard';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
@@ -291,6 +299,13 @@ const ProfilePage = (): ReactNode => {
                 </div>
               ) : null}
             </div>
+            <CopyButton
+              value={`${window.location.origin}/user/${username ?? ''}`}
+              icon={FiLink}
+              label="Copy link"
+              toastMessage="Link copied to clipboard"
+              className="shrink-0 self-start"
+            />
           </div>
 
           {hasMeetups || hasGalleries ? (
