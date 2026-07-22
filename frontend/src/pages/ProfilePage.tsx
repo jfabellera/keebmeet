@@ -73,9 +73,10 @@ const ProfilePage = (): ReactNode => {
   });
 
   // Galleries aren't organizer-gated.
-  const { data: galleries = [] } = useGetUserGalleriesQuery(username ?? '', {
-    skip: username == null,
-  });
+  const { data: galleries = [], isLoading: isGalleriesLoading } =
+    useGetUserGalleriesQuery(username ?? '', {
+      skip: username == null,
+    });
 
   // Editing/deleting a gallery is gated to the profile's own owner.
   const isOwnProfile = user != null && user.id === profileUser?.id;
@@ -184,7 +185,11 @@ const ProfilePage = (): ReactNode => {
     </div>
   );
 
-  const galleriesContent = (
+  const galleriesContent = isGalleriesLoading ? (
+    <div className="flex justify-center py-16">
+      <Spinner className="size-8" />
+    </div>
+  ) : (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {galleries.map((gallery) => (
         <GalleryCard
