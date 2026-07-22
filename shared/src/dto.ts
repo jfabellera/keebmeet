@@ -20,6 +20,7 @@ export interface MeetupInfo {
   organizers?: { id: string; username: string; display_name: string }[];
   lead_organizer?: { id: string; username: string; display_name: string };
   groups?: { id: string; name: string }[];
+  tags?: TagInfo[];
   tickets?: {
     total: number;
     available: number;
@@ -103,4 +104,10 @@ export interface GroupInfo {
   code: string;
   discord_server_id: string | null;
   membership_source?: 'explicit' | 'discord' | 'both';
+}
+
+export interface TagInfo {
+  id: string;
+  name: string;
+  color: string;
 }

@@ -15,6 +15,12 @@ export const slugify = (text: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
+// #rrggbb hex color, e.g. #1a2b3c.
+export const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+const hexColorField = z
+  .string()
+  .regex(HEX_COLOR_REGEX, 'Invalid hex color (expected #rrggbb)');
+
 const slugField = z.string().max(120).regex(SLUG_REGEX, 'Invalid URL slug');
 const usernameField = z
   .string()
@@ -39,6 +45,7 @@ export const createMeetupSchema = z.object({
   image_key: z.string(),
   organizer_ids: z.array(z.string()).optional(),
   group_ids: z.array(z.string()).optional(),
+  tag_ids: z.array(z.string()).optional(),
   description: z.string().optional().default(''),
   has_raffle: z.boolean().optional().default(true),
   default_raffle_entries: z.number().gte(0).optional().default(1),
@@ -61,6 +68,7 @@ export const createArchiveMeetupSchema = z.object({
   // archive's lead organizer (and owner); omit this when they ran it themselves.
   organizer_name: z.string().max(30).optional(),
   group_ids: z.array(z.string()).optional(),
+  tag_ids: z.array(z.string()).optional(),
   is_unlisted: z.boolean().optional().default(false),
 });
 
@@ -97,6 +105,7 @@ export const editMeetupSchema = z.object({
   description: z.string().optional(),
   organizer_ids: z.array(z.string()).optional(),
   group_ids: z.array(z.string()).optional(),
+  tag_ids: z.array(z.string()).optional(),
   organizer_name: z.string().max(30).optional(),
   has_raffle: z.boolean().optional(),
   default_raffle_entries: z.number().gte(0).optional(),
@@ -294,3 +303,17 @@ export const joinGroupSchema = z.object({
 });
 
 export type JoinGroupPayload = z.infer<typeof joinGroupSchema>;
+
+export const createTagSchema = z.object({
+  name: z.string().min(1).max(100),
+  color: hexColorField,
+});
+
+export type CreateTagPayload = z.infer<typeof createTagSchema>;
+
+export const editTagSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  color: hexColorField.optional(),
+});
+
+export type EditTagPayload = z.infer<typeof editTagSchema>;
