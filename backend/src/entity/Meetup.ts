@@ -15,6 +15,7 @@ import { Group } from './Group';
 import { MeetupDiscordMessage } from './MeetupDiscordMessage';
 import { MeetupDisplayRecord } from './MeetupDisplayRecord';
 import { RaffleRecord } from './RaffleRecord';
+import { Tag } from './Tag';
 import { Ticket } from './Ticket';
 import { User } from './User';
 
@@ -111,4 +112,12 @@ export class Meetup extends BaseEntity {
     inverseJoinColumn: { name: 'group_id', referencedColumnName: 'id' },
   })
   groups: Group[];
+
+  @ManyToMany(() => Tag)
+  @JoinTable({
+    name: 'meetups_tags',
+    joinColumn: { name: 'meetup_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tag_id', referencedColumnName: 'id' },
+  })
+  tags: Tag[];
 }

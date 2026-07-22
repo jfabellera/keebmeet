@@ -10,6 +10,7 @@ import { GalleryRecord } from './entity/GalleryRecord';
 import { Group } from './entity/Group';
 import { RaffleRecord } from './entity/RaffleRecord';
 import { RaffleWinner } from './entity/RaffleWinner';
+import { Tag } from './entity/Tag';
 import { Ticket } from './entity/Ticket';
 import { User } from './entity/User';
 
@@ -32,6 +33,7 @@ export const AppDataSource = new DataSource({
     RaffleWinner,
     GalleryRecord,
     Group,
+    Tag,
   ],
   synchronize: false,
   migrations: [__dirname + '/migrations/*.{ts,js}'],
