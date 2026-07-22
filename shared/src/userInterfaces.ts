@@ -33,6 +33,7 @@ export interface PublicUser {
   display_name: string;
   photo_url: string;
   is_organizer: boolean;
+  has_galleries?: boolean;
 }
 
 export interface OrganizerRequestInfo {

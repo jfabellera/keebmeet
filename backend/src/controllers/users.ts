@@ -6,9 +6,11 @@ import {
 } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
 import { ILike } from 'typeorm';
+import { GalleryRecord } from '../entity/GalleryRecord';
 import { OrganizerRequest } from '../entity/OrganizerRequest';
 import { User } from '../entity/User';
 import { fetchDiscordUsername } from '../util/discord';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 import { normalizeImage } from '../util/imageProcessing';
 import {
   IMAGE_EXT_BY_MIME,
@@ -133,12 +135,28 @@ export const getPublicUser = async (
     return res.status(404).json({ message: 'User not found.' });
   }
 
+  const galleryRecords = await GalleryRecord.find({
+    relations: { meetup: true },
+    where: { user_id: user.id },
+  });
+
+  // Same unlisted filter as getUserGalleries.
+  const requestor = res.locals.requestor as User | undefined;
+  const visibleUnlisted = new Set(
+    (await getVisibleUnlistedMeetups(requestor)).all
+  );
+  const hasGalleries = galleryRecords.some(
+    (record) =>
+      !record.meetup.is_unlisted || visibleUnlisted.has(record.meetup.id)
+  );
+
   const response: PublicUserInterface = {
     id: user.id,
     username: user.username,
     display_name: user.nick_name,
     photo_url: publicUrl(user.photo_key ?? ''),
     is_organizer: user.is_organizer,
+    has_galleries: hasGalleries,
   };
 
   return res.json(response);

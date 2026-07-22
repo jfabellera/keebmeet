@@ -216,7 +216,7 @@ const ProfilePage = (): ReactNode => {
 
   // A tab shows only when it has content; a lone tab acts as the label.
   const hasMeetups = isOrganizer && total > 0;
-  const hasGalleries = galleries.length > 0;
+  const hasGalleries = profileUser?.has_galleries === true;
 
   // The active tab lives in the URL (/user/:username/:tab) so it's shareable;
   // an unknown or missing segment falls back to the first available tab.
