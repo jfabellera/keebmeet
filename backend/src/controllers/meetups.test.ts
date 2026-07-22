@@ -36,6 +36,9 @@ jest.mock('../entity/Ticket', () => ({
 jest.mock('../entity/GalleryRecord', () => ({
   GalleryRecord: { createQueryBuilder: jest.fn() },
 }));
+jest.mock('../entity/Tag', () => ({
+  Tag: { findBy: jest.fn() },
+}));
 
 jest.mock('../util/eventbriteApi', () => ({
   createEventbriteWebhook: jest.fn(),
@@ -151,6 +154,7 @@ import { User } from '../entity/User';
 import { EventbriteRecord } from '../entity/EventbriteRecord';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { GalleryRecord } from '../entity/GalleryRecord';
+import { Tag } from '../entity/Tag';
 import { Ticket } from '../entity/Ticket';
 import {
   createEventbriteWebhook,
@@ -191,6 +195,7 @@ const mockedDisplayRecord = jest.mocked(MeetupDisplayRecord);
 const mockedEventbriteRecord = jest.mocked(EventbriteRecord);
 const mockedTicket = jest.mocked(Ticket);
 const mockedGalleryRecord = jest.mocked(GalleryRecord);
+const mockedTag = jest.mocked(Tag);
 // Chainable stub for GalleryRecord.createQueryBuilder(...). getRawMany
 // returns the grouped meetup_ids that have photos; default is none.
 const galleryQueryBuilder = {
@@ -291,6 +296,7 @@ beforeEach(() => {
   }));
   mockedGetEffectiveGroups.mockResolvedValue([]);
   mockedGetEffectiveGroupIds.mockResolvedValue([]);
+  mockedTag.findBy.mockResolvedValue([]);
 });
 
 // ---- getAllMeetups ---------------------------------------------------------
@@ -532,6 +538,21 @@ describe('getMeetup', () => {
     expect((res.body as any).slug).toBe('tex-mechs');
   });
 
+  it('exposes tags publicly (unlike groups)', async () => {
+    mockedMeetup.findOne.mockResolvedValue(
+      fakeMeetupRow({ tags: [{ id: 't1', name: 'gmk', color: '#1a2b3c' }] })
+    );
+    mockedTicket.count.mockResolvedValue(0);
+    const res = mockResponse();
+    // No requestor: an anonymous public read still sees tags.
+
+    await getMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect((res.body as any).tags).toEqual([
+      { id: 't1', name: 'gmk', color: '#1a2b3c' },
+    ]);
+  });
+
   it('exposes groups to an organizer of the meetup', async () => {
     mockedMeetup.findOne.mockResolvedValue(
       fakeMeetupRow({ groups: [{ id: 'g1', name: 'Keeb Club' }] })
@@ -657,6 +678,37 @@ describe('createMeetup', () => {
     const created = res.body as any;
     // g3 is dropped (not a member); g1 is kept.
     expect(created.groups).toEqual([{ id: 'g1' }]);
+  });
+
+  it('assigns the requested tags', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    mockedTag.findBy.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(
+      mockRequest(validCreateBody({ tag_ids: ['t1', 't2'] })),
+      res
+    );
+
+    expect(mockedTag.findBy).toHaveBeenCalledWith({ id: In(['t1', 't2']) });
+    expect(res.statusCode).toBe(201);
+    expect((res.body as any).tags).toEqual([{ id: 't1' }, { id: 't2' }]);
+  });
+
+  it('does not look up tags when none are requested', async () => {
+    mockedMeetup.findOne.mockResolvedValue(null);
+    mockedGeocode.mockResolvedValue(geocodeResult);
+    mockedGetUtcOffset.mockResolvedValue(-5);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1', nick_name: 'jane' };
+
+    await createMeetup(mockRequest(validCreateBody()), res);
+
+    expect(mockedTag.findBy).not.toHaveBeenCalled();
+    expect((res.body as any).tags).toEqual([]);
   });
 
   it('passes is_unlisted through to the created meetup', async () => {
@@ -1066,6 +1118,44 @@ describe('updateMeetup', () => {
     // requestor's group).
     expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['g2'], ['g1']);
     expect(res.statusCode).toBe(201);
+  });
+
+  it('syncs the meetup tags to the requested set', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup) // target lookup
+      .mockResolvedValueOnce(null) // name-collision lookup
+      .mockResolvedValueOnce({ tags: [{ id: 't1' }, { id: 't3' }] } as never); // current tags
+    mockedTag.findBy.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await updateMeetup(
+      mockRequest({ tag_ids: ['t1', 't2'] }, { meetup_id: '10' }),
+      res
+    );
+
+    // Add t2 (newly selected); remove t3 (deselected); t1 stays.
+    expect(organizerRelation.addAndRemove).toHaveBeenCalledWith(['t2'], ['t3']);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('leaves tags untouched when tag_ids is not provided', async () => {
+    const meetup = fakeMeetupRow({
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+    mockedMeetup.findOne
+      .mockResolvedValueOnce(meetup)
+      .mockResolvedValueOnce(null);
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await updateMeetup(mockRequest({}, { meetup_id: '10' }), res);
+
+    expect(mockedTag.findBy).not.toHaveBeenCalled();
+    expect(organizerRelation.addAndRemove).not.toHaveBeenCalled();
   });
 
   it('never adds the lead to the co-organizer list', async () => {
