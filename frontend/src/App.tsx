@@ -86,6 +86,7 @@ const App = (): ReactNode => {
               }
             />
             <Route path="/user/:username" element={<ProfilePage />} />
+            <Route path="/user/:username/:tab" element={<ProfilePage />} />
             <Route
               path="/new-meetup"
               element={

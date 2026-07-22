@@ -94,11 +94,15 @@ export const publicUrl = (keyOrUrl: string): string =>
     ? `${config.r2PublicBaseUrl.replace(/\/+$/, '')}/${keyOrUrl}`
     : keyOrUrl;
 
-// Wraps an image URL in a wsrv.nl proxy that crops it to a 2:1 aspect ratio,
-// matching the Discord embed and social-share preview cards. Empty in, empty out.
-export const cropImageUrl = (url: string): string =>
+// Wraps an image URL in a wsrv.nl proxy that crops it to the given size,
+// defaulting to the 2:1 social-share card. Empty in, empty out.
+export const cropImageUrl = (
+  url: string,
+  width = 1200,
+  height = 600
+): string =>
   url
-    ? `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=600&fit=cover`
+    ? `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=${width}&h=${height}&fit=cover`
     : url;
 
 /**

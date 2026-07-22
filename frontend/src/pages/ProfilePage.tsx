@@ -8,8 +8,16 @@ import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { ArrowLeftIcon, EyeOffIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import { FiAward, FiCalendar, FiImage, FiUser, FiUsers } from 'react-icons/fi';
+import {
+  FiAward,
+  FiCalendar,
+  FiImage,
+  FiLink,
+  FiUser,
+  FiUsers,
+} from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CopyButton } from '../components/CopyButton';
 import { GalleryActions } from '../components/Meetups/GalleryActions';
 import { GalleryCard } from '../components/Meetups/GalleryCard';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
@@ -23,7 +31,7 @@ import { useGetPublicUserQuery } from '../store/userSlice';
 import { hasMeetupEnded } from '../util/timeUtil';
 
 const ProfilePage = (): ReactNode => {
-  const { username } = useParams();
+  const { username, tab } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAppSelector((state) => state.user);
 
@@ -210,6 +218,14 @@ const ProfilePage = (): ReactNode => {
   const hasMeetups = isOrganizer && total > 0;
   const hasGalleries = galleries.length > 0;
 
+  // The active tab lives in the URL (/user/:username/:tab) so it's shareable;
+  // an unknown or missing segment falls back to the first available tab.
+  const tabs = [
+    ...(hasMeetups ? ['meetups'] : []),
+    ...(hasGalleries ? ['galleries'] : []),
+  ];
+  const activeTab = tab != null && tabs.includes(tab) ? tab : tabs[0];
+
   return (
     <Page>
       {isLoading ? (
@@ -291,11 +307,21 @@ const ProfilePage = (): ReactNode => {
                 </div>
               ) : null}
             </div>
+            <CopyButton
+              value={`${window.location.origin}/user/${username ?? ''}`}
+              icon={FiLink}
+              label="Copy link"
+              toastMessage="Link copied to clipboard"
+              className="shrink-0 self-start"
+            />
           </div>
 
           {hasMeetups || hasGalleries ? (
             <Tabs
-              defaultValue={hasMeetups ? 'meetups' : 'galleries'}
+              value={activeTab}
+              onValueChange={(value) =>
+                void navigate(`/user/${username}/${value}`, { replace: true })
+              }
               className="gap-0"
             >
               <TabsList>
