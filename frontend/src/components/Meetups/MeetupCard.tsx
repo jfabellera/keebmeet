@@ -12,6 +12,7 @@ import { EyeOffIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { FiCheck, FiImage } from 'react-icons/fi';
 import { hasMeetupEnded } from '../../util/timeUtil';
+import { TagBadge } from './TagBadge';
 
 dayjs.extend(customParseFormat);
 
@@ -98,6 +99,13 @@ export const MeetupCard = ({
             meetup.location.state ?? meetup.location.country
           }`}
         </p>
+        {meetup.tags != null && meetup.tags.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {meetup.tags.map((tag) => (
+              <TagBadge key={tag.id} tag={tag} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

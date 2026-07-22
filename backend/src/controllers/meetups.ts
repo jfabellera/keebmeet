@@ -30,6 +30,7 @@ import { Meetup } from '../entity/Meetup';
 import { MeetupDisplayRecord } from '../entity/MeetupDisplayRecord';
 import { RaffleRecord } from '../entity/RaffleRecord';
 import { RaffleWinner } from '../entity/RaffleWinner';
+import { Tag } from '../entity/Tag';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
@@ -111,6 +112,14 @@ const mapMeetupInfo = async (
     meetupInfo.eventbrite_url = meetup.eventbriteRecord.url;
   }
 
+  if (meetup.tags != null) {
+    meetupInfo.tags = meetup.tags.map((tag) => ({
+      id: tag.id,
+      name: tag.name,
+      color: tag.color,
+    }));
+  }
+
   if (type === MeetupInfoDetailLevel.Detailed) {
     meetupInfo.location.full_address = meetup.address;
     meetupInfo.description = meetup.description;
@@ -170,6 +179,12 @@ const resolveOwnedGroups = async (
   const requested = new Set(requestedGroupIds);
   const effective = await getEffectiveGroups(user);
   return effective.filter((group) => requested.has(group.id));
+};
+
+// Unknown ids are dropped. Tags are shared, so there's no ownership to enforce.
+const resolveTags = async (tagIds: string[]): Promise<Tag[]> => {
+  if (tagIds.length === 0) return [];
+  return Tag.findBy({ id: In(tagIds) });
 };
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
@@ -270,6 +285,7 @@ export const getAllMeetups = async (
       organizers: true,
       lead_organizer: true,
       eventbriteRecord: true,
+      tags: true,
     },
     where: findOptionsWhere,
     order: findOptionsOrder,
@@ -329,6 +345,7 @@ export const getMeetup = async (
       lead_organizer: true,
       eventbriteRecord: true,
       groups: true,
+      tags: true,
     },
     where: {
       slug,
@@ -515,6 +532,8 @@ export const createMeetup = async (
     result.data.group_ids ?? []
   );
 
+  newMeetup.tags = await resolveTags(result.data.tag_ids ?? []);
+
   await newMeetup.save();
 
   return res.status(201).json(newMeetup);
@@ -606,6 +625,8 @@ export const createArchiveMeetup = async (
     requestor.id,
     result.data.group_ids ?? []
   );
+
+  newMeetup.tags = await resolveTags(result.data.tag_ids ?? []);
 
   await newMeetup.save();
 
@@ -1037,6 +1058,28 @@ export const updateMeetup = async (
         .relation(Meetup, 'groups')
         .of(meetup.id)
         .addAndRemove(toAddGroups, toRemoveGroups);
+    }
+  }
+
+  // Any organizer may edit tags (unlike groups/organizers, which are lead-only).
+  // Updated via the relation builder, as with organizers/groups above.
+  if (result.data.tag_ids != null) {
+    const desiredTags = await resolveTags(
+      Array.from(new Set(result.data.tag_ids))
+    );
+    const desiredIds = new Set(desiredTags.map((tag) => tag.id));
+    const withTags = await Meetup.findOne({
+      relations: { tags: true },
+      where: { id: meetup.id },
+    });
+    const currentIds = (withTags?.tags ?? []).map((tag) => tag.id);
+    const toAddTags = [...desiredIds].filter((id) => !currentIds.includes(id));
+    const toRemoveTags = currentIds.filter((id) => !desiredIds.has(id));
+    if (toAddTags.length > 0 || toRemoveTags.length > 0) {
+      await AppDataSource.createQueryBuilder()
+        .relation(Meetup, 'tags')
+        .of(meetup.id)
+        .addAndRemove(toAddTags, toRemoveTags);
     }
   }
 
