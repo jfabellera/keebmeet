@@ -39,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { CopyButton } from '../CopyButton';
 import { UNLISTED_REASON_TEXT } from './MeetupCard';
 import { MeetupCapacityStatus } from './MeetupCapacityStatus';
+import { TagBadge } from './TagBadge';
 import { MeetupGallery } from './MeetupGallery';
 import { MeetupRsvpForm } from './MeetupRsvpForm';
 
@@ -268,7 +269,8 @@ export const MeetupModal = ({
                   {isHappeningNow ||
                   hasEnded ||
                   meetup.is_archive ||
-                  meetup.is_unlisted === true ? (
+                  meetup.is_unlisted === true ||
+                  (meetup.tags?.length ?? 0) > 0 ? (
                     <div className="flex flex-wrap items-center gap-2 pb-2">
                       {isHappeningNow ? (
                         <Badge className="bg-green-600 text-white">
@@ -307,6 +309,9 @@ export const MeetupModal = ({
                           </TooltipContent>
                         </Tooltip>
                       ) : null}
+                      {meetup.tags?.map((tag) => (
+                        <TagBadge key={tag.id} tag={tag} />
+                      ))}
                     </div>
                   ) : null}
                   <DialogTitle className="pb-2 text-2xl font-bold">
