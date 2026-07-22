@@ -29,7 +29,7 @@
 	# bots to the backend for per-meetup Open Graph tags. Browsers fall through
 	# to the SPA below.
 	@ogCrawler {
-		path /meetup/*
+		path /meetup/* /user/*
 		header_regexp User-Agent "(?i)(facebookexternalhit|facebot|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|redditbot|embedly|quora link preview|showyoubot|outbrain|vkshare|w3c_validator|applebot|skypeuripreview|googlebot|bingbot|iframely|mastodon|bluesky)"
 	}
 	handle @ogCrawler {
