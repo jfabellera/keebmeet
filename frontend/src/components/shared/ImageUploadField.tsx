@@ -150,11 +150,9 @@ const ImageUploadField = ({
                     {!isDragging ? (
                       <>
                         <Upload className="size-6" />
-                        {!rounded ? (
-                          <span className="text-xs font-medium">
-                            Drag, paste, or click
-                          </span>
-                        ) : null}
+                        <span className="text-xs font-medium">
+                          Drag, paste,{rounded ? <br /> : ' '}or click
+                        </span>
                       </>
                     ) : null}
                   </div>
@@ -214,11 +212,9 @@ const ImageUploadField = ({
                   </Button>
                 ) : null}
               </div>
-              {!rounded ? (
-                <span className="pointer-events-none px-2 text-center text-xs font-medium">
-                  Drag or paste to replace
-                </span>
-              ) : null}
+              <span className="pointer-events-none px-2 text-center text-xs font-medium">
+                Drag or paste{rounded ? <br /> : ' '}to replace
+              </span>
             </div>
           ) : null}
           {isUploading ? (
@@ -242,9 +238,7 @@ const ImageUploadField = ({
               )}
             >
               <Upload className="size-5" />
-              {!rounded ? (
-                <span className="text-sm font-medium">Drop image</span>
-              ) : null}
+              <span className="text-sm font-medium">Drop image</span>
             </div>
           ) : null}
         </div>
