@@ -22,7 +22,6 @@ import BackButton from '../components/shared/BackButton';
 import ImageUploadField from '../components/shared/ImageUploadField';
 import config from '../config';
 import { usePendingUploads } from '../hooks/usePendingUploads';
-import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { updateProfile } from '../store/authSlice';
 import { groupSlice } from '../store/groupSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -31,6 +30,7 @@ import {
   useGetUserQuery,
   useRequestOrganizerMutation,
   useUnlinkDiscordMutation,
+  useUploadUserImageMutation,
 } from '../store/userSlice';
 import { redirectToDiscordLink } from '../util/discord';
 
@@ -196,7 +196,7 @@ const AccountPage = (): ReactNode => {
                   label="Profile Photo"
                   aspectRatio={1}
                   rounded
-                  useUpload={useUserPhotoUpload}
+                  useUploadMutation={useUploadUserImageMutation}
                   previewUrl={formik.values.photoUrl}
                   onUploaded={(imageKey, imageUrl) => {
                     void formik.setFieldValue('photoKey', imageKey);

@@ -1,5 +1,16 @@
 import express, { type RequestHandler } from 'express';
 import {
+  createGallery,
+  deleteGallery,
+  deleteGalleryById,
+  deleteGalleryForUser,
+  editGallery,
+  getMeetupGallery,
+  getMeetupGalleryPreviews,
+  transferGallery,
+  uploadGalleryImage,
+} from '../controllers/gallery';
+import {
   createMeetupDiscordMessage,
   deleteMeetupDiscordMessage,
   getMeetupDiscordMessage,
@@ -20,17 +31,6 @@ import {
   updateMeetup,
   uploadMeetupImage,
 } from '../controllers/meetups';
-import {
-  createGallery,
-  deleteGallery,
-  deleteGalleryById,
-  deleteGalleryForUser,
-  editGallery,
-  getMeetupGalleryPreviews,
-  getMeetupGallery,
-  transferGallery,
-  uploadGalleryImage,
-} from '../controllers/gallery';
 import { getRaffleRecords, rollRaffleWinner } from '../controllers/raffles';
 import { createTicket, updateTicketViaWebhook } from '../controllers/tickets';
 import { Rule, authChecker, optionalAuth } from '../middleware/authChecker';
@@ -170,8 +170,8 @@ router.post(
 );
 
 router.post(
-  '/:meetup_id/gallery/image',
-  authChecker([Rule.ignoreMeetupOrganizer]) as RequestHandler,
+  '/gallery/image',
+  authChecker() as RequestHandler,
   uploadImageFile,
   uploadGalleryImage as RequestHandler
 );

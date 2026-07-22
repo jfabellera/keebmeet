@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
+import { useUploadMeetupImageMutation } from '../../store/meetupSlice';
 import ImageUploadField from '../shared/ImageUploadField';
-import { useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
   previewUrl: string;
@@ -19,7 +19,7 @@ const MeetupImageField = ({
   <ImageUploadField
     {...props}
     label={label}
-    useUpload={useMeetupImageUpload}
+    useUploadMutation={useUploadMeetupImageMutation}
   />
 );
 

@@ -124,13 +124,13 @@ export const gallerySlice = createApi({
     }),
     uploadGalleryImage: builder.mutation<
       { image_key: string; image_url: string },
-      { meetupId: string; file: File }
+      File
     >({
-      query: ({ meetupId, file }) => {
+      query: (file) => {
         const body = new FormData();
         body.append('image', file);
         return {
-          url: `meetups/${meetupId}/gallery/image`,
+          url: 'meetups/gallery/image',
           method: 'POST',
           body,
         };

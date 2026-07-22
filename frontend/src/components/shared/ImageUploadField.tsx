@@ -4,7 +4,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Upload } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -13,6 +13,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from 'react';
+import { useImageDropPaste } from '../../hooks/useImageDropPaste';
 import { IMAGE_ACCEPT, useImageUpload } from '../../hooks/useImageUpload';
 
 interface Props {
@@ -46,8 +47,8 @@ interface Props {
   rounded?: boolean;
   /** Extra classes for the outer field (e.g. to constrain width). */
   className?: string;
-  /** The upload hook to use (meetup vs user photo endpoint). */
-  useUpload: () => ReturnType<typeof useImageUpload>;
+  /** The RTK Query image-upload mutation hook for the target endpoint. */
+  useUploadMutation: Parameters<typeof useImageUpload>[0];
   previewWidth?: number;
 }
 
@@ -67,10 +68,10 @@ const ImageUploadField = ({
   aspectRatio = 2,
   rounded = false,
   className,
-  useUpload,
+  useUploadMutation,
   previewWidth,
 }: Props): ReactNode => {
-  const { upload, isUploading } = useUpload();
+  const { upload, isUploading } = useImageUpload(useUploadMutation);
   useEffect(() => {
     if (!isUploading) return;
     onUploadingChange?.(true);
@@ -96,6 +97,15 @@ const ImageUploadField = ({
     event.target.value = '';
   };
 
+  const {
+    ref: dropRef,
+    isDragging,
+    dropzoneProps,
+  } = useImageDropPaste({
+    onFile: (file) => upload(file, onUploaded),
+    disabled: !editable || isUploading,
+  });
+
   return (
     <Field className={cn('max-w-sm min-w-0 py-2', className)}>
       {label != null && label !== '' ? (
@@ -108,26 +118,63 @@ const ImageUploadField = ({
       ) : null}
       <AspectRatio ratio={aspectRatio}>
         <div
+          ref={dropRef}
           className={cn(
-            'group relative size-full border',
-            rounded && 'overflow-hidden rounded-full',
-            editable && isTouch && 'cursor-pointer'
+            'group relative size-full overflow-hidden border',
+            rounded ? 'rounded-full' : 'rounded-md',
+            editable && (previewUrl === '' || isTouch) && 'cursor-pointer',
+            isDragging && 'ring-ring ring-2'
           )}
           onClick={
-            editable && isTouch ? () => setRevealed((prev) => !prev) : undefined
+            editable
+              ? () => {
+                  // Empty: the whole area is the picker (no edit overlay shown).
+                  // Filled on touch: tap toggles the edit/remove overlay.
+                  if (previewUrl === '') inputRef.current?.click();
+                  else if (isTouch) setRevealed((prev) => !prev);
+                }
+              : undefined
           }
+          {...(editable ? dropzoneProps : {})}
         >
           {!isUploading ? (
             <ImageWithFallback
               src={previewUrl}
               resizeWidth={previewWidth}
               className="size-full object-cover"
+              fallback={
+                editable ? (
+                  <div className="bg-primary-foreground text-muted-foreground flex size-full flex-col items-center justify-center gap-1 p-2 text-center">
+                    {/* The drag overlay carries its own icon; hide this one
+                        while dragging so they don't stack. */}
+                    {!isDragging ? (
+                      <>
+                        <Upload className="size-6" />
+                        <span className="text-xs font-medium">
+                          Drag, paste,{rounded ? <br /> : ' '}or click
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                ) : undefined
+              }
             />
           ) : null}
           {editable ? (
+            <input
+              ref={inputRef}
+              id={inputId}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              disabled={isUploading}
+              onChange={onFileChange}
+              className="sr-only"
+            />
+          ) : null}
+          {editable && previewUrl !== '' ? (
             <div
               className={cn(
-                'absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity',
+                'absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white opacity-0 transition-opacity',
                 'pointer-events-none',
                 'group-hover:pointer-events-auto group-hover:opacity-100',
                 'focus-within:pointer-events-auto focus-within:opacity-100',
@@ -135,43 +182,39 @@ const ImageUploadField = ({
                 revealed && 'pointer-events-auto opacity-100'
               )}
             >
-              <input
-                ref={inputRef}
-                id={inputId}
-                type="file"
-                accept={IMAGE_ACCEPT}
-                disabled={isUploading}
-                onChange={onFileChange}
-                className="sr-only"
-              />
-              <Button
-                type="button"
-                size="icon"
-                variant="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  inputRef.current?.click();
-                }}
-                disabled={isUploading}
-                aria-label="Change image"
-              >
-                {isUploading ? <Spinner /> : <Pencil />}
-              </Button>
-              {onRemove != null && previewUrl !== '' ? (
+              <div className="flex items-center justify-center gap-2">
                 <Button
                   type="button"
                   size="icon"
-                  variant="destructive"
+                  variant="secondary"
                   onClick={(event) => {
                     event.stopPropagation();
-                    onRemove();
+                    inputRef.current?.click();
                   }}
                   disabled={isUploading}
-                  aria-label="Remove image"
+                  aria-label="Change image"
                 >
-                  <Trash2 />
+                  {isUploading ? <Spinner /> : <Pencil />}
                 </Button>
-              ) : null}
+                {onRemove != null ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemove();
+                    }}
+                    disabled={isUploading}
+                    aria-label="Remove image"
+                  >
+                    <Trash2 />
+                  </Button>
+                ) : null}
+              </div>
+              <span className="pointer-events-none px-2 text-center text-xs font-medium">
+                Drag or paste{rounded ? <br /> : ' '}to replace
+              </span>
             </div>
           ) : null}
           {isUploading ? (
@@ -185,6 +228,17 @@ const ImageUploadField = ({
               {!rounded ? (
                 <span className="text-sm font-medium">Uploading…</span>
               ) : null}
+            </div>
+          ) : null}
+          {editable && isDragging ? (
+            <div
+              className={cn(
+                'bg-primary/20 text-foreground pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1',
+                rounded && 'rounded-full'
+              )}
+            >
+              <Upload className="size-5" />
+              <span className="text-sm font-medium">Drop image</span>
             </div>
           ) : null}
         </div>

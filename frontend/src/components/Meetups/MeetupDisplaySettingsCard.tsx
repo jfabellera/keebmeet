@@ -8,10 +8,10 @@ import { FiArrowLeft, FiArrowRight, FiPlus, FiTrash2 } from 'react-icons/fi';
 import {
   useEditMeetupMutation,
   useGetMeetupDisplayAssetsQuery,
+  useUploadMeetupImageMutation,
 } from '../../store/meetupSlice';
 import EditableFormCard from '../Forms/EditableFormCard';
 import ImageUploadField from '../shared/ImageUploadField';
-import { useMeetupImageUpload } from './useMeetupImageUpload';
 
 interface Props {
   meetupId: string;
@@ -138,7 +138,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   aspectRatio={16 / 9}
                   className="max-w-none py-0"
                   previewWidth={360}
-                  useUpload={useMeetupImageUpload}
+                  useUploadMutation={useUploadMeetupImageMutation}
                   onUploaded={(_imageKey, imageUrl) =>
                     setIdleUrl(index, imageUrl)
                   }
@@ -207,7 +207,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   aspectRatio={16 / 9}
                   className="max-w-none py-0"
                   previewWidth={360}
-                  useUpload={useMeetupImageUpload}
+                  useUploadMutation={useUploadMeetupImageMutation}
                   onUploaded={(_imageKey, imageUrl) =>
                     setRaffleBackgroundUrl(imageUrl)
                   }
@@ -228,7 +228,7 @@ const MeetupDisplaySettingsCard = ({ meetupId }: Props): ReactNode => {
                   aspectRatio={16 / 9}
                   className="max-w-none py-0"
                   previewWidth={360}
-                  useUpload={useMeetupImageUpload}
+                  useUploadMutation={useUploadMeetupImageMutation}
                   onUploaded={(_imageKey, imageUrl) =>
                     setBatchRaffleBackgroundUrl(imageUrl)
                   }

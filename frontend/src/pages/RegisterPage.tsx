@@ -15,10 +15,12 @@ import { DiscordLoginButton } from '../components/Auth/DiscordLoginButton';
 import Page from '../components/Page/Page';
 import ImageUploadField from '../components/shared/ImageUploadField';
 import { usePendingUploads } from '../hooks/usePendingUploads';
-import { useUserPhotoUpload } from '../hooks/useUserPhotoUpload';
 import { register } from '../store/authSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { useCheckUsernameAvailableQuery } from '../store/userSlice';
+import {
+  useCheckUsernameAvailableQuery,
+  useUploadUserImageMutation,
+} from '../store/userSlice';
 
 const RegisterSchema = Yup.object().shape({
   // Because Yup.string().email() sucks
@@ -119,7 +121,7 @@ const RegisterPage = (): ReactNode => {
                     label="Profile Photo (optional)"
                     aspectRatio={1}
                     rounded
-                    useUpload={useUserPhotoUpload}
+                    useUploadMutation={useUploadUserImageMutation}
                     previewUrl={formik.values.profilePhotoUrl}
                     onUploaded={(imageKey, imageUrl) => {
                       void formik.setFieldValue('profilePhotoKey', imageKey);
