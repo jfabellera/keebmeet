@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
 import GroupCombobox from '../components/Meetups/GroupCombobox';
 import OrganizerCombobox from '../components/Meetups/OrganizerCombobox';
+import TagCombobox from '../components/Meetups/TagCombobox';
 import {
   UNLISTED_GROUPS_DESCRIPTION,
   UNLISTED_SLUG_NOTE,
@@ -58,6 +59,7 @@ const NewMeetupPage = (): ReactNode => {
       isUnlisted: false,
       organizerIds: [] as string[],
       groupIds: [] as string[],
+      tagIds: [] as string[],
     },
     onSubmit: async (values) => {
       const result = await createMeetup({
@@ -78,6 +80,7 @@ const NewMeetupPage = (): ReactNode => {
         is_unlisted: formik.values.isUnlisted,
         organizer_ids: formik.values.organizerIds,
         group_ids: formik.values.groupIds,
+        tag_ids: formik.values.tagIds,
       });
 
       if ('error' in result && result.error != null && 'data' in result.error) {
@@ -160,6 +163,17 @@ const NewMeetupPage = (): ReactNode => {
                       void formik.setFieldValue('organizerIds', organizerIds)
                     }
                     excludeIds={currentUserId ? [currentUserId] : []}
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="tags">Tags</FieldLabel>
+                  <TagCombobox
+                    id="tags"
+                    value={formik.values.tagIds}
+                    onChange={(tagIds) =>
+                      void formik.setFieldValue('tagIds', tagIds)
+                    }
                   />
                 </Field>
 

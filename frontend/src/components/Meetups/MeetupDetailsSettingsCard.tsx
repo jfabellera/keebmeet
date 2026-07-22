@@ -29,6 +29,7 @@ import EditableFormField from '../Forms/EditableFormField';
 import MeetupImageField from './MeetupImageField';
 import GroupCombobox from './GroupCombobox';
 import OrganizerCombobox from './OrganizerCombobox';
+import TagCombobox from './TagCombobox';
 import {
   UNLISTED_GROUPS_DESCRIPTION,
   UNLISTED_SLUG_NOTE,
@@ -64,6 +65,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
       isUnlisted: false,
       organizerIds: [] as string[],
       groupIds: [] as string[],
+      tagIds: [] as string[],
       organizerType: 'me' as 'me' | 'other',
       organizerName: '',
     },
@@ -107,6 +109,11 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         JSON.stringify(values.groupIds)
       )
         payload.group_ids = values.groupIds;
+      if (
+        JSON.stringify(formik.initialValues.tagIds) !==
+        JSON.stringify(values.tagIds)
+      )
+        payload.tag_ids = values.tagIds;
       const organizerName =
         values.organizerType === 'other' ? values.organizerName : '';
       const initialOrganizerName =
@@ -165,6 +172,7 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
         organizerIds:
           meetup?.organizers?.map((organizer) => organizer.id) ?? [],
         groupIds: meetup?.groups?.map((group) => group.id) ?? [],
+        tagIds: meetup?.tags?.map((tag) => tag.id) ?? [],
         organizerType: meetup?.organizer_name != null ? 'other' : 'me',
         organizerName: meetup?.organizer_name ?? '',
       },
@@ -271,6 +279,33 @@ const MeetupDetailsSettingsCard = ({ meetupId }: Props): ReactNode => {
             )}
           </Field>
         )}
+        <Field className="max-w-sm min-w-0 py-2">
+          <FieldLabel htmlFor="tags">Tags</FieldLabel>
+          {isEditable ? (
+            <TagCombobox
+              id="tags"
+              value={formik.values.tagIds}
+              onChange={(tagIds) => void formik.setFieldValue('tagIds', tagIds)}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {meetup?.tags != null && meetup.tags.length > 0 ? (
+                meetup.tags.map((tag) => (
+                  <Badge variant="secondary" key={tag.id}>
+                    <span
+                      aria-hidden
+                      className="mr-1 size-2.5 rounded-full"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-foreground/70">No tags</p>
+              )}
+            </div>
+          )}
+        </Field>
         <EditableFormField
           name={'Meetup Name'}
           value={meetup?.name}

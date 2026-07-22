@@ -6,6 +6,7 @@ import { groupSlice } from './groupSlice';
 import { meetupSlice } from './meetupSlice';
 import { organizerSlice } from './organizerSlice';
 import { gallerySlice } from './gallerySlice';
+import { tagSlice } from './tagSlice';
 import { ticketSlice } from './ticketSlice';
 import { userSlice } from './userSlice';
 
@@ -18,6 +19,7 @@ export const store = configureStore({
     [eventbriteSlice.reducerPath]: eventbriteSlice.reducer,
     [gallerySlice.reducerPath]: gallerySlice.reducer,
     [groupSlice.reducerPath]: groupSlice.reducer,
+    [tagSlice.reducerPath]: tagSlice.reducer,
     user: authSlice,
   },
   middleware: (getDefaultMiddleware) =>
@@ -28,7 +30,8 @@ export const store = configureStore({
       .concat(userSlice.middleware)
       .concat(eventbriteSlice.middleware)
       .concat(gallerySlice.middleware)
-      .concat(groupSlice.middleware),
+      .concat(groupSlice.middleware)
+      .concat(tagSlice.middleware),
 });
 
 setupListeners(store.dispatch);

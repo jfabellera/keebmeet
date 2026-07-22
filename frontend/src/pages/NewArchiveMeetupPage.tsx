@@ -25,6 +25,7 @@ import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import GroupCombobox from '../components/Meetups/GroupCombobox';
+import TagCombobox from '../components/Meetups/TagCombobox';
 import MeetupImageField from '../components/Meetups/MeetupImageField';
 import {
   UNLISTED_GROUPS_DESCRIPTION,
@@ -58,6 +59,7 @@ const NewArchiveMeetupPage = (): ReactNode => {
       organizerType: '' as 'me' | 'other' | '',
       organizerName: '',
       groupIds: [] as string[],
+      tagIds: [] as string[],
       isUnlisted: false,
     },
     onSubmit: async (values) => {
@@ -75,6 +77,7 @@ const NewArchiveMeetupPage = (): ReactNode => {
         organizer_name:
           values.organizerType === 'other' ? values.organizerName : undefined,
         group_ids: values.groupIds,
+        tag_ids: values.tagIds,
         is_unlisted: values.isUnlisted,
       });
 
@@ -229,6 +232,17 @@ const NewArchiveMeetupPage = (): ReactNode => {
                     </Field>
                   ) : null}
                 </div>
+
+                <Field>
+                  <FieldLabel htmlFor="tags">Tags</FieldLabel>
+                  <TagCombobox
+                    id="tags"
+                    value={formik.values.tagIds}
+                    onChange={(tagIds) =>
+                      void formik.setFieldValue('tagIds', tagIds)
+                    }
+                  />
+                </Field>
 
                 <FormField
                   formik={formik}
