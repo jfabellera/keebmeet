@@ -19,13 +19,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type GalleryInfo } from '@keebmeet/shared';
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   FiAlertTriangle,
   FiCalendar,
@@ -33,10 +27,8 @@ import {
   FiEdit2,
   FiMoreVertical,
   FiTrash2,
-  FiUpload,
   FiUser,
   FiUserCheck,
-  FiX,
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import {
@@ -47,6 +39,7 @@ import {
   useTransferGalleryMutation,
   useUploadGalleryImageMutation,
 } from '../../store/gallerySlice';
+import ImageUploadField from '../shared/ImageUploadField';
 import { UserSearchInput } from '../shared/UserSearchInput';
 
 /** Pull a human-readable message out of an RTK Query error, if any. */
@@ -358,11 +351,9 @@ const EditGalleryDialog = ({
   const [title, setTitle] = useState(photo.title ?? '');
   const [coverKey, setCoverKey] = useState(photo.cover_image_url ?? '');
   const [coverPreview, setCoverPreview] = useState(photo.cover_image_url ?? '');
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [editGallery, { isLoading }] = useEditGalleryMutation();
-  const [uploadImage, { isLoading: isUploading }] =
-    useUploadGalleryImageMutation();
 
   useEffect(() => {
     if (open) {
@@ -372,20 +363,6 @@ const EditGalleryDialog = ({
       setCoverPreview(photo.cover_image_url ?? '');
     }
   }, [open, photo]);
-
-  const handleFile = async (file: File | undefined): Promise<void> => {
-    if (file == null) return;
-    try {
-      const { image_key, image_url } = await uploadImage({
-        meetupId,
-        file,
-      }).unwrap();
-      setCoverKey(image_key);
-      setCoverPreview(image_url);
-    } catch (error) {
-      toast.error(errorMessage(error, 'Failed to upload image.'));
-    }
-  };
 
   const handleSubmit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -441,61 +418,22 @@ const EditGalleryDialog = ({
               disabled={busy}
             />
           </Field>
-          <Field className="mt-4">
-            <FieldLabel>Cover image</FieldLabel>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(event) => {
-                void handleFile(event.target.files?.[0]);
-                event.target.value = '';
-              }}
-            />
-            {coverPreview !== '' ? (
-              <div className="flex items-center justify-between gap-2">
-                <img
-                  src={coverPreview}
-                  alt=""
-                  className="size-16 rounded-md border object-cover"
-                />
-                <div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => fileInput.current?.click()}
-                  >
-                    {isUploading ? <Spinner /> : <FiUpload />}
-                    Replace
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => {
-                      setCoverKey('');
-                      setCoverPreview('');
-                    }}
-                  >
-                    <FiX />
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => fileInput.current?.click()}
-              >
-                {isUploading ? <Spinner /> : <FiUpload />}
-                Upload cover image
-              </Button>
-            )}
-          </Field>
+          <ImageUploadField
+            className="mt-4 max-w-40"
+            label="Cover image"
+            aspectRatio={1}
+            previewUrl={coverPreview}
+            useUploadMutation={useUploadGalleryImageMutation}
+            onUploadingChange={setIsUploading}
+            onUploaded={(imageKey, imageUrl) => {
+              setCoverKey(imageKey);
+              setCoverPreview(imageUrl);
+            }}
+            onRemove={() => {
+              setCoverKey('');
+              setCoverPreview('');
+            }}
+          />
           <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button type="button" variant="secondary">
