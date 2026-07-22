@@ -46,7 +46,11 @@ router.get(
   authChecker([Rule.requireOrganizer]) as RequestHandler,
   searchUsers as RequestHandler
 );
-router.get('/:user_id/public', getPublicUser as RequestHandler);
+router.get(
+  '/:user_id/public',
+  optionalAuth() as RequestHandler,
+  getPublicUser as RequestHandler
+);
 router.get(
   '/:user_id/galleries',
   optionalAuth() as RequestHandler,
