@@ -120,8 +120,8 @@ const ImageUploadField = ({
         <div
           ref={dropRef}
           className={cn(
-            'group relative size-full border',
-            rounded && 'overflow-hidden rounded-full',
+            'group relative size-full overflow-hidden border',
+            rounded ? 'rounded-full' : 'rounded-md',
             editable && (previewUrl === '' || isTouch) && 'cursor-pointer',
             isDragging && 'ring-ring ring-2'
           )}
