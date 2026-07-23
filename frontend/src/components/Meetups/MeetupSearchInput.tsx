@@ -79,6 +79,7 @@ export const MeetupSearchInput = ({
           onChange('');
           inputRef.current?.focus();
         }}
+        className="hover:bg-transparent"
       >
         <X />
       </InputGroupButton>
