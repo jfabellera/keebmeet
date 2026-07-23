@@ -2,10 +2,11 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
+import { MeetupTagFilter } from '../components/Meetups/MeetupTagFilter';
 import Page from '../components/Page/Page';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
@@ -53,7 +54,18 @@ const Homepage = (): ReactNode => {
   const navigate = useNavigate();
   // The selected meetup is driven by the URL slug so meetups can be linked to.
   const slug = slugParam ?? '';
-  const { data: meetups, isLoading } = useGetMeetupsQuery({});
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { data: meetups, isLoading } = useGetMeetupsQuery({
+    by_tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+  });
+
+  const toggleTag = (tagId: string): void => {
+    setSelectedTagIds((current) =>
+      current.includes(tagId)
+        ? current.filter((id) => id !== tagId)
+        : [...current, tagId]
+    );
+  };
   // Tickets and modal lookups are keyed by the numeric id; resolve it from the
   // loaded list via the URL slug.
   const selectedMeetupId =
@@ -127,6 +139,20 @@ const Homepage = (): ReactNode => {
     void navigate('/');
   };
 
+  const hasCurrent = currentMeetups != null && currentMeetups.length > 0;
+  const hasFuture = futureMeetups != null && futureMeetups.length > 0;
+  const hasPast = pastMeetupsByYear.length > 0;
+
+  const filterButton = (
+    <MeetupTagFilter
+      selectedTagIds={selectedTagIds}
+      onToggle={toggleTag}
+      onClear={() => {
+        setSelectedTagIds([]);
+      }}
+    />
+  );
+
   const UPCOMING_GRID =
     'grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] sm:gap-5';
   const PAST_GRID =
@@ -183,16 +209,26 @@ const Homepage = (): ReactNode => {
           <Spinner className="size-10" />
         </div>
       ) : (
-        <div className="flex flex-col gap-8 px-4 pt-6 pb-8">
-          {currentMeetups != null && currentMeetups.length > 0
-            ? meetupSection('Happening now', currentMeetups)
+        <div className="relative flex flex-col gap-8 px-4 pt-6 pb-8">
+          {/* Anchored to the content corner so it stays mounted (and the filter
+              popover stays open) regardless of which sections are showing. */}
+          <div className="absolute top-6 right-4 z-10">{filterButton}</div>
+
+          {hasCurrent ? meetupSection('Happening now', currentMeetups ?? []) : null}
+
+          {hasFuture
+            ? meetupSection('Upcoming meetups', futureMeetups ?? [])
             : null}
 
-          {futureMeetups != null && futureMeetups.length > 0
-            ? meetupSection('Upcoming meetups', futureMeetups)
-            : null}
+          {hasPast ? pastMeetupsSection() : null}
 
-          {pastMeetupsByYear.length > 0 ? pastMeetupsSection() : null}
+          {!hasCurrent && !hasFuture && !hasPast ? (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              {selectedTagIds.length > 0
+                ? 'No meetups match the selected tags.'
+                : 'No meetups yet.'}
+            </p>
+          ) : null}
           <MeetupModal
             meetupId={slug}
             ticket={getTicketForMeetup(selectedMeetupId)}

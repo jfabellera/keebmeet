@@ -16,6 +16,7 @@ import { type RootState } from './store';
 export interface GetMeetupsOptions {
   detail_level?: string;
   by_organizer_id?: string[];
+  by_tag_ids?: string[];
   include_unlisted?: boolean;
 }
 
