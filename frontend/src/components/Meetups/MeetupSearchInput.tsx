@@ -6,7 +6,7 @@ import {
   InputGroupInput,
 } from '@/components/ui/input-group';
 import { Search, X } from 'lucide-react';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 interface MeetupSearchInputProps {
   value: string;
@@ -26,8 +26,13 @@ export const MeetupSearchInput = ({
   fullWidth = false,
 }: MeetupSearchInputProps): ReactNode => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [animatingOut, setAnimatingOut] = useState(false);
 
-  if (!fullWidth && !(expanded && expandInline)) {
+  const collapse = () => {
+    setAnimatingOut(true);
+  };
+
+  if (!fullWidth && !(expanded && expandInline) && !animatingOut) {
     if (expanded) {
       return null;
     }
@@ -49,9 +54,19 @@ export const MeetupSearchInput = ({
     <InputGroup
       className={
         fullWidth
-          ? 'animate-in fade-in slide-in-from-top-1 bg-background w-full'
-          : 'animate-in fade-in slide-in-from-right-2 bg-background h-8 w-48'
+          ? animatingOut
+            ? 'bg-background animate-out fade-out slide-out-to-top-1 fill-mode-forwards w-full'
+            : 'bg-background animate-in fade-in slide-in-from-top-1 w-full'
+          : animatingOut
+            ? 'bg-background animate-out fade-out slide-out-to-right-2 fill-mode-forwards h-8 w-48'
+            : 'bg-background animate-in fade-in slide-in-from-right-2 h-8 w-48'
       }
+      onAnimationEnd={() => {
+        if (animatingOut) {
+          setAnimatingOut(false);
+          onExpandedChange(false);
+        }
+      }}
     >
       <InputGroupAddon>
         <Search />
@@ -70,7 +85,7 @@ export const MeetupSearchInput = ({
           }
           requestAnimationFrame(() => {
             if (document.activeElement !== inputRef.current) {
-              onExpandedChange(false);
+              collapse();
             }
           });
         }}
