@@ -1,10 +1,10 @@
 import express, { type RequestHandler } from 'express';
 import { createTag, deleteTag, editTag, getTags } from '../controllers/tags';
-import { authChecker, Rule } from '../middleware/authChecker';
+import { authChecker, optionalAuth, Rule } from '../middleware/authChecker';
 
 const router = express.Router();
 
-router.get('/', getTags as RequestHandler);
+router.get('/', optionalAuth() as RequestHandler, getTags as RequestHandler);
 
 router.post(
   '/',
