@@ -34,10 +34,6 @@ import { Tag } from '../entity/Tag';
 import { Ticket } from '../entity/Ticket';
 import { User } from '../entity/User';
 import { deleteEmbedMessage } from '../util/discord';
-import {
-  getEffectiveGroupIds,
-  getEffectiveGroups,
-} from '../util/groupMembership';
 import { sendMeetupTransferredEmail } from '../util/email';
 import {
   createEventbriteWebhook,
@@ -52,9 +48,14 @@ import {
   getUtcOffset,
   type GeocodeResults,
 } from '../util/externalApis';
+import {
+  getEffectiveGroupIds,
+  getEffectiveGroups,
+} from '../util/groupMembership';
 import { deleteManagedObjects } from '../util/imageCleanup';
 import { normalizeImage } from '../util/imageProcessing';
 import { refreshMeetupDiscordMessage } from '../util/meetupDiscordMessage';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 import {
   buildTempImageKey,
   IMAGE_EXT_BY_MIME,
@@ -64,7 +65,6 @@ import {
   upload,
 } from '../util/objectStorage';
 import { notifyAddedOrganizers } from '../util/organizerAddedNotification';
-import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 import { hmacTicket } from '../util/qrCode';
 import { decrypt } from '../util/security';
 import { slugify, uniqueMeetupSlug } from '../util/slug';
@@ -113,11 +113,14 @@ const mapMeetupInfo = async (
   }
 
   if (meetup.tags != null) {
-    meetupInfo.tags = meetup.tags.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      color: tag.color,
-    }));
+    // Sort tags by name
+    meetupInfo.tags = [...meetup.tags]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
+      }));
   }
 
   if (type === MeetupInfoDetailLevel.Detailed) {
