@@ -11,13 +11,14 @@ import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
 import { ArchiveIcon, MoreHorizontalIcon } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
 import { MeetupSearchInput } from '../components/Meetups/MeetupSearchInput';
 import Page from '../components/Page/Page';
 import BackButton from '../components/shared/BackButton';
 import { useIsMobile } from '../hooks/use-mobile';
+import { useMeetupSearch } from '../hooks/useMeetupSearch';
 import { useAppSelector } from '../store/hooks';
 import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import {
@@ -29,17 +30,18 @@ import {
 const OrganizerDashboard = (): ReactNode => {
   const { user } = useAppSelector((state) => state.user);
   const isMobile = useIsMobile();
-  const [searchInput, setSearchInput] = useState('');
-  const [searchExpanded, setSearchExpanded] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    searchInput,
+    setSearchInput,
+    searchExpanded,
+    setSearchExpanded,
+    debouncedSearch,
+    byName,
+  } = useMeetupSearch();
 
   const { data: meetups, isLoading } = useGetMeetupsQuery({
     by_organizer_id: user != null ? [user.id] : [],
-    by_name: debouncedSearch !== '' ? debouncedSearch : undefined,
+    by_name: byName,
     detail_level: 'detailed',
   });
   const navigate = useNavigate();

@@ -2,7 +2,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
@@ -10,6 +10,7 @@ import { MeetupSearchInput } from '../components/Meetups/MeetupSearchInput';
 import { MeetupTagFilter } from '../components/Meetups/MeetupTagFilter';
 import Page from '../components/Page/Page';
 import { useIsMobile } from '../hooks/use-mobile';
+import { useMeetupSearch } from '../hooks/useMeetupSearch';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
@@ -58,17 +59,18 @@ const Homepage = (): ReactNode => {
   const slug = slugParam ?? '';
   const isMobile = useIsMobile();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchExpanded, setSearchExpanded] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const {
+    searchInput,
+    setSearchInput,
+    searchExpanded,
+    setSearchExpanded,
+    debouncedSearch,
+    byName,
+  } = useMeetupSearch();
 
   const { data: meetups, isLoading } = useGetMeetupsQuery({
     by_tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-    by_name: debouncedSearch !== '' ? debouncedSearch : undefined,
+    by_name: byName,
   });
 
   const toggleTag = (tagId: string): void => {
