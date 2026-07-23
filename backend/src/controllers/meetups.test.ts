@@ -154,7 +154,7 @@ import {
   uploadMeetupImage,
 } from './meetups';
 import { socket } from '../Server';
-import { In } from 'typeorm';
+import { ILike, In } from 'typeorm';
 import { AppDataSource } from '../datasource';
 import { Meetup } from '../entity/Meetup';
 import { User } from '../entity/User';
@@ -562,6 +562,28 @@ describe('getAllMeetups', () => {
     expect(organizerRelation.getRawMany).not.toHaveBeenCalled();
     expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
       { is_unlisted: false },
+    ]);
+  });
+
+  it('filters by a case-insensitive substring of the name', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_name: 'mech' }), res);
+
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { name: ILike('%mech%'), is_unlisted: false },
+    ]);
+  });
+
+  it('escapes LIKE wildcards in the name search', async () => {
+    mockedMeetup.find.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_name: '50%_off' }), res);
+
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { name: ILike('%50\\%\\_off%'), is_unlisted: false },
     ]);
   });
 });

@@ -231,6 +231,10 @@ const createMeetupsFilter = (
   if (query.by_country != null) {
     base.country = ILike(String(query.by_country));
   }
+  if (query.by_name != null) {
+    const escaped = String(query.by_name).replace(/[\\%_]/g, '\\$&');
+    base.name = ILike(`%${escaped}%`);
+  }
 
   // Restrict to a single organizer's meetups (as an organizer or the lead), or
   // leave unscoped for the general listing.
