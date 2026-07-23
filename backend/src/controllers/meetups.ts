@@ -192,12 +192,33 @@ const resolveTags = async (tagIds: string[]): Promise<Tag[]> => {
 
 const WEBHOOK_CREATION_ERROR = 'Failed to create Eventbrite webhook.';
 
+const parseTagIds = (raw: ParsedQs[string]): string[] => {
+  const values = Array.isArray(raw) ? raw : [raw];
+  return values
+    .flatMap((value) => String(value).split(','))
+    .map((value) => value.trim())
+    .filter((value) => /^\d+$/.test(value));
+};
+
+// Meetup ids carrying every one of the given tags.
+const getMeetupIdsWithTags = async (tagIds: string[]): Promise<string[]> => {
+  const rows = await AppDataSource.createQueryBuilder()
+    .select('mt.meetup_id', 'meetup_id')
+    .from('meetups_tags', 'mt')
+    .where('mt.tag_id IN (:...tagIds)', { tagIds })
+    .groupBy('mt.meetup_id')
+    .having('COUNT(DISTINCT mt.tag_id) = :tagCount', { tagCount: tagIds.length })
+    .getRawMany<{ meetup_id: string }>();
+  return rows.map((row) => String(row.meetup_id));
+};
+
 // Builds the OR'd where-clauses for a meetup listing. `visibleUnlistedIds` are
 // the meetups whose unlisted status the requestor is allowed to see (ones they
 // organize or attend); every other unlisted meetup stays hidden from listings.
 const createMeetupsFilter = (
   query: ParsedQs,
-  visibleUnlistedIds: string[]
+  visibleUnlistedIds: string[],
+  tagMatchedIds: string[] | null
 ): FindOptionsWhere<Meetup>[] => {
   const base: FindOptionsWhere<Meetup> = {};
 
@@ -227,13 +248,24 @@ const createMeetupsFilter = (
     visibilityScopes.push({ id: In(visibleUnlistedIds) });
   }
 
+  const tagMatchedSet = tagMatchedIds != null ? new Set(tagMatchedIds) : null;
+
   // Cartesian product: find() ORs the array, and each entry ANDs its keys.
   return organizerScopes.flatMap((organizerScope) =>
-    visibilityScopes.map((visibilityScope) => ({
-      ...base,
-      ...organizerScope,
-      ...visibilityScope,
-    }))
+    visibilityScopes.map((visibilityScope) => {
+      const scope: FindOptionsWhere<Meetup> = {
+        ...base,
+        ...organizerScope,
+        ...visibilityScope,
+      };
+      if (tagMatchedSet != null) {
+        scope.id =
+          visibilityScope.id != null
+            ? In(visibleUnlistedIds.filter((id) => tagMatchedSet.has(id)))
+            : In([...tagMatchedSet]);
+      }
+      return scope;
+    })
   );
 };
 
@@ -278,8 +310,17 @@ export const getAllMeetups = async (
     all: visibleUnlistedIds,
   } = await getVisibleUnlistedMeetups(requestor);
 
+  const tagIds =
+    req.query.by_tag_ids != null ? parseTagIds(req.query.by_tag_ids) : [];
+  const tagMatchedIds =
+    tagIds.length > 0 ? await getMeetupIdsWithTags(tagIds) : null;
+
   // Build filters and sorting
-  const findOptionsWhere = createMeetupsFilter(req.query, visibleUnlistedIds);
+  const findOptionsWhere = createMeetupsFilter(
+    req.query,
+    visibleUnlistedIds,
+    tagMatchedIds
+  );
   const findOptionsOrder = createMeetupsSorting(req.query);
 
   // Query
