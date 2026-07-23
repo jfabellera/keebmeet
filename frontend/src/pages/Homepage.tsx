@@ -2,12 +2,14 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo, type SimpleTicketInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { MeetupCard } from '../components/Meetups/MeetupCard';
 import { MeetupModal } from '../components/Meetups/MeetupModal';
+import { MeetupSearchInput } from '../components/Meetups/MeetupSearchInput';
 import { MeetupTagFilter } from '../components/Meetups/MeetupTagFilter';
 import Page from '../components/Page/Page';
+import { useIsMobile } from '../hooks/use-mobile';
 import { useAppSelector } from '../store/hooks';
 import { useGetMeetupsQuery } from '../store/meetupSlice';
 import { useGetTicketsQuery } from '../store/ticketSlice';
@@ -54,9 +56,19 @@ const Homepage = (): ReactNode => {
   const navigate = useNavigate();
   // The selected meetup is driven by the URL slug so meetups can be linked to.
   const slug = slugParam ?? '';
+  const isMobile = useIsMobile();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const { data: meetups, isLoading } = useGetMeetupsQuery({
     by_tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    by_name: debouncedSearch !== '' ? debouncedSearch : undefined,
   });
 
   const toggleTag = (tagId: string): void => {
@@ -173,34 +185,60 @@ const Homepage = (): ReactNode => {
     </div>
   );
 
-  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => (
-    <div>
-      <h2 className="mb-3 text-2xl font-bold">{title}</h2>
-      {meetupGrid(meetups, UPCOMING_GRID)}
+  const pastMeetupsBody = (
+    <div className="flex flex-col gap-6">
+      {pastMeetupsByYear.map(({ year, meetups }) => (
+        <section key={year}>
+          <div className="mb-4 flex items-center gap-3">
+            <h3 className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
+              {year}
+            </h3>
+            <Separator className="flex-1" />
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {meetups.length}
+            </span>
+          </div>
+          {meetupGrid(meetups, PAST_GRID)}
+        </section>
+      ))}
     </div>
   );
 
-  const pastMeetupsSection = (): ReactNode => (
-    <div>
-      <h2 className="mb-3 text-2xl font-bold">Past meetups</h2>
-      <div className="flex flex-col gap-6">
-        {pastMeetupsByYear.map(({ year, meetups }) => (
-          <section key={year}>
-            <div className="mb-4 flex items-center gap-3">
-              <h3 className="text-muted-foreground text-xs font-semibold tracking-[0.14em] uppercase">
-                {year}
-              </h3>
-              <Separator className="flex-1" />
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {meetups.length}
-              </span>
-            </div>
-            {meetupGrid(meetups, PAST_GRID)}
-          </section>
-        ))}
-      </div>
+  const controls = (
+    <div className="flex shrink-0 items-center gap-1">
+      <MeetupSearchInput
+        value={searchInput}
+        onChange={setSearchInput}
+        expanded={searchExpanded}
+        onExpandedChange={setSearchExpanded}
+        expandInline={!isMobile}
+      />
+      {filterButton}
     </div>
   );
+
+  const sections: { key: string; title: string; body: ReactNode }[] = [];
+  if (hasCurrent) {
+    sections.push({
+      key: 'current',
+      title: 'Happening now',
+      body: meetupGrid(currentMeetups ?? [], UPCOMING_GRID),
+    });
+  }
+  if (hasFuture) {
+    sections.push({
+      key: 'future',
+      title: 'Upcoming meetups',
+      body: meetupGrid(futureMeetups ?? [], UPCOMING_GRID),
+    });
+  }
+  if (hasPast) {
+    sections.push({
+      key: 'past',
+      title: 'Past meetups',
+      body: pastMeetupsBody,
+    });
+  }
 
   return (
     <Page>
@@ -209,23 +247,40 @@ const Homepage = (): ReactNode => {
           <Spinner className="size-10" />
         </div>
       ) : (
-        <div className="relative flex flex-col gap-8 px-4 pt-6 pb-8">
-          {/* Anchored to the content corner so it stays mounted (and the filter
-              popover stays open) regardless of which sections are showing. */}
-          <div className="absolute top-6 right-4 z-10">{filterButton}</div>
+        <div className="flex flex-col gap-8 px-4 pt-6 pb-8">
+          {isMobile && searchExpanded ? (
+            <div className="-mb-4">
+              <MeetupSearchInput
+                fullWidth
+                value={searchInput}
+                onChange={setSearchInput}
+                expanded={searchExpanded}
+                onExpandedChange={setSearchExpanded}
+              />
+            </div>
+          ) : null}
 
-          {hasCurrent ? meetupSection('Happening now', currentMeetups ?? []) : null}
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="min-w-0 truncate text-2xl font-bold">
+                {sections[0]?.title}
+              </h2>
+              {controls}
+            </div>
+            {sections[0]?.body}
+          </div>
 
-          {hasFuture
-            ? meetupSection('Upcoming meetups', futureMeetups ?? [])
-            : null}
+          {sections.slice(1).map((section) => (
+            <div key={section.key}>
+              <h2 className="mb-3 text-2xl font-bold">{section.title}</h2>
+              {section.body}
+            </div>
+          ))}
 
-          {hasPast ? pastMeetupsSection() : null}
-
-          {!hasCurrent && !hasFuture && !hasPast ? (
+          {sections.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
-              {selectedTagIds.length > 0
-                ? 'No meetups match the selected tags.'
+              {debouncedSearch !== '' || selectedTagIds.length > 0
+                ? 'No meetups match your search.'
                 : 'No meetups yet.'}
             </p>
           ) : null}
