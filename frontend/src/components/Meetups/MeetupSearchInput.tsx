@@ -65,9 +65,14 @@ export const MeetupSearchInput = ({
           onChange(e.target.value);
         }}
         onBlur={() => {
-          if (value.trim() === '') {
-            onExpandedChange(false);
+          if (value.trim() !== '') {
+            return;
           }
+          requestAnimationFrame(() => {
+            if (document.activeElement !== inputRef.current) {
+              onExpandedChange(false);
+            }
+          });
         }}
       />
       <InputGroupButton
