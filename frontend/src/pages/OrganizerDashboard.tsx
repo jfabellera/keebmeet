@@ -7,16 +7,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { ArchiveIcon, MoreHorizontalIcon } from 'lucide-react';
+import { ArchiveIcon, ArrowLeftIcon, MoreHorizontalIcon } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
 import { MeetupSearchInput } from '../components/Meetups/MeetupSearchInput';
 import Page from '../components/Page/Page';
-import BackButton from '../components/shared/BackButton';
 import { useIsMobile } from '../hooks/use-mobile';
 import { useMeetupSearch } from '../hooks/useMeetupSearch';
 import { useAppSelector } from '../store/hooks';
@@ -117,13 +117,43 @@ const OrganizerDashboard = (): ReactNode => {
     <div className="flex flex-col gap-4">{meetups.map(mapMeetupToCard)}</div>
   );
 
+  const sectionHeader = (
+    title: string | undefined,
+    count: number | undefined,
+    trailing?: ReactNode
+  ): ReactNode => (
+    <div className="mb-3 flex items-center gap-3">
+      <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+        {title}
+      </h2>
+      <Separator className="flex-1" />
+      {count != null ? (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {count}
+        </span>
+      ) : null}
+      {trailing}
+    </div>
+  );
+
   return (
     <Page>
       <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            void navigate('/');
+          }}
+          className="text-muted-foreground -mt-1 mb-2 -ml-2 h-8 w-fit gap-1.5 px-2"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back to home
+        </Button>
         <div className="mb-4 flex items-center gap-2">
-          <BackButton to="/" label="Back to home" className="-ml-2 shrink-0" />
           <h1 className="text-2xl font-semibold">Your Meetups</h1>
-          <ButtonGroup className="ml-auto">
+          <div className="ml-auto">{searchControl}</div>
+          <ButtonGroup>
             <Button onClick={newMeetupOnClick}>New meetup</Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -164,18 +194,13 @@ const OrganizerDashboard = (): ReactNode => {
         ) : (
           <div className="flex flex-col gap-4">
             <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="min-w-0 truncate text-2xl font-medium">
-                  {sections[0]?.title}
-                </h2>
-                {searchControl}
-              </div>
+              {sectionHeader(sections[0]?.title, sections[0]?.meetups.length)}
               {sections[0] != null ? meetupCards(sections[0].meetups) : null}
             </div>
 
             {sections.slice(1).map((section) => (
               <div key={section.title}>
-                <h2 className="mb-2 text-2xl font-medium">{section.title}</h2>
+                {sectionHeader(section.title, section.meetups.length)}
                 {meetupCards(section.meetups)}
               </div>
             ))}
