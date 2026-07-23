@@ -71,12 +71,19 @@ jest.mock('../util/organizerAddedNotification', () => ({
 }));
 // Run the delete transaction callback against a no-op manager.
 jest.mock('../datasource', () => {
-  // A single shared relation builder so tests can assert on addAndRemove.
+  // A single shared builder so tests can assert on addAndRemove, and drive the
+  // tag-id query (select/.../getRawMany) used by the tag filter.
   const relationBuilder = {
     relation: jest.fn().mockReturnThis(),
     of: jest.fn().mockReturnThis(),
     addAndRemove: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
+    select: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    having: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue([]),
   };
   return {
     AppDataSource: {
@@ -147,7 +154,7 @@ import {
   uploadMeetupImage,
 } from './meetups';
 import { socket } from '../Server';
-import { In } from 'typeorm';
+import { ILike, In } from 'typeorm';
 import { AppDataSource } from '../datasource';
 import { Meetup } from '../entity/Meetup';
 import { User } from '../entity/User';
@@ -184,6 +191,8 @@ const mockedDataSource = jest.mocked(AppDataSource);
 const organizerRelation = mockedDataSource.createQueryBuilder() as unknown as {
   addAndRemove: jest.Mock;
   remove: jest.Mock;
+  having: jest.Mock;
+  getRawMany: jest.Mock;
 };
 const mockedRefresh = jest.mocked(refreshMeetupDiscordMessage);
 const mockedSendTransferEmail = jest.mocked(sendMeetupTransferredEmail);
@@ -297,6 +306,7 @@ beforeEach(() => {
   mockedGetEffectiveGroups.mockResolvedValue([]);
   mockedGetEffectiveGroupIds.mockResolvedValue([]);
   mockedTag.findBy.mockResolvedValue([]);
+  organizerRelation.getRawMany.mockResolvedValue([]);
 });
 
 // ---- getAllMeetups ---------------------------------------------------------
@@ -487,6 +497,94 @@ describe('getAllMeetups', () => {
       '50': 'group',
       '60': 'organizer',
     });
+  });
+
+  it('constrains the listing to meetups matching the tag filter', async () => {
+    organizerRelation.getRawMany.mockResolvedValue([
+      { meetup_id: '10' },
+      { meetup_id: '20' },
+    ]);
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_tag_ids: '1,2' }), res);
+
+    expect(organizerRelation.having).toHaveBeenCalledWith(
+      expect.any(String),
+      { tagCount: 2 }
+    );
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { is_unlisted: false, id: In(['10', '20']) },
+    ]);
+  });
+
+  it('intersects the tag matches with the requestor\'s visible unlisted meetups', async () => {
+    // Requestor can see unlisted 30 & 40; tag matches are 20 & 30.
+    ticketQueryBuilder.getRawMany.mockResolvedValue([{ meetup_id: '30' }]);
+    organizerRelation.getRawMany.mockResolvedValue([
+      { meetup_id: '20' },
+      { meetup_id: '30' },
+    ]);
+    mockedMeetup.find
+      .mockResolvedValueOnce([{ id: '40' }] as never) // organized lookup
+      .mockResolvedValueOnce([fakeMeetupRow()]); // listing query
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getAllMeetups(mockRequest({}, {}, { by_tag_ids: '5' }), res);
+
+    expect((mockedMeetup.find.mock.calls[1][0] as any).where).toEqual([
+      { is_unlisted: false, id: In(['20', '30']) },
+      { id: In(['30']) }, // only 30 is both visible-unlisted and tag-matched
+    ]);
+  });
+
+  it('yields no matches when a requested tag has no meetups', async () => {
+    organizerRelation.getRawMany.mockResolvedValue([]);
+    mockedMeetup.find.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_tag_ids: '99' }), res);
+
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { is_unlisted: false, id: In([]) },
+    ]);
+    expect(res.body).toEqual([]);
+  });
+
+  it('ignores a by_tag_ids param with no numeric ids', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_tag_ids: 'abc' }), res);
+
+    // No tag query runs, and the listing is unconstrained by tags.
+    expect(organizerRelation.getRawMany).not.toHaveBeenCalled();
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { is_unlisted: false },
+    ]);
+  });
+
+  it('filters by a case-insensitive substring of the name', async () => {
+    mockedMeetup.find.mockResolvedValue([fakeMeetupRow()]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_name: 'mech' }), res);
+
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { name: ILike('%mech%'), is_unlisted: false },
+    ]);
+  });
+
+  it('escapes LIKE wildcards in the name search', async () => {
+    mockedMeetup.find.mockResolvedValue([]);
+    const res = mockResponse();
+
+    await getAllMeetups(mockRequest({}, {}, { by_name: '50%_off' }), res);
+
+    expect((mockedMeetup.find.mock.calls[0][0] as any).where).toEqual([
+      { name: ILike('%50\\%\\_off%'), is_unlisted: false },
+    ]);
   });
 });
 

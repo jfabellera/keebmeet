@@ -7,15 +7,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type MeetupInfo } from '@keebmeet/shared';
 import dayjs from 'dayjs';
-import { ArchiveIcon, MoreHorizontalIcon } from 'lucide-react';
+import { ArchiveIcon, ArrowLeftIcon, MoreHorizontalIcon } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MeetupOrganizerCard } from '../components/Meetups/MeetupOrganizerCard';
+import { MeetupSearchInput } from '../components/Meetups/MeetupSearchInput';
 import Page from '../components/Page/Page';
-import BackButton from '../components/shared/BackButton';
+import { useIsMobile } from '../hooks/use-mobile';
+import { useMeetupSearch } from '../hooks/useMeetupSearch';
 import { useAppSelector } from '../store/hooks';
 import { meetupSlice, useGetMeetupsQuery } from '../store/meetupSlice';
 import {
@@ -26,8 +29,19 @@ import {
 
 const OrganizerDashboard = (): ReactNode => {
   const { user } = useAppSelector((state) => state.user);
+  const isMobile = useIsMobile();
+  const {
+    searchInput,
+    setSearchInput,
+    searchExpanded,
+    setSearchExpanded,
+    debouncedSearch,
+    byName,
+  } = useMeetupSearch();
+
   const { data: meetups, isLoading } = useGetMeetupsQuery({
     by_organizer_id: user != null ? [user.id] : [],
+    by_name: byName,
     detail_level: 'detailed',
   });
   const navigate = useNavigate();
@@ -76,24 +90,70 @@ const OrganizerDashboard = (): ReactNode => {
     );
   };
 
-  const meetupSection = (title: string, meetups: MeetupInfo[]): ReactNode => {
-    return (
-      <div>
-        <h2 className="mb-2 text-2xl font-medium">{title}</h2>
-        <div className="flex flex-col gap-4">
-          {meetups.map(mapMeetupToCard)}
-        </div>
-      </div>
-    );
-  };
+  const sections: { title: string; meetups: MeetupInfo[] }[] = [];
+  if (currentMeetups != null && currentMeetups.length > 0) {
+    sections.push({ title: 'Happening now', meetups: currentMeetups });
+  }
+  if (futureMeetups != null && futureMeetups.length > 0) {
+    sections.push({ title: 'Upcoming meetups', meetups: futureMeetups });
+  }
+  if (pastMeetups != null && pastMeetups.length > 0) {
+    sections.push({ title: 'Past meetups', meetups: pastMeetups });
+  }
+
+  const searchControl = (
+    <div className="flex shrink-0 items-center gap-1">
+      <MeetupSearchInput
+        value={searchInput}
+        onChange={setSearchInput}
+        expanded={searchExpanded}
+        onExpandedChange={setSearchExpanded}
+        expandInline={!isMobile}
+      />
+    </div>
+  );
+
+  const meetupCards = (meetups: MeetupInfo[]): ReactNode => (
+    <div className="flex flex-col gap-4">{meetups.map(mapMeetupToCard)}</div>
+  );
+
+  const sectionHeader = (
+    title: string | undefined,
+    count: number | undefined,
+    trailing?: ReactNode
+  ): ReactNode => (
+    <div className="mb-3 flex items-center gap-3">
+      <h2 className="text-muted-foreground shrink-0 text-xs font-semibold tracking-[0.14em] uppercase">
+        {title}
+      </h2>
+      <Separator className="flex-1" />
+      {count != null ? (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {count}
+        </span>
+      ) : null}
+      {trailing}
+    </div>
+  );
 
   return (
     <Page>
       <div className="mx-auto flex h-full max-w-3xl flex-col p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            void navigate('/');
+          }}
+          className="text-muted-foreground -mt-1 mb-2 -ml-2 h-8 w-fit gap-1.5 px-2"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back to home
+        </Button>
         <div className="mb-4 flex items-center gap-2">
-          <BackButton to="/" label="Back to home" className="-ml-2 shrink-0" />
           <h1 className="text-2xl font-semibold">Your Meetups</h1>
-          <ButtonGroup className="ml-auto">
+          <div className="ml-auto">{searchControl}</div>
+          <ButtonGroup>
             <Button onClick={newMeetupOnClick}>New meetup</Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -116,21 +176,42 @@ const OrganizerDashboard = (): ReactNode => {
             </DropdownMenu>
           </ButtonGroup>
         </div>
+        {isMobile && searchExpanded ? (
+          <div className="mb-4">
+            <MeetupSearchInput
+              fullWidth
+              value={searchInput}
+              onChange={setSearchInput}
+              expanded={searchExpanded}
+              onExpandedChange={setSearchExpanded}
+            />
+          </div>
+        ) : null}
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center">
             <Spinner className="size-10" />
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {currentMeetups != null && currentMeetups.length > 0
-              ? meetupSection('Happening now', currentMeetups)
-              : null}
-            {futureMeetups != null && futureMeetups.length > 0
-              ? meetupSection('Upcoming meetups', futureMeetups)
-              : null}
-            {pastMeetups != null && pastMeetups.length > 0
-              ? meetupSection('Past meetups', pastMeetups)
-              : null}
+            <div>
+              {sectionHeader(sections[0]?.title, sections[0]?.meetups.length)}
+              {sections[0] != null ? meetupCards(sections[0].meetups) : null}
+            </div>
+
+            {sections.slice(1).map((section) => (
+              <div key={section.title}>
+                {sectionHeader(section.title, section.meetups.length)}
+                {meetupCards(section.meetups)}
+              </div>
+            ))}
+
+            {sections.length === 0 ? (
+              <p className="text-muted-foreground py-8 text-center text-sm">
+                {debouncedSearch !== ''
+                  ? 'No meetups match your search.'
+                  : 'No meetups yet.'}
+              </p>
+            ) : null}
           </div>
         )}
       </div>

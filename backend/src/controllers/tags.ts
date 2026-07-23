@@ -1,11 +1,9 @@
-import {
-  createTagSchema,
-  editTagSchema,
-  type TagInfo,
-} from '@keebmeet/shared';
+import { createTagSchema, editTagSchema, type TagInfo } from '@keebmeet/shared';
 import { type Request, type Response } from 'express';
+import { AppDataSource } from '../datasource';
 import { Tag } from '../entity/Tag';
 import { User } from '../entity/User';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 
 const toTagResponse = (tag: Tag): TagInfo => ({
   id: tag.id,
@@ -25,7 +23,38 @@ export const getTags = async (
 ): Promise<Response> => {
   const tags = await Tag.find({ order: { name: 'ASC' } });
 
-  return res.json(tags.map(toTagResponse));
+  const requestor = res.locals.requestor as User | undefined;
+  const { all: visibleUnlistedIds } =
+    await getVisibleUnlistedMeetups(requestor);
+
+  const countQuery = AppDataSource.createQueryBuilder()
+    .select('mt.tag_id', 'tag_id')
+    .addSelect('COUNT(*)', 'count')
+    .from('meetups_tags', 'mt')
+    .innerJoin('meetups', 'm', 'm.id = mt.meetup_id')
+    .groupBy('mt.tag_id');
+  if (visibleUnlistedIds.length > 0) {
+    countQuery.where(
+      'm.is_unlisted = false OR m.id IN (:...visibleUnlistedIds)',
+      { visibleUnlistedIds }
+    );
+  } else {
+    countQuery.where('m.is_unlisted = false');
+  }
+  const countRows = await countQuery.getRawMany<{
+    tag_id: string;
+    count: string;
+  }>();
+  const countByTagId = new Map(
+    countRows.map((row) => [row.tag_id, Number(row.count)])
+  );
+
+  return res.json(
+    tags.map((tag) => ({
+      ...toTagResponse(tag),
+      meetup_count: countByTagId.get(tag.id) ?? 0,
+    }))
+  );
 };
 
 export const createTag = async (

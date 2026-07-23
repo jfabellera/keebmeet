@@ -110,4 +110,5 @@ export interface TagInfo {
   id: string;
   name: string;
   color: string;
+  meetup_count?: number;
 }
