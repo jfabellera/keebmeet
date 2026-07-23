@@ -14,10 +14,34 @@ jest.mock('../entity/Tag', () => ({
 
 jest.mock('../entity/User', () => ({ User: {} }));
 
+// Chainable stub for AppDataSource.createQueryBuilder(); getRawMany returns the
+// per-tag meetup counts.
+const countQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
+  from: jest.fn().mockReturnThis(),
+  innerJoin: jest.fn().mockReturnThis(),
+  groupBy: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([]),
+};
+
+jest.mock('../datasource', () => ({
+  AppDataSource: { createQueryBuilder: jest.fn() },
+}));
+
+jest.mock('../util/meetupVisibility', () => ({
+  getVisibleUnlistedMeetups: jest.fn(),
+}));
+
 import { createTag, deleteTag, editTag, getTags } from './tags';
 import { Tag } from '../entity/Tag';
+import { AppDataSource } from '../datasource';
+import { getVisibleUnlistedMeetups } from '../util/meetupVisibility';
 
 const mockedTag = jest.mocked(Tag);
+const mockedDataSource = jest.mocked(AppDataSource);
+const mockedGetVisibleUnlisted = jest.mocked(getVisibleUnlistedMeetups);
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -63,25 +87,64 @@ const mockNameLookup = (match: unknown): void => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockedDataSource.createQueryBuilder.mockReturnValue(countQueryBuilder as any);
+  countQueryBuilder.getRawMany.mockResolvedValue([]);
+  mockedGetVisibleUnlisted.mockResolvedValue({
+    organizedIds: new Set(),
+    attendedIds: new Set(),
+    groupMeetupIds: new Set(),
+    all: [],
+  });
 });
 
 // ---- getTags ---------------------------------------------------------------
 
 describe('getTags', () => {
-  it('returns every tag as its public shape, ordered by name', async () => {
+  it('returns every tag with its meetup count, ordered by name', async () => {
     mockedTag.find.mockResolvedValue([
       fakeTag({ id: '1', name: 'alpha', color: '#000000' }),
       fakeTag({ id: '2', name: 'beta', color: '#ffffff' }),
     ] as never);
+    // alpha is on 3 meetups; beta on none.
+    countQueryBuilder.getRawMany.mockResolvedValue([{ tag_id: '1', count: '3' }]);
     const res = mockResponse();
 
     await getTags(mockRequest(), res);
 
     expect(mockedTag.find).toHaveBeenCalledWith({ order: { name: 'ASC' } });
     expect(res.body).toEqual([
-      { id: '1', name: 'alpha', color: '#000000' },
-      { id: '2', name: 'beta', color: '#ffffff' },
+      { id: '1', name: 'alpha', color: '#000000', meetup_count: 3 },
+      { id: '2', name: 'beta', color: '#ffffff', meetup_count: 0 },
     ]);
+  });
+
+  it('counts only public meetups for anonymous requests', async () => {
+    mockedTag.find.mockResolvedValue([fakeTag()] as never);
+    const res = mockResponse();
+
+    await getTags(mockRequest(), res);
+
+    expect(countQueryBuilder.where).toHaveBeenCalledWith('m.is_unlisted = false');
+  });
+
+  it('also counts unlisted meetups the requestor may see', async () => {
+    mockedTag.find.mockResolvedValue([fakeTag()] as never);
+    mockedGetVisibleUnlisted.mockResolvedValue({
+      organizedIds: new Set(),
+      attendedIds: new Set(),
+      groupMeetupIds: new Set(),
+      all: ['30', '40'],
+    });
+    const res = mockResponse();
+    res.locals.requestor = { id: '1' };
+
+    await getTags(mockRequest(), res);
+
+    expect(mockedGetVisibleUnlisted).toHaveBeenCalledWith({ id: '1' });
+    expect(countQueryBuilder.where).toHaveBeenCalledWith(
+      'm.is_unlisted = false OR m.id IN (:...visibleUnlistedIds)',
+      { visibleUnlistedIds: ['30', '40'] }
+    );
   });
 
   it('returns an empty array when there are no tags', async () => {
